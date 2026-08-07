@@ -32,6 +32,20 @@ type HomeView struct {
 	NewsListURL     string
 }
 
+// homeNewsToCard maps a home news item to a NewsCardView.
+func homeNewsToCard(item HomeNewsItem, featured bool) components.NewsCardView {
+	return components.NewsCardView{
+		TitleHTML:       item.TitleHTML,
+		ExcerptHTML:     item.ExcerptHTML,
+		CoverURL:        item.CoverURL,
+		PublishedAt:     item.PublishedAt,
+		DetailURL:       item.DetailURL,
+		ClinicName:      item.ClinicName,
+		ShowClinicBadge: item.ShowClinicBadge,
+		Featured:        featured,
+	}
+}
+
 // Home renders the tenant landing content including latest news.
 func Home(view HomeView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -54,14 +68,14 @@ func Home(view HomeView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><section class=\"mb-8\"><h1 class=\"mb-2 text-2xl text-brand\">صفحه اصلی</h1><p class=\"text-ink-muted\">به سامانه نوبت\u200cدهی خوش آمدید.</p></section><section><div class=\"mb-4 flex flex-wrap items-center justify-between gap-2\"><h2 class=\"text-xl text-ink\">آخرین اخبار</h2><a class=\"text-sm text-brand underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-6xl\"><section class=\"mb-10 border-b border-surface-border pb-8\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between\"><div class=\"min-w-0\"><p class=\"mb-1 text-sm text-brand\">سامانه نوبت\u200cدهی</p><h1 class=\"text-2xl font-bold text-ink sm:text-3xl\">رزرو نوبت، ساده و سریع</h1><p class=\"mt-2 max-w-lg text-sm leading-relaxed text-ink-muted sm:text-base\">پزشک را انتخاب کنید و نزدیک\u200cترین زمان آزاد را رزرو کنید.</p></div><a class=\"inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md bg-brand px-6 text-base font-medium text-white hover:bg-brand-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"/doctors\">نوبت بگیرید</a></div></section><section><div class=\"mb-5 flex items-center justify-between gap-3\"><h2 class=\"text-lg font-bold text-ink sm:text-xl\">آخرین اخبار</h2><a class=\"inline-flex min-h-[44px] items-center text-sm text-brand hover:underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.NewsListURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/home.templ`, Line: 37, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/home.templ`, Line: 66, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -72,25 +86,17 @@ func Home(view HomeView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(view.LatestNews) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-ink-muted\">خبری برای نمایش وجود ندارد.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"py-10 text-center text-sm text-ink-muted\">خبری برای نمایش وجود ندارد.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"grid gap-4 sm:grid-cols-2 lg:grid-cols-3\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"news-grid\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, item := range view.LatestNews {
-				templ_7745c5c3_Err = components.NewsCard(components.NewsCardView{
-					TitleHTML:       item.TitleHTML,
-					ExcerptHTML:     item.ExcerptHTML,
-					CoverURL:        item.CoverURL,
-					PublishedAt:     item.PublishedAt,
-					DetailURL:       item.DetailURL,
-					ClinicName:      item.ClinicName,
-					ShowClinicBadge: item.ShowClinicBadge,
-				}).Render(ctx, templ_7745c5c3_Buffer)
+			for i, item := range view.LatestNews {
+				templ_7745c5c3_Err = components.NewsCard(homeNewsToCard(item, i == 0)).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

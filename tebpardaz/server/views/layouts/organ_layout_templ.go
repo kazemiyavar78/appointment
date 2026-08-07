@@ -16,6 +16,8 @@ type OrganLayoutView struct {
 	LogoURL          string
 	HomeURL          string
 	NavLinks         []components.NavLink
+	ClinicLinks      []components.FooterLink
+	ClinicsListURL   string
 }
 
 // OrganLayout renders an organization tenant page with navbar + main content.
@@ -52,11 +54,15 @@ func OrganLayout(view OrganLayoutView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex min-h-screen flex-col\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = components.Navbar(organNavbar(view)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, " <main class=\"min-h-screen p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"flex-1 p-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -64,7 +70,15 @@ func OrganLayout(view OrganLayoutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.Footer(organFooter(view)).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -93,6 +107,25 @@ func organNavbar(view OrganLayoutView) components.NavbarProps {
 		LogoURL:   view.LogoURL,
 		HomeURL:   view.HomeURL,
 		NavLinks:  links,
+	}
+}
+
+// organFooter maps OrganLayoutView to a multi-clinic organization FooterProps.
+func organFooter(view OrganLayoutView) components.FooterProps {
+	nav := organNavbar(view)
+	clinicsURL := view.ClinicsListURL
+	if clinicsURL == "" {
+		clinicsURL = "/clinics"
+	}
+	return components.FooterProps{
+		Variant:        components.FooterOrgan,
+		BrandName:      nav.BrandName,
+		LogoURL:        view.LogoURL,
+		HomeURL:        view.HomeURL,
+		BookingURL:     "/doctors",
+		ClinicsListURL: clinicsURL,
+		ClinicLinks:    view.ClinicLinks,
+		QuickLinks:     components.NavLinksToFooter(nav.NavLinks),
 	}
 }
 

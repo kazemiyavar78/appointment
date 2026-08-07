@@ -5,19 +5,23 @@ import "tebpardaz/server/views/components"
 // PlatformLayoutView drives the company (طب‌پرداز) multi-clinic public shell.
 // Structure mirrors OrganLayoutView: brand + nav + main content.
 type PlatformLayoutView struct {
-	CompanyName string
-	LogoURL     string
-	HomeURL     string
-	NavLinks    []components.NavLink
+	CompanyName    string
+	LogoURL        string
+	HomeURL        string
+	NavLinks       []components.NavLink
+	CorporateLinks []components.FooterLink
 }
 
 // PlatformLayout renders the company tenant page with navbar + main content.
 templ PlatformLayout(view PlatformLayoutView) {
 	@Document() {
-		@components.Navbar(platformShellNavbar(view))
-		<main class="min-h-screen p-4">
-			{ children... }
-		</main>
+		<div class="flex min-h-screen flex-col">
+			@components.Navbar(platformShellNavbar(view))
+			<main class="flex-1 p-4">
+				{ children... }
+			</main>
+			@components.Footer(platformFooter(view))
+		</div>
 	}
 }
 
@@ -40,5 +44,19 @@ func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 		LogoURL:   view.LogoURL,
 		HomeURL:   home,
 		NavLinks:  links,
+	}
+}
+
+// platformFooter maps PlatformLayoutView to a formal company FooterProps.
+func platformFooter(view PlatformLayoutView) components.FooterProps {
+	nav := platformShellNavbar(view)
+	return components.FooterProps{
+		Variant:        components.FooterPlatform,
+		BrandName:      nav.BrandName,
+		LogoURL:        view.LogoURL,
+		HomeURL:        nav.HomeURL,
+		BookingURL:     "/doctors",
+		CorporateLinks: view.CorporateLinks,
+		QuickLinks:     components.NavLinksToFooter(nav.NavLinks),
 	}
 }

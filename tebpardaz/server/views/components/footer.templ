@@ -1,0 +1,260 @@
+package components
+
+import "strconv"
+import "time"
+
+// FooterLink is a single footer navigation item.
+type FooterLink struct {
+	Label string
+	Href  string
+}
+
+// FooterVariant selects the visual identity for a tenant layer footer.
+type FooterVariant string
+
+const (
+	FooterPrivate  FooterVariant = "private"
+	FooterOrgan    FooterVariant = "organ"
+	FooterPlatform FooterVariant = "platform"
+)
+
+// FooterProps drives the shared public footer across tenant layouts.
+type FooterProps struct {
+	Variant        FooterVariant
+	BrandName      string
+	LogoURL        string
+	HomeURL        string
+	Phone          string
+	Address        string
+	BookingURL     string
+	ClinicsListURL string
+	ClinicLinks    []FooterLink
+	CorporateLinks []FooterLink
+	QuickLinks     []FooterLink
+}
+
+// footerYear returns the current Gregorian year as a string for the copyright line.
+func footerYear() string {
+	return strconv.Itoa(time.Now().Year())
+}
+
+// footerBrandFallback returns a display name when BrandName is empty.
+func footerBrandFallback(props FooterProps) string {
+	if props.BrandName != "" {
+		return props.BrandName
+	}
+	switch props.Variant {
+	case FooterOrgan:
+		return "سازمان"
+	case FooterPlatform:
+		return "طب‌پرداز"
+	default:
+		return "کلینیک"
+	}
+}
+
+// footerBookingURL returns the booking CTA href, defaulting to /doctors.
+func footerBookingURL(props FooterProps) string {
+	if props.BookingURL != "" {
+		return props.BookingURL
+	}
+	return "/doctors"
+}
+
+// footerClinicsURL returns the clinics list href, defaulting to /clinics.
+func footerClinicsURL(props FooterProps) string {
+	if props.ClinicsListURL != "" {
+		return props.ClinicsListURL
+	}
+	return "/clinics"
+}
+
+// footerShellClass returns the outer footer shell classes for each variant.
+func footerShellClass(v FooterVariant) string {
+	switch v {
+	case FooterPlatform:
+		return "mt-auto bg-brand-dark text-white"
+	case FooterOrgan:
+		return "mt-auto border-t border-surface-border bg-white text-ink"
+	default:
+		return "mt-auto border-t border-surface-border bg-surface-soft text-ink"
+	}
+}
+
+// footerMutedClass returns muted text classes for each variant.
+func footerMutedClass(v FooterVariant) string {
+	if v == FooterPlatform {
+		return "text-white/65"
+	}
+	return "text-ink-muted"
+}
+
+// footerLinkClass returns compact link classes for each variant.
+func footerLinkClass(v FooterVariant) string {
+	if v == FooterPlatform {
+		return "block py-1.5 text-sm text-white/80 hover:text-white"
+	}
+	return "block py-1.5 text-sm text-ink-muted hover:text-brand"
+}
+
+// footerHeadingClass returns section heading classes for each variant.
+func footerHeadingClass(v FooterVariant) string {
+	if v == FooterPlatform {
+		return "mb-3 text-sm font-bold text-white"
+	}
+	return "mb-3 text-sm font-bold text-ink"
+}
+
+// footerBrandTextClass returns brand title classes for each variant.
+func footerBrandTextClass(v FooterVariant) string {
+	if v == FooterPlatform {
+		return "text-base font-bold text-white"
+	}
+	return "text-base font-bold text-ink"
+}
+
+// footerGridClass returns the footer column grid modifier for each variant.
+func footerGridClass(v FooterVariant) string {
+	if v == FooterPrivate {
+		return "site-footer-grid site-footer-grid--private"
+	}
+	return "site-footer-grid"
+}
+
+// footerCtaClass returns the booking button classes for each variant.
+func footerCtaClass(v FooterVariant) string {
+	if v == FooterPlatform {
+		return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand-light px-5 text-sm font-medium text-white hover:bg-brand"
+	}
+	return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand px-5 text-sm font-medium text-white hover:bg-brand-dark"
+}
+
+// defaultCorporateLinks returns platform company links.
+func defaultCorporateLinks() []FooterLink {
+	return []FooterLink{
+		{Label: "درباره ما", Href: "/about"},
+		{Label: "تماس با ما", Href: "/contact"},
+		{Label: "قوانین و مقررات", Href: "/terms"},
+	}
+}
+
+// corporateOrDefault returns provided corporate links or the platform defaults.
+func corporateOrDefault(links []FooterLink) []FooterLink {
+	if len(links) > 0 {
+		return links
+	}
+	return defaultCorporateLinks()
+}
+
+// NavLinksToFooter converts navbar links into footer quick links.
+func NavLinksToFooter(links []NavLink) []FooterLink {
+	out := make([]FooterLink, 0, len(links))
+	for _, link := range links {
+		out = append(out, FooterLink{Label: link.Label, Href: link.Href})
+	}
+	return out
+}
+
+// Footer renders a tenant-aware RTL public footer with a clean column layout.
+templ Footer(props FooterProps) {
+	<footer class={ footerShellClass(props.Variant) } dir="rtl">
+		<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+			<div class={ footerGridClass(props.Variant) }>
+				<!-- Brand column -->
+				<div>
+					<a class="mb-3 inline-flex items-center gap-2" href={ homeHref(props.HomeURL) }>
+						if props.LogoURL != "" {
+							<img
+								class="h-8 w-8 rounded-full object-cover"
+								src={ props.LogoURL }
+								alt=""
+								loading="lazy"
+								width="32"
+								height="32"
+							/>
+						}
+						<span class={ footerBrandTextClass(props.Variant) }>{ footerBrandFallback(props) }</span>
+					</a>
+					if props.Variant == FooterPrivate {
+						if props.Phone != "" {
+							<p class={ "text-sm", footerMutedClass(props.Variant) }>تلفن: { props.Phone }</p>
+						}
+						if props.Address != "" {
+							<p class={ "mt-1 text-sm leading-relaxed", footerMutedClass(props.Variant) }>{ props.Address }</p>
+						}
+						if props.Phone == "" && props.Address == "" {
+							<p class={ "text-sm leading-relaxed", footerMutedClass(props.Variant) }>
+								نوبت‌دهی آنلاین کلینیک
+							</p>
+						}
+					} else if props.Variant == FooterOrgan {
+						<p class={ "text-sm leading-relaxed", footerMutedClass(props.Variant) }>
+							دسترسی به مراکز زیرمجموعه و نوبت‌دهی آنلاین
+						</p>
+					} else {
+						<p class={ "text-sm leading-relaxed", footerMutedClass(props.Variant) }>
+							پلتفرم نوبت‌دهی مراکز درمانی
+						</p>
+					}
+					<div class="mt-5">
+						<a class={ footerCtaClass(props.Variant) } href={ templ.SafeURL(footerBookingURL(props)) }>
+							نوبت بگیرید
+						</a>
+					</div>
+				</div>
+				<!-- Quick links -->
+				if len(props.QuickLinks) > 0 {
+					<div>
+						<h3 class={ footerHeadingClass(props.Variant) }>دسترسی سریع</h3>
+						<ul>
+							for _, link := range props.QuickLinks {
+								<li>
+									<a class={ footerLinkClass(props.Variant) } href={ templ.SafeURL(link.Href) }>{ link.Label }</a>
+								</li>
+							}
+						</ul>
+					</div>
+				}
+				<!-- Organ clinics / Platform corporate -->
+				if props.Variant == FooterOrgan {
+					<div>
+						<h3 class={ footerHeadingClass(props.Variant) }>مراکز</h3>
+						if len(props.ClinicLinks) > 0 {
+							<ul>
+								for _, link := range props.ClinicLinks {
+									<li>
+										<a class={ footerLinkClass(props.Variant) } href={ templ.SafeURL(link.Href) }>{ link.Label }</a>
+									</li>
+								}
+							</ul>
+						}
+						<a class={ "mt-1 font-medium", footerLinkClass(props.Variant) } href={ templ.SafeURL(footerClinicsURL(props)) }>
+							همه مراکز
+						</a>
+					</div>
+				}
+				if props.Variant == FooterPlatform {
+					<div>
+						<h3 class={ footerHeadingClass(props.Variant) }>شرکت</h3>
+						<ul>
+							for _, link := range corporateOrDefault(props.CorporateLinks) {
+								<li>
+									<a class={ footerLinkClass(props.Variant) } href={ templ.SafeURL(link.Href) }>{ link.Label }</a>
+								</li>
+							}
+						</ul>
+					</div>
+				}
+			</div>
+			if props.Variant == FooterPlatform {
+				<p class="mt-8 border-t border-white/10 pt-5 text-xs text-white/50">
+					© { footerYear() } { footerBrandFallback(props) }
+				</p>
+			} else {
+				<p class="mt-8 border-t border-surface-border pt-5 text-xs text-ink-faint">
+					© { footerYear() } { footerBrandFallback(props) }
+				</p>
+			}
+		</div>
+	</footer>
+}

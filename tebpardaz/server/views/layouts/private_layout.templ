@@ -8,15 +8,20 @@ type PrivateLayoutView struct {
 	LogoURL    string
 	HomeURL    string
 	NavLinks   []components.NavLink
+	Phone      string
+	Address    string
 }
 
 // PrivateLayout renders a private clinic tenant page with navbar + main content.
 templ PrivateLayout(view PrivateLayoutView) {
 	@Document() {
-		@components.Navbar(privateNavbar(view))
-		<main class="min-h-screen p-4">
-			{ children... }
-		</main>
+		<div class="flex min-h-screen flex-col">
+			@components.Navbar(privateNavbar(view))
+			<main class="flex-1 p-4">
+				{ children... }
+			</main>
+			@components.Footer(privateFooter(view))
+		</div>
 	}
 }
 
@@ -35,5 +40,20 @@ func privateNavbar(view PrivateLayoutView) components.NavbarProps {
 		LogoURL:   view.LogoURL,
 		HomeURL:   view.HomeURL,
 		NavLinks:  links,
+	}
+}
+
+// privateFooter maps PrivateLayoutView to a warm single-clinic FooterProps.
+func privateFooter(view PrivateLayoutView) components.FooterProps {
+	nav := privateNavbar(view)
+	return components.FooterProps{
+		Variant:    components.FooterPrivate,
+		BrandName:  nav.BrandName,
+		LogoURL:    view.LogoURL,
+		HomeURL:    view.HomeURL,
+		Phone:      view.Phone,
+		Address:    view.Address,
+		BookingURL: "/doctors",
+		QuickLinks: components.NavLinksToFooter(nav.NavLinks),
 	}
 }

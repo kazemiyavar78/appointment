@@ -16,6 +16,8 @@ type PrivateLayoutView struct {
 	LogoURL    string
 	HomeURL    string
 	NavLinks   []components.NavLink
+	Phone      string
+	Address    string
 }
 
 // PrivateLayout renders a private clinic tenant page with navbar + main content.
@@ -52,11 +54,15 @@ func PrivateLayout(view PrivateLayoutView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex min-h-screen flex-col\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = components.Navbar(privateNavbar(view)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, " <main class=\"min-h-screen p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"flex-1 p-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -64,7 +70,15 @@ func PrivateLayout(view PrivateLayoutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.Footer(privateFooter(view)).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -93,6 +107,21 @@ func privateNavbar(view PrivateLayoutView) components.NavbarProps {
 		LogoURL:   view.LogoURL,
 		HomeURL:   view.HomeURL,
 		NavLinks:  links,
+	}
+}
+
+// privateFooter maps PrivateLayoutView to a warm single-clinic FooterProps.
+func privateFooter(view PrivateLayoutView) components.FooterProps {
+	nav := privateNavbar(view)
+	return components.FooterProps{
+		Variant:    components.FooterPrivate,
+		BrandName:  nav.BrandName,
+		LogoURL:    view.LogoURL,
+		HomeURL:    view.HomeURL,
+		Phone:      view.Phone,
+		Address:    view.Address,
+		BookingURL: "/doctors",
+		QuickLinks: components.NavLinksToFooter(nav.NavLinks),
 	}
 }
 

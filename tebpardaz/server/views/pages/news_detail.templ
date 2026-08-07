@@ -60,7 +60,7 @@ templ NewsList(view NewsListView) {
 		if len(view.Items) == 0 {
 			<p class="text-ink-muted">{ view.EmptyMessage }</p>
 		} else {
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="news-grid">
 				for _, item := range view.Items {
 					@components.NewsCard(item)
 				}

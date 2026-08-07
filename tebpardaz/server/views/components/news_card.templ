@@ -13,6 +13,7 @@ type NewsCardView struct {
 	DetailURL       string
 	ClinicName      string
 	ShowClinicBadge bool
+	Featured        bool
 }
 
 func newsCardDate(t time.Time) string {
@@ -22,29 +23,61 @@ func newsCardDate(t time.Time) string {
 	return t.Format("2006/01/02")
 }
 
-// NewsCard renders a clickable news summary card.
+// newsCardRootClass returns root article classes for standard or featured cards.
+func newsCardRootClass(featured bool) string {
+	base := "news-card group h-full overflow-hidden rounded-lg border border-surface-border bg-white transition hover:border-brand"
+	if featured {
+		return base + " news-card--featured"
+	}
+	return base
+}
+
+// NewsCard renders a clickable news summary card with clear visual hierarchy.
 templ NewsCard(view NewsCardView) {
-	<article class="overflow-hidden rounded-lg border border-gray-200 bg-white">
-		<a class="block" href={ templ.SafeURL(view.DetailURL) }>
-			if view.CoverURL != "" {
-				<img class="h-44 w-full object-cover" src={ view.CoverURL } alt=""/>
-			}
-			<div class="p-4">
-				if view.ShowClinicBadge && view.ClinicName != "" {
-					<span class="mb-2 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+	<article class={ newsCardRootClass(view.Featured) }>
+		<a
+			class="flex h-full flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+			href={ templ.SafeURL(view.DetailURL) }
+		>
+			<span class="news-card-media">
+				if view.CoverURL != "" {
+					<img
+						src={ view.CoverURL }
+						alt=""
+						loading="lazy"
+						decoding="async"
+						width="640"
+						height="427"
+					/>
+				} else {
+					<span class="news-card-media-fallback flex items-center justify-center text-sm text-brand">بدون تصویر</span>
 				}
-				<h2 class="text-lg text-ink">
-					@templ.Raw(view.TitleHTML)
-				</h2>
+			</span>
+			<span class="flex flex-1 flex-col p-4">
+				<span class="mb-2 flex flex-wrap items-center gap-2">
+					if d := newsCardDate(view.PublishedAt); d != "" {
+						<time class="text-xs text-ink-muted" datetime={ view.PublishedAt.Format("2006-01-02") }>{ d }</time>
+					}
+					if view.ShowClinicBadge && view.ClinicName != "" {
+						<span class="rounded bg-brand-muted px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+					}
+				</span>
+				if view.Featured {
+					<span class="text-xl font-bold leading-snug text-ink">
+						@templ.Raw(view.TitleHTML)
+					</span>
+				} else {
+					<span class="text-base font-bold leading-snug text-ink">
+						@templ.Raw(view.TitleHTML)
+					</span>
+				}
 				if view.ExcerptHTML != "" {
-					<div class="mt-2 text-sm text-ink-muted">
+					<span class="news-excerpt mt-2 text-sm text-ink-muted">
 						@templ.Raw(view.ExcerptHTML)
-					</div>
+					</span>
 				}
-				if d := newsCardDate(view.PublishedAt); d != "" {
-					<p class="mt-3 text-xs text-ink-muted">{ d }</p>
-				}
-			</div>
+				<span class="mt-auto pt-3 text-sm text-brand group-hover:underline">ادامه مطلب</span>
+			</span>
 		</a>
 	</article>
 }

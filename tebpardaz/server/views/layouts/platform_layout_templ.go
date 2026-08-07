@@ -13,10 +13,11 @@ import "tebpardaz/server/views/components"
 // PlatformLayoutView drives the company (طب‌پرداز) multi-clinic public shell.
 // Structure mirrors OrganLayoutView: brand + nav + main content.
 type PlatformLayoutView struct {
-	CompanyName string
-	LogoURL     string
-	HomeURL     string
-	NavLinks    []components.NavLink
+	CompanyName    string
+	LogoURL        string
+	HomeURL        string
+	NavLinks       []components.NavLink
+	CorporateLinks []components.FooterLink
 }
 
 // PlatformLayout renders the company tenant page with navbar + main content.
@@ -53,11 +54,15 @@ func PlatformLayout(view PlatformLayoutView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex min-h-screen flex-col\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 			templ_7745c5c3_Err = components.Navbar(platformShellNavbar(view)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, " <main class=\"min-h-screen p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"flex-1 p-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -65,7 +70,15 @@ func PlatformLayout(view PlatformLayoutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = components.Footer(platformFooter(view)).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -98,6 +111,20 @@ func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 		LogoURL:   view.LogoURL,
 		HomeURL:   home,
 		NavLinks:  links,
+	}
+}
+
+// platformFooter maps PlatformLayoutView to a formal company FooterProps.
+func platformFooter(view PlatformLayoutView) components.FooterProps {
+	nav := platformShellNavbar(view)
+	return components.FooterProps{
+		Variant:        components.FooterPlatform,
+		BrandName:      nav.BrandName,
+		LogoURL:        view.LogoURL,
+		HomeURL:        nav.HomeURL,
+		BookingURL:     "/doctors",
+		CorporateLinks: view.CorporateLinks,
+		QuickLinks:     components.NavLinksToFooter(nav.NavLinks),
 	}
 }
 
