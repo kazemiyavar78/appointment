@@ -1,0 +1,25 @@
+# Example clinic client configuration
+# Copy to clinic.yaml and fill in real values. Do not commit secrets.
+
+clinic_id: "CLINIC_001"
+clinic_name: "نمونه مرکز درمانی"
+
+# Central tebpardaz server WebSocket endpoint
+# Example: ws://127.0.0.1:8080/ws/clinic
+server_ws_url: "ws://127.0.0.1:8080/ws/clinic"
+
+# Auth token = Clinic.WSClientKey on the central server (sent as clinic_key)
+auth_token: "REPLACE_ME"
+
+# Local SQL Server DSN (microsoft/go-mssqldb)
+# Example: sqlserver://user:pass@127.0.0.1:1433?database=ClinicHIS
+local_db_dsn: "sqlserver://sa:AAAaaa.@192.168.1.5:1433?database=tpcmsx1"
+
+# Optional LIS HTTP base URL for lab results
+lis_base_url: "http://127.0.0.1:8081"
+
+# فاصله‌های سینک (ثانیه)
+# نوبت‌ها هر ۱ دقیقه به سرور پوش می‌شوند و آنجا فقط در کش (۴ ساعت) نگه داشته می‌شوند
+doctor_sync_interval_sec: 300
+appointment_sync_interval_sec: 60
+heartbeat_interval_sec: 30

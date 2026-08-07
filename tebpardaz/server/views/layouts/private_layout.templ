@@ -1,0 +1,39 @@
+package layouts
+
+import "tebpardaz/server/views/components"
+
+// PrivateLayoutView drives a single-clinic private public shell.
+type PrivateLayoutView struct {
+	ClinicName string
+	LogoURL    string
+	HomeURL    string
+	NavLinks   []components.NavLink
+}
+
+// PrivateLayout renders a private clinic tenant page with navbar + main content.
+templ PrivateLayout(view PrivateLayoutView) {
+	@Document() {
+		@components.Navbar(privateNavbar(view))
+		<main class="min-h-screen p-4">
+			{ children... }
+		</main>
+	}
+}
+
+// privateNavbar maps PrivateLayoutView to NavbarProps.
+func privateNavbar(view PrivateLayoutView) components.NavbarProps {
+	name := view.ClinicName
+	if name == "" {
+		name = "کلینیک"
+	}
+	links := view.NavLinks
+	if len(links) == 0 {
+		links = defaultPublicNavLinks()
+	}
+	return components.NavbarProps{
+		BrandName: name,
+		LogoURL:   view.LogoURL,
+		HomeURL:   view.HomeURL,
+		NavLinks:  links,
+	}
+}

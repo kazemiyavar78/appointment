@@ -1,0 +1,50 @@
+package components
+
+import (
+	"time"
+)
+
+// NewsCardView is the display model for a public news card.
+type NewsCardView struct {
+	TitleHTML       string
+	ExcerptHTML     string
+	CoverURL        string
+	PublishedAt     time.Time
+	DetailURL       string
+	ClinicName      string
+	ShowClinicBadge bool
+}
+
+func newsCardDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006/01/02")
+}
+
+// NewsCard renders a clickable news summary card.
+templ NewsCard(view NewsCardView) {
+	<article class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+		<a class="block" href={ templ.SafeURL(view.DetailURL) }>
+			if view.CoverURL != "" {
+				<img class="h-44 w-full object-cover" src={ view.CoverURL } alt=""/>
+			}
+			<div class="p-4">
+				if view.ShowClinicBadge && view.ClinicName != "" {
+					<span class="mb-2 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+				}
+				<h2 class="text-lg text-ink">
+					@templ.Raw(view.TitleHTML)
+				</h2>
+				if view.ExcerptHTML != "" {
+					<div class="mt-2 text-sm text-ink-muted">
+						@templ.Raw(view.ExcerptHTML)
+					</div>
+				}
+				if d := newsCardDate(view.PublishedAt); d != "" {
+					<p class="mt-3 text-xs text-ink-muted">{ d }</p>
+				}
+			</div>
+		</a>
+	</article>
+}

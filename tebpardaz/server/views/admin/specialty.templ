@@ -1,0 +1,127 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// SpecialtyRow is one specialty in the admin table.
+type SpecialtyRow struct {
+	ID         uint
+	Name       string
+	NameEN     string
+	IsApproved bool
+}
+
+// SpecialtyPageView is the full page model for specialty CRUD.
+type SpecialtyPageView struct {
+	Nav          layouts.AdminLayoutView
+	Items        []SpecialtyRow
+	Message      string
+	EditID       uint
+	EditName     string
+	EditNameEN   string
+	EditApproved bool
+}
+
+func approvedLabel(approved bool) string {
+	if approved {
+		return "تأیید شده"
+	}
+	return "در انتظار"
+}
+
+// Specialties renders list, create, update, and delete on one page.
+templ Specialties(view SpecialtyPageView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-4xl">
+			<h1 class="mb-4 text-2xl text-brand">مدیریت تخصص‌ها</h1>
+			if view.Message != "" {
+				<p class="mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			<section class="mb-6 rounded border border-gray-200 bg-white p-4">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg text-ink">بروزرسانی تخصص</h2>
+					<form class="flex flex-wrap items-end gap-3" method="post" action={ templ.SafeURL("/admin/specialties/" + formatUint(view.EditID) + "/update") }>
+						<label class="block text-sm text-ink-muted">
+							نام فارسی
+							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name" value={ view.EditName } required maxlength="100"/>
+						</label>
+						<label class="block text-sm text-ink-muted">
+							نام انگلیسی
+							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name_en" value={ view.EditNameEN } maxlength="100"/>
+						</label>
+						<label class="flex items-center gap-2 text-sm text-ink-muted">
+							if view.EditApproved {
+								<input type="checkbox" name="is_approved" value="1" checked/>
+							} else {
+								<input type="checkbox" name="is_approved" value="1"/>
+							}
+							تأیید شده
+						</label>
+						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ذخیره تغییرات</button>
+						<a class="rounded border border-gray-300 px-4 py-2 text-sm" href="/admin/specialties">انصراف</a>
+					</form>
+				} else {
+					<h2 class="mb-3 text-lg text-ink">ایجاد تخصص</h2>
+					<form class="flex flex-wrap items-end gap-3" method="post" action="/admin/specialties">
+						<label class="block text-sm text-ink-muted">
+							نام فارسی
+							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name" required maxlength="100"/>
+						</label>
+						<label class="block text-sm text-ink-muted">
+							نام انگلیسی
+							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name_en" maxlength="100"/>
+						</label>
+						<label class="flex items-center gap-2 text-sm text-ink-muted">
+							<input type="checkbox" name="is_approved" value="1"/>
+							تأیید شده
+						</label>
+						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ایجاد</button>
+					</form>
+				}
+			</section>
+			<section>
+				<h2 class="mb-3 text-lg text-ink">لیست تخصص‌ها</h2>
+				<div class="overflow-x-auto">
+					<table class="w-full min-w-[640px] border border-gray-200 bg-white text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-2">ردیف</th>
+								<th class="p-2">نام فارسی</th>
+								<th class="p-2">نام انگلیسی</th>
+								<th class="p-2">وضعیت</th>
+								<th class="p-2">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Items) == 0 {
+								<tr>
+									<td class="p-3 text-ink-muted" colspan="5">تخصصی ثبت نشده است.</td>
+								</tr>
+							}
+							for index, item := range view.Items {
+								<tr class="border-b border-gray-100">
+									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2">{ item.Name }</td>
+									<td class="p-2">{ item.NameEN }</td>
+									<td class="p-2">{ approvedLabel(item.IsApproved) }</td>
+									<td class="p-2 whitespace-nowrap">
+										<a
+											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
+											href={ templ.SafeURL("/admin/specialties?edit=" + formatUint(item.ID)) }
+										>ویرایش</a>
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/specialties/" + formatUint(item.ID) + "/delete") } onsubmit="return confirm('این تخصص حذف شود؟');">
+											<button class="rounded border border-red-300 px-2 py-1 text-xs text-red-700" type="submit">حذف</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}

@@ -1,0 +1,39 @@
+package layouts
+
+import "tebpardaz/server/views/components"
+
+// OrganLayoutView drives the multi-clinic organization public shell.
+type OrganLayoutView struct {
+	OrganizationName string
+	LogoURL          string
+	HomeURL          string
+	NavLinks         []components.NavLink
+}
+
+// OrganLayout renders an organization tenant page with navbar + main content.
+templ OrganLayout(view OrganLayoutView) {
+	@Document() {
+		@components.Navbar(organNavbar(view))
+		<main class="min-h-screen p-4">
+			{ children... }
+		</main>
+	}
+}
+
+// organNavbar maps OrganLayoutView to NavbarProps.
+func organNavbar(view OrganLayoutView) components.NavbarProps {
+	name := view.OrganizationName
+	if name == "" {
+		name = "سازمان"
+	}
+	links := view.NavLinks
+	if len(links) == 0 {
+		links = defaultPublicNavLinks()
+	}
+	return components.NavbarProps{
+		BrandName: name,
+		LogoURL:   view.LogoURL,
+		HomeURL:   view.HomeURL,
+		NavLinks:  links,
+	}
+}

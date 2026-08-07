@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Legacy-friendly font faces: woff2 preferred, woff fallback for older browsers.
+  Place font files under static/fonts/ when assets are added.
+*/
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/vazirmatn-regular.woff2') format('woff2'),
+       url('../fonts/vazirmatn-regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/vazirmatn-bold.woff2') format('woff2'),
+       url('../fonts/vazirmatn-bold.woff') format('woff');
+}

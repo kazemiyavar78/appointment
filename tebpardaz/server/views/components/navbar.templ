@@ -1,0 +1,85 @@
+package components
+
+// NavLink is a single item in the public navbar.
+type NavLink struct {
+	Label  string
+	Href   string
+	Active bool
+}
+
+// NavbarProps drives the public site header (platform, organ, or private clinic).
+type NavbarProps struct {
+	BrandName string
+	LogoURL   string
+	HomeURL   string
+	NavLinks  []NavLink
+}
+
+// Navbar renders a mobile-first RTL header with a disclosure menu on small screens.
+templ Navbar(props NavbarProps) {
+	<header class="sticky top-0 z-40 border-b border-surface-border bg-white">
+		<div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
+			<a class="flex min-w-0 items-center gap-2 text-brand" href={ homeHref(props.HomeURL) }>
+				if props.LogoURL != "" {
+					<img
+						class="h-8 w-8 shrink-0 rounded-full object-cover sm:h-9 sm:w-9"
+						src={ props.LogoURL }
+						alt={ props.BrandName }
+						width="36"
+						height="36"
+					/>
+				} else {
+					<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white sm:h-9 sm:w-9">
+						{ brandInitial(props.BrandName) }
+					</span>
+				}
+				<span class="truncate text-base font-bold sm:text-lg">{ props.BrandName }</span>
+			</a>
+			<!-- Desktop links -->
+			<nav class="hidden items-center gap-1 md:flex" aria-label="منوی اصلی">
+				for _, link := range props.NavLinks {
+					@navLinkItem(link)
+				}
+			</nav>
+			<!-- Mobile menu (no JS) -->
+			<details class="relative md:hidden">
+				<summary
+					class="flex h-10 w-10 list-none cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-soft [&::-webkit-details-marker]:hidden"
+					aria-label="باز و بسته کردن منو"
+				>
+					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+					</svg>
+				</summary>
+				<nav
+					class="absolute left-0 top-full z-50 mt-2 w-56 rounded-lg border border-surface-border bg-white p-2 shadow-lg"
+					aria-label="منوی موبایل"
+				>
+					for _, link := range props.NavLinks {
+						@navLinkItem(link)
+					}
+				</nav>
+			</details>
+		</div>
+	</header>
+}
+
+// navLinkItem renders one navbar link with active styling.
+templ navLinkItem(link NavLink) {
+	if link.Active {
+		<a
+			class="block rounded-md bg-brand/10 px-3 py-2.5 text-sm font-medium text-brand md:inline-block md:py-2"
+			href={ templ.SafeURL(link.Href) }
+			aria-current="page"
+		>
+			{ link.Label }
+		</a>
+	} else {
+		<a
+			class="block rounded-md px-3 py-2.5 text-sm font-medium text-ink-muted hover:bg-surface-soft hover:text-brand md:inline-block md:py-2"
+			href={ templ.SafeURL(link.Href) }
+		>
+			{ link.Label }
+		</a>
+	}
+}

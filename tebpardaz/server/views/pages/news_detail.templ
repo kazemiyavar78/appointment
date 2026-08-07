@@ -1,0 +1,70 @@
+package pages
+
+import (
+	"time"
+
+	"tebpardaz/server/views/components"
+)
+
+// NewsDetailView drives the public news detail page.
+type NewsDetailView struct {
+	TitleHTML       string
+	BodyHTML        string
+	CoverURL        string
+	PublishedAt     time.Time
+	ClinicName      string
+	ShowClinicBadge bool
+	BackURL         string
+}
+
+func newsDetailDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006/01/02 15:04")
+}
+
+// NewsDetail renders a single news article with rich HTML body.
+templ NewsDetail(view NewsDetailView) {
+	<article class="mx-auto max-w-3xl">
+		<a class="mb-4 inline-block text-sm text-brand underline" href={ templ.SafeURL(view.BackURL) }>بازگشت به اخبار</a>
+		if view.ShowClinicBadge && view.ClinicName != "" {
+			<span class="mb-3 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+		}
+		<h1 class="mb-2 text-2xl text-brand">
+			@templ.Raw(view.TitleHTML)
+		</h1>
+		if d := newsDetailDate(view.PublishedAt); d != "" {
+			<p class="mb-4 text-sm text-ink-muted">{ d }</p>
+		}
+		if view.CoverURL != "" {
+			<img class="mb-6 max-h-[28rem] w-full rounded object-cover" src={ view.CoverURL } alt=""/>
+		}
+		<div class="prose max-w-none text-ink [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded">
+			@templ.Raw(view.BodyHTML)
+		</div>
+	</article>
+}
+
+// NewsListView drives the public news listing page.
+type NewsListView struct {
+	Items           []components.NewsCardView
+	ShowClinicBadge bool
+	EmptyMessage    string
+}
+
+// NewsList renders all published news cards for the tenant.
+templ NewsList(view NewsListView) {
+	<div class="mx-auto max-w-5xl">
+		<h1 class="mb-4 text-2xl text-brand">اخبار</h1>
+		if len(view.Items) == 0 {
+			<p class="text-ink-muted">{ view.EmptyMessage }</p>
+		} else {
+			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				for _, item := range view.Items {
+					@components.NewsCard(item)
+				}
+			</div>
+		}
+	</div>
+}

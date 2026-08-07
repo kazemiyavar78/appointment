@@ -1,0 +1,42 @@
+package components
+
+// SlotOption is one selectable appointment window on the booking form.
+type SlotOption struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+// SlotPickerView drives the public slot select control.
+type SlotPickerView struct {
+	InputName string
+	Options   []SlotOption
+	EmptyText string
+}
+
+// SlotPicker renders a select of available booking slots.
+templ SlotPicker(view SlotPickerView) {
+	<div class="space-y-2">
+		<label class="block text-sm text-ink-muted" for={ view.InputName }>انتخاب نوبت</label>
+		if len(view.Options) == 0 {
+			<p class="text-sm text-ink-muted">
+				if view.EmptyText != "" {
+					{ view.EmptyText }
+				} else {
+					نوبت آزادی برای نمایش وجود ندارد.
+				}
+			</p>
+		} else {
+			<select id={ view.InputName } name={ view.InputName } required class="w-full rounded border border-gray-300 p-2 text-sm">
+				<option value="">انتخاب کنید…</option>
+				for _, opt := range view.Options {
+					if opt.Selected {
+						<option value={ opt.Value } selected>{ opt.Label }</option>
+					} else {
+						<option value={ opt.Value }>{ opt.Label }</option>
+					}
+				}
+			</select>
+		}
+	</div>
+}

@@ -1,0 +1,175 @@
+package admin
+
+import (
+	"time"
+
+	"tebpardaz/server/views/layouts"
+	"github.com/yaa110/go-persian-calendar"
+)
+
+// AppointmentSlotItem is one synced slot shown under a doctor.
+type AppointmentSlotItem struct {
+	StartsAt    time.Time
+	EndsAt      time.Time
+	Capacity    int
+	BookedCount int
+	IsAvailable bool
+}
+
+// DoctorAppointmentItem is one approved doctor with nested appointment slots.
+type DoctorAppointmentItem struct {
+	DoctorID   uint
+	LocalCode  int
+	Name       string
+	Specialty  string
+	ExternalID string
+	SlotCount  int
+	Slots      []AppointmentSlotItem
+}
+
+// AppointmentListView is the full page model for the admin appointment list.
+type AppointmentListView struct {
+	Nav         layouts.AdminLayoutView
+	ClinicID    uint
+	Clinics     []ClinicOption
+	Doctors     []DoctorAppointmentItem
+	Message     string
+	SearchQuery string
+	FetchLive   bool
+}
+
+func formatDateTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return t.Format("2006/01/02 15:04")
+}
+
+func availableLabel(available bool) string {
+	if available {
+		return "قابل رزرو"
+	}
+	return "تکمیل"
+}
+
+func formatShamsiDateTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
+	
+}
+
+// AppointmentList renders approved doctors with expandable appointment slots per clinic.
+templ AppointmentList(view AppointmentListView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div id="loading-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+			<div class="rounded-lg bg-white px-6 py-4 text-center shadow-lg">
+				<div class="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
+				<p class="text-sm text-ink">در حال دریافت لیست نوبت‌ها از مرکز...</p>
+			</div>
+		</div>
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4">
+				<h1 class="text-2xl text-brand">لیست نوبت‌ها</h1>
+				<p class="mt-1 text-sm text-ink-muted">پزشکان تأیید‌شده هر مرکز — با کلیک روی هر پزشک، جزئیات نوبت‌دهی نمایش داده می‌شود.</p>
+			</div>
+			if len(view.Clinics) > 0 {
+				<form id="fetch-form" class="mb-4 flex flex-wrap items-end gap-2" method="get" action="/admin/appointments">
+					<input type="hidden" name="fetch" value="1"/>
+					<label class="block text-sm text-ink-muted">
+						مرکز
+						<select class="mt-1 block min-w-[12rem] rounded border border-gray-300 p-2" name="clinic_id">
+							for _, clinic := range view.Clinics {
+								if clinic.Selected {
+									<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
+								} else {
+									<option value={ formatUint(clinic.ID) }>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
+								}
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						جستجو
+						<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="search" name="q" value={ view.SearchQuery } placeholder="نام پزشک، کد..."/>
+					</label>
+					<button id="fetch-btn" class="rounded bg-brand px-4 py-2 text-white" type="submit">دریافت لیست زنده</button>
+				</form>
+			}
+			if view.Message != "" {
+				<p class="mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			if len(view.Doctors) > 0 {
+				<p class="mb-3 text-sm text-ink-muted">تعداد پزشکان: { formatInt(len(view.Doctors)) }</p>
+			}
+			<div class="space-y-2">
+				if len(view.Doctors) == 0 {
+					<p class="rounded border border-gray-200 bg-white p-4 text-sm text-ink-muted">موردی برای نمایش نیست.</p>
+				}
+				for _, doctor := range view.Doctors {
+					<details class="group rounded border border-gray-200 bg-white">
+						<summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-3 hover:bg-surface-soft">
+							<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+								<span class="font-medium text-ink">{ doctor.Name }</span>
+								if doctor.Specialty != "" {
+									<span class="text-ink-muted">{ doctor.Specialty }</span>
+								}
+								<span class="text-ink-muted">کد: { formatInt(doctor.LocalCode) }</span>
+								<span class="text-ink-muted">External: { doctor.ExternalID }</span>
+							</div>
+							<span class="rounded bg-brand/10 px-2 py-1 text-xs text-brand">
+								{ formatInt(doctor.SlotCount) } نوبت
+							</span>
+						</summary>
+						<div class="border-t border-gray-100 p-3">
+							if len(doctor.Slots) == 0 {
+								<p class="text-sm text-ink-muted">نوبتی برای این پزشک ثبت نشده است.</p>
+							} else {
+								<div class="overflow-x-auto">
+									<table class="w-full min-w-[640px] border border-gray-100 text-sm">
+										<thead>
+											<tr class="border-b border-gray-100 bg-surface-soft text-right">
+												<th class="p-2">ردیف</th>
+												<th class="p-2">شروع</th>
+												<th class="p-2">پایان</th>
+												<th class="p-2">ظرفیت</th>
+												<th class="p-2">رزرو شده</th>
+												<th class="p-2">وضعیت</th>
+											</tr>
+										</thead>
+										<tbody>
+											for index, slot := range doctor.Slots {
+												<tr class="border-b border-gray-50">
+													<td class="p-2">{ formatInt(index + 1) }</td>
+													//to shamsi date time
+													
+													<td class="p-2 whitespace-nowrap">{ formatShamsiDateTime(slot.StartsAt) }</td>
+													<td class="p-2 whitespace-nowrap">{ formatShamsiDateTime(slot.EndsAt) }</td>
+													<td class="p-2">{ formatInt(slot.Capacity) }</td>
+													<td class="p-2">{ formatInt(slot.BookedCount) }</td>
+													<td class="p-2">{ availableLabel(slot.IsAvailable) }</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+							}
+						</div>
+					</details>
+				}
+			</div>
+		</div>
+		<script>
+			(function () {
+				var form = document.getElementById("fetch-form");
+				var overlay = document.getElementById("loading-overlay");
+				if (form && overlay) {
+					form.addEventListener("submit", function () {
+						overlay.classList.remove("hidden");
+						overlay.classList.add("flex");
+					});
+				}
+			})();
+		</script>
+	}
+}

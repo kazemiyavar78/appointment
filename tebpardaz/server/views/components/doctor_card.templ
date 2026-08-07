@@ -1,0 +1,67 @@
+package components
+
+import "time"
+import ptime "github.com/yaa110/go-persian-calendar"
+
+// DoctorCardView is the display model for a public doctor booking card.
+type DoctorCardView struct {
+	Name            string
+	SpecialtyName   string
+	PhotoURL        string
+	ClinicName      string
+	ShowClinicBadge bool
+	HasSlot         bool
+	NearestStartsAt time.Time
+	BookingURL      string
+}
+
+func formatShamsiDateTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
+}
+
+func doctorCardSlotLabel(hasSlot bool, t time.Time) string {
+	if !hasSlot || t.IsZero() {
+		return "هنوز رزروی باز نشده"
+	}
+	return "نزدیک‌ترین نوبت: " + formatShamsiDateTime(t)
+}
+
+// DoctorCard renders a clickable doctor summary linking to the booking page.
+templ DoctorCard(view DoctorCardView) {
+	<a class="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-brand/40 hover:shadow-sm" 
+	href={ templ.SafeURL(view.BookingURL) }>
+		<div class="flex flex-1 gap-3 p-4">
+			if view.PhotoURL != "" {
+				<img class="h-16 w-16 shrink-0 rounded-full object-cover" src={ view.PhotoURL } alt=""/>
+			} else {
+				<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg text-brand">
+					دکتر
+				</div>
+			}
+			<div class="min-w-0 flex-1">
+				if view.ShowClinicBadge && view.ClinicName != "" {
+					<span class="mb-1 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+				}
+				<h2 class="truncate text-lg text-ink">{ view.Name }</h2>
+				if view.SpecialtyName != "" {
+					<p class="mt-0.5 text-sm text-ink-muted">{ view.SpecialtyName }</p>
+				}
+				<p class={ "mt-2 text-sm", templ.KV("text-ink-muted", !view.HasSlot), templ.KV("text-brand", view.HasSlot) }>
+					{ doctorCardSlotLabel(view.HasSlot, view.NearestStartsAt) }
+				</p>
+			</div>
+		</div>
+		<div class="border-t border-gray-100 px-4 py-3">
+			<span class="inline-flex text-sm text-brand underline">
+				if view.HasSlot {
+					رزرو نوبت
+				} else {
+					مشاهده جزئیات
+				}
+			</span>
+		</div>
+	</a>
+}

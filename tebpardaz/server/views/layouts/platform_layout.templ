@@ -1,0 +1,44 @@
+package layouts
+
+import "tebpardaz/server/views/components"
+
+// PlatformLayoutView drives the company (طب‌پرداز) multi-clinic public shell.
+// Structure mirrors OrganLayoutView: brand + nav + main content.
+type PlatformLayoutView struct {
+	CompanyName string
+	LogoURL     string
+	HomeURL     string
+	NavLinks    []components.NavLink
+}
+
+// PlatformLayout renders the company tenant page with navbar + main content.
+templ PlatformLayout(view PlatformLayoutView) {
+	@Document() {
+		@components.Navbar(platformShellNavbar(view))
+		<main class="min-h-screen p-4">
+			{ children... }
+		</main>
+	}
+}
+
+// platformShellNavbar maps PlatformLayoutView to NavbarProps.
+func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
+	name := view.CompanyName
+	if name == "" {
+		name = "طب‌پرداز"
+	}
+	links := view.NavLinks
+	if len(links) == 0 {
+		links = defaultPublicNavLinks()
+	}
+	home := view.HomeURL
+	if home == "" {
+		home = "/"
+	}
+	return components.NavbarProps{
+		BrandName: name,
+		LogoURL:   view.LogoURL,
+		HomeURL:   home,
+		NavLinks:  links,
+	}
+}

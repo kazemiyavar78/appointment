@@ -1,0 +1,122 @@
+package pages
+
+import (
+	"tebpardaz/server/views/components"
+	"time"
+	ptime "github.com/yaa110/go-persian-calendar"
+)
+
+// DoctorListFilterOption is a select option for specialty or clinic filters.
+type DoctorListFilterOption struct {
+	ID   uint
+	Name string
+}
+
+// DoctorListView drives the public booking doctor list page.
+type DoctorListView struct {
+	Doctors          []components.DoctorCardView
+	Specialties      []DoctorListFilterOption
+	Clinics          []DoctorListFilterOption
+	ShowClinicFilter bool
+	Query            string
+	Date             string
+	SpecialtyID      uint
+	ClinicID         uint
+	FormAction       string
+	EmptyMessage     string
+}
+
+
+func formatShamsiDateTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
+	
+}
+
+// DoctorList renders a responsive filter sidebar and doctor booking cards.
+templ DoctorList(view DoctorListView) {
+	<div class="mx-auto max-w-6xl">
+		<section class="mb-6">
+			<h1 class="mb-2 text-2xl text-brand">پزشکان</h1>
+			<p class="text-sm text-ink-muted">پزشک مورد نظر را پیدا کنید و نزدیک‌ترین نوبت آزاد را ببینید.</p>
+		</section>
+		<div class="flex flex-col gap-6 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start">
+			<aside class="rounded-lg border border-gray-200 bg-white p-4 lg:sticky lg:top-4">
+				<details class="lg:open" open>
+					<summary class="cursor-pointer list-none text-base text-ink lg:pointer-events-none lg:cursor-default">
+						<span class="font-medium">جستجو و فیلتر</span>
+						<span class="mr-2 text-xs text-ink-muted lg:hidden">برای باز و بسته کردن ضربه بزنید</span>
+					</summary>
+					<form class="mt-4 space-y-4" method="get" action={ templ.SafeURL(view.FormAction) }>
+						<div>
+							<label class="mb-1 block text-sm text-ink-muted" for="q">نام پزشک</label>
+							<input
+								id="q"
+								name="q"
+								type="search"
+								value={ view.Query }
+								placeholder="جستجوی نام..."
+								class="block w-full rounded border border-gray-300 p-2 text-sm"
+							/>
+						</div>
+						<div>
+							<label class="mb-1 block text-sm text-ink-muted" for="date">تاریخ</label>
+							<input
+								id="date"
+								name="date"
+								type="date"
+								value={ view.Date }
+								class="block w-full rounded border border-gray-300 p-2 text-sm"
+							/>
+						</div>
+						<div>
+							<label class="mb-1 block text-sm text-ink-muted" for="specialty_id">تخصص</label>
+							<select id="specialty_id" name="specialty_id" class="block w-full rounded border border-gray-300 p-2 text-sm">
+								<option value="">همه تخصص‌ها</option>
+								for _, sp := range view.Specialties {
+									if view.SpecialtyID == sp.ID {
+										<option value={ uintToString(sp.ID) } selected>{ sp.Name }</option>
+									} else {
+										<option value={ uintToString(sp.ID) }>{ sp.Name }</option>
+									}
+								}
+							</select>
+						</div>
+						if view.ShowClinicFilter {
+							<div>
+								<label class="mb-1 block text-sm text-ink-muted" for="clinic_id">مرکز</label>
+								<select id="clinic_id" name="clinic_id" class="block w-full rounded border border-gray-300 p-2 text-sm">
+									<option value="">همه مراکز</option>
+									for _, cl := range view.Clinics {
+										if view.ClinicID == cl.ID {
+											<option value={ uintToString(cl.ID) } selected>{ cl.Name }</option>
+										} else {
+											<option value={ uintToString(cl.ID) }>{ cl.Name }</option>
+										}
+									}
+								</select>
+							</div>
+						}
+						<div class="flex flex-wrap gap-2">
+							<button type="submit" class="rounded bg-brand px-4 py-2 text-sm text-white">اعمال فیلتر</button>
+							<a class="rounded border border-gray-300 px-4 py-2 text-sm text-ink-muted" href={ templ.SafeURL(view.FormAction) }>پاک کردن</a>
+						</div>
+					</form>
+				</details>
+			</aside>
+			<section>
+				if len(view.Doctors) == 0 {
+					<p class="text-sm text-ink-muted">{ view.EmptyMessage }</p>
+				} else {
+					<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+						for _, item := range view.Doctors {
+							@components.DoctorCard(item)
+						}
+					</div>
+				}
+			</section>
+		</div>
+	</div>
+}

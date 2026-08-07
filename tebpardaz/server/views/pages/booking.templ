@@ -1,0 +1,120 @@
+package pages
+
+import "tebpardaz/server/views/components"
+
+// BookingView drives the dedicated public doctor booking page.
+type BookingView struct {
+	DoctorName    string
+	SpecialtyName string
+	ClinicName    string
+	PhotoURL      string
+	ShowClinic    bool
+	BackURL       string
+	SubmitURL     string
+	WSURL         string
+	CSRFToken     string
+	Slots         components.SlotPickerView
+	ErrorMessage  string
+}
+
+// Booking renders doctor details, slot picker, and patient booking form with live progress.
+templ Booking(view BookingView) {
+	<div class="mx-auto max-w-3xl" id="booking-root" data-ws-url={ view.WSURL }>
+		<a class="mb-4 inline-block text-sm text-brand underline" href={ templ.SafeURL(view.BackURL) }>بازگشت به فهرست پزشکان</a>
+		<section class="mb-6 flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
+			if view.PhotoURL != "" {
+				<img class="h-20 w-20 shrink-0 rounded-full object-cover" src={ view.PhotoURL } alt=""/>
+			} else {
+				<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg text-brand">
+					دکتر
+				</div>
+			}
+			<div class="min-w-0">
+				if view.ShowClinic && view.ClinicName != "" {
+					<span class="mb-1 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+				}
+				<h1 class="text-2xl text-brand">{ view.DoctorName }</h1>
+				if view.SpecialtyName != "" {
+					<p class="mt-1 text-sm text-ink-muted">{ view.SpecialtyName }</p>
+				}
+			</div>
+		</section>
+		if view.ErrorMessage != "" {
+			<p class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{ view.ErrorMessage }</p>
+		}
+
+		<div id="booking-progress" class="mb-4 hidden rounded-lg border border-gray-200 bg-white p-4" aria-live="polite">
+			<ol class="space-y-3">
+				<li class="booking-step flex items-center gap-3" data-step="1">
+					<span class="booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted">1</span>
+					<span class="text-sm text-ink">اطلاعات دریافت شد</span>
+				</li>
+				<li class="booking-step flex items-center gap-3" data-step="2">
+					<span class="booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted">2</span>
+					<span class="text-sm text-ink">اعتبار سنجی انجام شد</span>
+				</li>
+				<li class="booking-step flex items-center gap-3" data-step="3">
+					<span class="booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted">3</span>
+					<span class="text-sm text-ink">برای کلینیک ارسال شد</span>
+				</li>
+				<li class="booking-step flex items-center gap-3" data-step="4">
+					<span class="booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted">4</span>
+					<span class="text-sm text-ink">جواب از کلینیک دریافت شد</span>
+				</li>
+			</ol>
+			<p id="booking-result" class="mt-4 hidden rounded px-3 py-2 text-sm"></p>
+		</div>
+
+		<form
+			id="booking-form"
+			class="space-y-4 rounded-lg border border-gray-200 bg-white p-4"
+			method="post"
+			action={ templ.SafeURL(view.SubmitURL) }
+			autocomplete="off"
+		>
+			<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
+			@components.SlotPicker(view.Slots)
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div>
+					<label class="mb-1 block text-sm text-ink-muted" for="first_name">نام</label>
+					<input id="first_name" name="first_name" required class="block w-full rounded border border-gray-300 p-2 text-sm"/>
+				</div>
+				<div>
+					<label class="mb-1 block text-sm text-ink-muted" for="last_name">نام خانوادگی</label>
+					<input id="last_name" name="last_name" required class="block w-full rounded border border-gray-300 p-2 text-sm"/>
+				</div>
+			</div>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div>
+					<label class="mb-1 block text-sm text-ink-muted" for="national_id">کد ملی</label>
+					<input id="national_id" name="national_id" required inputmode="numeric" maxlength="10" class="block w-full rounded border border-gray-300 p-2 text-sm"/>
+				</div>
+				<div>
+					<label class="mb-1 block text-sm text-ink-muted" for="mobile">موبایل</label>
+					<input id="mobile" name="mobile" required inputmode="tel" maxlength="11" placeholder="09xxxxxxxxx" class="block w-full rounded border border-gray-300 p-2 text-sm"/>
+				</div>
+			</div>
+			<div>
+				<label class="mb-1 block text-sm text-ink-muted" for="birth_date">تاریخ تولد</label>
+				<input id="birth_date" name="birth_date" type="date" required class="block w-full rounded border border-gray-300 p-2 text-sm"/>
+			</div>
+			<div>
+				<label class="mb-1 block text-sm text-ink-muted" for="sex">جنسیت</label>
+				<select id="sex" name="sex" required class="block w-full rounded border border-gray-300 p-2 text-sm">
+					<option value="">انتخاب کنید…</option>
+					<option value="مرد">مرد</option>
+					<option value="زن">زن</option>
+				</select>
+			</div>
+			<button
+				id="booking-submit"
+				type="submit"
+				class="rounded bg-brand px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+				disabled?={ len(view.Slots.Options) == 0 }
+			>
+				ثبت رزرو
+			</button>
+		</form>
+		<script src="/static/js/booking.js" defer></script>
+	</div>
+}

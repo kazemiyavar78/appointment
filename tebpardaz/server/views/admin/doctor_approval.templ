@@ -1,0 +1,234 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// ClinicOption is one clinic in the admin selector.
+type ClinicOption struct {
+	ID       uint
+	Name     string
+	IsOnline bool
+	Selected bool
+}
+
+// SpecialtyOption is one server-side specialty for assignment on approve.
+type SpecialtyOption struct {
+	ID   uint
+	Name string
+}
+
+// ApprovalItem is one doctor row shown in the admin approval table.
+type ApprovalItem struct {
+	ID             uint
+	DoctorID       uint
+	ClinicID       uint
+	LocalCode      int
+	FirstName      string
+	LastName       string
+	Name           string
+	NationalID     string
+	Mobile         string
+	DoctorSystemID int
+	SpecialtyCode  string
+	SpecialtyName  string
+	PhotoURL       string
+	ExternalID     string
+	IsActive       bool
+	Status         string
+	Source         string
+	CanDecide      bool
+}
+
+// DoctorApprovalView is the full page model for doctor approval.
+type DoctorApprovalView struct {
+	Nav         layouts.AdminLayoutView
+	ClinicID    uint
+	Clinics     []ClinicOption
+	Specialties []SpecialtyOption
+	Items       []ApprovalItem
+	Message     string
+	SearchQuery string
+	Page        int
+	PerPage     int
+	TotalPages  int
+	TotalItems  int
+	FetchLive   bool
+}
+
+func formatUint(v uint) string {
+	return strconv.FormatUint(uint64(v), 10)
+}
+
+func formatInt(v int) string {
+	return strconv.Itoa(v)
+}
+
+func activeLabel(active bool) string {
+	if active {
+		return "فعال"
+	}
+	return "غیرفعال"
+}
+
+func sourceLabel(source string) string {
+	if source == "clinic" {
+		return "زنده از مرکز"
+	}
+	return "موجود در سرور"
+}
+
+func onlineBadge(online bool) string {
+	if online {
+		return " (آنلاین)"
+	}
+	return " (آفلاین)"
+}
+
+// DoctorApproval renders the doctor list with search, pagination, and approve actions.
+templ DoctorApproval(view DoctorApprovalView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div id="loading-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+			<div class="rounded-lg bg-white px-6 py-4 text-center shadow-lg">
+				<div class="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
+				<p class="text-sm text-ink">در حال دریافت لیست پزشکان از مرکز...</p>
+			</div>
+		</div>
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4">
+				<h1 class="text-2xl text-brand">لیست پزشکان</h1>
+			</div>
+			if len(view.Clinics) > 0 {
+				<form id="fetch-form" class="mb-4 flex flex-wrap items-end gap-2" method="get" action="/admin/approvals">
+					<input type="hidden" name="fetch" value="1"/>
+					<label class="block text-sm text-ink-muted">
+						مرکز
+						<select class="mt-1 block min-w-[12rem] rounded border border-gray-300 p-2" name="clinic_id">
+							for _, clinic := range view.Clinics {
+								if clinic.Selected {
+									<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
+								} else {
+									<option value={ formatUint(clinic.ID) }>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
+								}
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						جستجو
+						<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="search" name="q" value={ view.SearchQuery } placeholder="نام، کد ملی، موبایل..."/>
+					</label>
+					<input type="hidden" name="page" value="1"/>
+					<button id="fetch-btn" class="rounded bg-brand px-4 py-2 text-white" type="submit">دریافت لیست زنده</button>
+				</form>
+			}
+			if view.Message != "" {
+				<p class="mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			if view.TotalItems > 0 {
+				<p class="mb-2 text-sm text-ink-muted">تعداد: { formatInt(view.TotalItems) } — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }</p>
+			}
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-[1200px] border border-gray-200 bg-white text-sm">
+					<thead>
+						<tr class="border-b border-gray-200 bg-surface-soft text-right">
+							<th class="p-2">ردیف</th>
+							<th class="p-2">منبع</th>
+							<th class="p-2">کد</th>
+							<th class="p-2">نام</th>
+							<th class="p-2">نام خانوادگی</th>
+							<th class="p-2">نام کامل</th>
+							<th class="p-2">کد ملی</th>
+							<th class="p-2">موبایل</th>
+							<th class="p-2">نظام پزشکی</th>
+							<th class="p-2">کد تخصص HIS</th>
+							<th class="p-2">تخصص سرور</th>
+							<th class="p-2">External ID</th>
+							<th class="p-2">فعال</th>
+							<th class="p-2">وضعیت</th>
+							<th class="p-2">اقدام</th>
+						</tr>
+					</thead>
+					<tbody>
+						if len(view.Items) == 0 {
+							<tr>
+								<td class="p-3 text-ink-muted" colspan="14">موردی برای نمایش نیست.</td>
+							</tr>
+						}
+						for index, item := range view.Items {
+							<tr class="border-b border-gray-100">
+								<td class="p-2">{ index + 1 }</td>
+								<td class="p-2">{ sourceLabel(item.Source) }</td>
+								<td class="p-2">{ formatInt(item.LocalCode) }</td>
+								<td class="p-2">{ item.FirstName }</td>
+								<td class="p-2">{ item.LastName }</td>
+								<td class="p-2">{ item.Name }</td>
+								<td class="p-2">{ item.NationalID }</td>
+								<td class="p-2">{ item.Mobile }</td>
+								<td class="p-2">{ formatInt(item.DoctorSystemID) }</td>
+								<td class="p-2">{ item.SpecialtyCode }</td>
+								<td class="p-2">{ item.SpecialtyName }</td>
+								<td class="p-2">{ item.ExternalID }</td>
+								<td class="p-2">{ activeLabel(item.IsActive) }</td>
+								<td class="p-2">{ item.Status }</td>
+								<td class="p-2 whitespace-nowrap">
+									if item.CanDecide && item.ID > 0 {
+										<form class="inline-flex flex-wrap items-center gap-1" method="post" action={ templ.SafeURL("/admin/approvals/" + formatUint(item.ID) + "/decide") }>
+											<input type="hidden" name="decision" value="approve"/>
+											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+											<input type="hidden" name="q" value={ view.SearchQuery }/>
+											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+											<select class="rounded border border-gray-300 p-1 text-xs" name="specialty_id" required>
+												<option value="">تخصص</option>
+												for _, sp := range view.Specialties {
+													<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
+												}
+											</select>
+											<button class="rounded bg-brand px-2 py-1 text-white text-xs" type="submit">تأیید</button>
+										</form>
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/approvals/" + formatUint(item.ID) + "/decide") }>
+											<input type="hidden" name="decision" value="reject"/>
+											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+											<input type="hidden" name="q" value={ view.SearchQuery }/>
+											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+											<button class="rounded border border-gray-300 px-2 py-1 text-xs" type="submit">رد</button>
+										</form>
+									} else {
+										<span class="text-ink-muted">—</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			if view.TotalPages > 1 {
+				<nav class="mt-4 flex flex-wrap gap-2">
+					for p := 1; p <= view.TotalPages; p++ {
+						if p == view.Page {
+							<span class="rounded bg-brand px-3 py-1 text-white">{ formatInt(p) }</span>
+						} else {
+							<a
+								class="rounded border border-gray-300 px-3 py-1"
+								href={ templ.SafeURL("/admin/approvals?clinic_id=" + formatUint(view.ClinicID) + "&fetch=1&page=" + formatInt(p) + "&q=" + view.SearchQuery) }
+							>{ formatInt(p) }</a>
+						}
+					}
+				</nav>
+			}
+		</div>
+		<script>
+			(function () {
+				var form = document.getElementById("fetch-form");
+				var overlay = document.getElementById("loading-overlay");
+				if (form && overlay) {
+					form.addEventListener("submit", function () {
+						overlay.classList.remove("hidden");
+						overlay.classList.add("flex");
+					});
+				}
+			})();
+		</script>
+	}
+}
