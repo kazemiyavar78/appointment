@@ -30,5 +30,7 @@ type Clinic struct {
 	IsOnline      bool       `gorm:"type:bit;not null;default:false" json:"is_online"`                           // وضعیت آخرین اتصال (برای تصمیم‌گیری real-time نوبت‌دهی)
 	LastSyncAt    *time.Time `gorm:"type:datetime;not null;default:GETDATE()" json:"last_sync_at"`               // آخرین sync موفق نوبت‌ها
 
+	IsActiveOnWebsite bool `gorm:"type:bit;not null;default:false" json:"is_active_on_website"`
+
 	Organization Organization `gorm:"foreignKey:OrganizationID;references:ID"`
 }

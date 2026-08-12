@@ -2,7 +2,7 @@ package tenant
 
 import (
 	"errors"
-	
+
 	"strings"
 
 	"tebpardaz/server/internal/models"
@@ -54,12 +54,16 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 	base := r.BaseDomain
 
 	ctx := &Context{Host: normalized}
+	
 
 	// 1) Platform apex (tebpardaz.ir / www) — path slug or marketing home.
 	if base != "" && (normalized == base || normalized == "www."+base) {
-		if slug := firstPathSegment(path); slug != "" {
-			ctx.Slug = slug
-			return r.resolveSlug(ctx, slug)
+		// لینک‌های عمیق صف انتظار (QR قبض) نباید به عنوان اسلاگ مستأجر تفسیر شوند.
+		if !isWaitingQueueDeepLink(path) {
+			if slug := firstPathSegment(path); slug != "" {
+				ctx.Slug = slug
+				return r.resolveSlug(ctx, slug)
+			}
 		}
 		ctx.Layout = constants.LayoutPlatform
 		ctx.OrganizationID = new(uint)
@@ -76,9 +80,10 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 			return r.resolveSlug(ctx, slug)
 		}
 	}
-
+	
 	// 3) Custom clinic domain.
 	if r.Clinics != nil {
+		
 		clinic, err := r.Clinics.GetByDomain(normalized)
 		if err == nil && clinic != nil {
 			return r.contextFromClinic(ctx, clinic), nil
@@ -87,9 +92,8 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 			return nil, err
 		}
 	}
-
 	// 4) Custom organization domain.
-	if r.Orgs != nil {
+	if r.Orgs != nil {	
 		org, err := r.Orgs.GetByDomain(normalized)
 		if err == nil && org != nil {
 			return r.contextFromOrg(ctx, org), nil
@@ -98,7 +102,6 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 			return nil, err
 		}
 	}
-
 	return nil, ErrTenantNotFound
 }
 
@@ -178,8 +181,18 @@ func firstPathSegment(path string) string {
 	seg := strings.ToLower(parts[0])
 	switch seg {
 	case "static", "api", "ws", "admin", "favicon.ico",
-		"doctors", "booking", "news", "clinics", "test-results", "healthz":
+		"doctors", "booking", "news", "clinics", "test-results", "weekly-schedule", "waiting-queue", "healthz":
 		return ""
 	}
 	return seg
+}
+
+// isWaitingQueueDeepLink تشخیص می‌دهد مسیر مربوط به لینک QR صف انتظار است
+// (مثلاً /123/۰۰۱۲۳۴۵۶۷۸/waiting-queue یا /123/-/5/ws/waiting-queue).
+func isWaitingQueueDeepLink(path string) bool {
+	p := strings.ToLower(strings.Trim(path, "/"))
+	if p == "waiting-queue" {
+		return true
+	}
+	return strings.HasSuffix(p, "/waiting-queue") || strings.HasSuffix(p, "/ws/waiting-queue")
 }

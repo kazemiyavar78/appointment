@@ -18,6 +18,8 @@ import (
 	"tebpardaz/server/internal/news"
 	"tebpardaz/server/internal/repository"
 	"tebpardaz/server/internal/tenant"
+	"tebpardaz/server/internal/testresult"
+	"tebpardaz/server/internal/waitingqueue"
 	"tebpardaz/server/internal/websocket"
 	"tebpardaz/shared/constants"
 
@@ -66,13 +68,22 @@ func main() {
 	memCache := cache.Init(cache.DefaultExpiration, cache.CleanupInterval)
 	// کش اسلات‌های رزرو پزشکان — بدون دیتابیس، انقضای ۴ ساعته؛ کلاینت هر ۱ دقیقه بروزرسانی می‌کند
 	slotCache := cache.NewSlotCache(memCache)
+	// کش پزشکان تأییدنشده — بدون دیتابیس؛ فقط پس از تأیید ادمین در DB ذخیره می‌شوند
+	doctorCache := cache.NewDoctorCache(memCache)
+	// کش لیست نوبت هفتگی پزشکان — بدون دیتابیس؛ کلاینت هر ۱۵ دقیقه بروزرسانی می‌کند
+	weeklyReserveCache := cache.NewWeeklyReserveCache(memCache)
+	// کش صف انتظار بیماران — بدون دیتابیس؛ ۱۰ دقیقه در حالت خاموش، ۵ ثانیه وقتی بیمار وصل است
+	waitingQueueCache := cache.NewWaitingQueueCache(memCache)
+	waitingQueueRefresher := waitingqueue.NewRefresher(hub)
+	waitingQueueRefresher.Start()
 
 	adminAuth := auth.NewAdminAuth(userRepo, cfg.SessionSecret)
-	approvalHandler := adminhandlers.NewApprovalHandler(doctorRepo, specialtyRepo, clinicRepo, clinicScope, hub, memCache, cache.DefaultExpiration, cache.CleanupInterval)
+	approvalHandler := adminhandlers.NewApprovalHandler(doctorRepo, specialtyRepo, clinicRepo, clinicScope, hub, doctorCache)
 	appointmentHandler := adminhandlers.NewAppointmentHandler(doctorRepo, clinicRepo, slotCache, clinicScope, hub)
 	specialtyHandler := adminhandlers.NewSpecialtyHandler(specialtyRepo)
+	userAdminHandler := adminhandlers.NewUserAdminHandler(userRepo, clinicRepo, organizationRepo)
 	newsAdminHandler := adminhandlers.NewNewsAdminHandler(newsSvc, clinicScope)
-	wsHandlers := websocket.NewHandlers(hub, clinicRepo, doctorRepo, slotCache)
+	wsHandlers := websocket.NewHandlers(hub, clinicRepo, doctorRepo, slotCache, doctorCache, weeklyReserveCache, waitingQueueCache)
 
 	r := gin.Default()
 	//where am i 
@@ -95,7 +106,7 @@ func main() {
 			),
 			approvalHandler.ListPending,
 		)
-		admin.POST("/approvals/:id/decide",
+		admin.POST("/approvals/decide",
 			adminAuth.RequireRoles(
 				constants.UserRoleSuperAdmin,
 				constants.UserRoleAdmin,
@@ -103,6 +114,15 @@ func main() {
 				constants.UserRoleOrganAdmin,
 			),
 			approvalHandler.Decide,
+		)
+		admin.POST("/approvals/update",
+			adminAuth.RequireRoles(
+				constants.UserRoleSuperAdmin,
+				constants.UserRoleAdmin,
+				constants.UserRoleClinicAdmin,
+				constants.UserRoleOrganAdmin,
+			),
+			approvalHandler.UpdateApproved,
 		)
 		admin.GET("/appointments",
 			adminAuth.RequireRoles(
@@ -129,6 +149,26 @@ func main() {
 			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
 			specialtyHandler.Delete,
 		)
+		admin.GET("/users",
+			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
+			userAdminHandler.List,
+		)
+		admin.POST("/users",
+			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
+			userAdminHandler.Create,
+		)
+		admin.POST("/users/:id/update",
+			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
+			userAdminHandler.Update,
+		)
+		admin.POST("/users/:id/deactivate",
+			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
+			userAdminHandler.Deactivate,
+		)
+		admin.POST("/users/:id/activate",
+			adminAuth.RequireRoles(constants.UserRoleSuperAdmin),
+			userAdminHandler.Activate,
+		)
 
 		newsRoles := []constants.UserRole{
 			constants.UserRoleSuperAdmin,
@@ -147,27 +187,43 @@ func main() {
 	}
 
 	tenantMW := tenant.Middleware(tenant.NewResolver(cfg.BaseDomain, clinicRepo, organizationRepo))
-	publicHandler := public.NewHomeHandler(newsSvc, clinicRepo)
+	publicHandler := public.NewHomeHandler(newsSvc, clinicRepo, specialtyRepo)
 	newsPublicHandler := public.NewNewsHandler(newsSvc, clinicRepo)
 	// لیست عمومی پزشکان نزدیک‌ترین نوبت را از کش می‌خواند (نه از جدول DoctorSlot)
 	bookingListing := booking.NewListingService(doctorRepo, specialtyRepo, clinicRepo, slotCache)
 	doctorListHandler := public.NewDoctorListHandler(bookingListing, clinicRepo)
+	weeklyScheduleHandler := public.NewWeeklyScheduleHandler(clinicRepo, weeklyReserveCache)
 
 	appointmentRepo := repository.NewAppointmentRepo(conns.Appointment)
 	bookingGuard := booking.NewGuard()
 	bookingSvc := booking.NewService(hub, slotCache, appointmentRepo, bookingGuard)
 	csrfMgr := csrf.NewManager(cfg.SessionSecret)
 	bookingHandler := public.NewBookingHandler(doctorRepo, clinicRepo, slotCache, bookingSvc, csrfMgr, bookingGuard)
+	testResultSvc := testresult.NewService("")
+	testResultLimiter := testresult.NewRateLimiter()
+	testResultHandler := public.NewTestResultHandler(clinicRepo, testResultSvc, testResultLimiter, csrfMgr, hub)
+	waitingQueueHandler := public.NewWaitingQueueHandler(clinicRepo, waitingQueueCache, csrfMgr, waitingQueueRefresher)
 
 	pub := r.Group("/", tenantMW)
 	{
 		pub.GET("/", publicHandler.Get)
 		pub.GET("/doctors", doctorListHandler.Get)
+		pub.GET("/weekly-schedule", weeklyScheduleHandler.Get)
 		pub.GET("/booking/*path", bookingHandler.Get)
 		pub.POST("/booking/*path", bookingHandler.PostSubmit)
 		pub.GET("/ws/booking/*path", bookingHandler.ServeBookingWS)
 		pub.GET("/news", newsPublicHandler.List)
 		pub.GET("/news/:id", newsPublicHandler.GetDetail)
+		pub.GET("/test-results", testResultHandler.GetForm)
+		pub.POST("/test-results", testResultHandler.PostLookup)
+		pub.GET("/waiting-queue", waitingQueueHandler.GetForm)
+		pub.POST("/waiting-queue", waitingQueueHandler.PostLookup)
+		// لینک QR / مانیتورینگ path-based (ارگان و پلتفرم: با clinic_id)
+		pub.GET("/:admission_no/:national_id/:clinic_id/waiting-queue", waitingQueueHandler.GetDeepLink)
+		pub.GET("/:admission_no/:national_id/:clinic_id/ws/waiting-queue", waitingQueueHandler.ServeWS)
+		// دامنه خصوصی مرکز (بدون clinic_id در مسیر)
+		pub.GET("/:admission_no/:national_id/waiting-queue", waitingQueueHandler.GetDeepLink)
+		pub.GET("/:admission_no/:national_id/ws/waiting-queue", waitingQueueHandler.ServeWS)
 	}
 
 	r.GET("/ws/clinic", wsHandlers.ServeWS)

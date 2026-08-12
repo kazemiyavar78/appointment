@@ -1,0 +1,32 @@
+package components
+
+import "strconv"
+
+// SpecialtyCardView is a text-only specialty shortcut to the doctor list filter.
+type SpecialtyCardView struct {
+	ID   uint
+	Name string
+}
+
+// specialtyFilterURL builds /doctors?specialty_id={id} for quick booking filter.
+// Input: specialty ID. Output: relative filter URL.
+func specialtyFilterURL(id uint) string {
+	return "/doctors?specialty_id=" + strconv.FormatUint(uint64(id), 10)
+}
+
+// SpecialtyCard renders a clickable specialty name card without a logo.
+templ SpecialtyCard(view SpecialtyCardView) {
+	<a
+		class="group flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-surface-border bg-white px-4 py-3 shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+		href={ templ.SafeURL(specialtyFilterURL(view.ID)) }
+	>
+		<span class="min-w-0 break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">
+			{ view.Name }
+		</span>
+		<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white" aria-hidden="true">
+			<svg class="h-3.5 w-3.5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
+				<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
+			</svg>
+		</span>
+	</a>
+}

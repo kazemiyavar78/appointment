@@ -26,6 +26,8 @@ type FooterProps struct {
 	HomeURL        string
 	Phone          string
 	Address        string
+	City           string
+	Province       string
 	BookingURL     string
 	ClinicsListURL string
 	ClinicLinks    []FooterLink
@@ -180,9 +182,20 @@ templ Footer(props FooterProps) {
 							<p class={ "text-sm", footerMutedClass(props.Variant) }>تلفن: { props.Phone }</p>
 						}
 						if props.Address != "" {
-							<p class={ "mt-1 text-sm leading-relaxed", footerMutedClass(props.Variant) }>{ props.Address }</p>
+							<p class={ "mt-1 text-sm leading-relaxed", footerMutedClass(props.Variant) }>آدرس: { props.Address }</p>
 						}
-						if props.Phone == "" && props.Address == "" {
+						if props.City != "" || props.Province != "" {
+							<p class={ "mt-1 text-sm", footerMutedClass(props.Variant) }>
+								if props.Province != "" && props.City != "" {
+									{ props.Province } — { props.City }
+								} else if props.Province != "" {
+									{ props.Province }
+								} else {
+									{ props.City }
+								}
+							</p>
+						}
+						if props.Phone == "" && props.Address == "" && props.City == "" && props.Province == "" {
 							<p class={ "text-sm leading-relaxed", footerMutedClass(props.Variant) }>
 								نوبت‌دهی آنلاین کلینیک
 							</p>

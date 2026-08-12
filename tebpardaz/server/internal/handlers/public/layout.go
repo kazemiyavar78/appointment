@@ -1,6 +1,7 @@
 package public
 
 import (
+	"fmt"
 	"net/http"
 
 	"tebpardaz/server/internal/repository"
@@ -72,7 +73,7 @@ func renderPublicLayout(c *gin.Context, tc *tenant.Context, child templ.Componen
 		}
 		err = layouts.PlatformLayout(view).Render(ctx, c.Writer)
 	case constants.LayoutOrgan:
-		view := layouts.OrganLayoutView{NavLinks: publicNavLinks(activeNav)}
+		view := layouts.OrganLayoutView{NavLinks: publicNavLinks(activeNav) }
 		if tc.Organization != nil {
 			view.OrganizationName = tc.Organization.Name
 			view.LogoURL = tc.Organization.LogoURL
@@ -82,6 +83,11 @@ func renderPublicLayout(c *gin.Context, tc *tenant.Context, child templ.Componen
 		view := layouts.PrivateLayoutView{NavLinks: publicNavLinks(activeNav)}
 		if tc.Clinic != nil {
 			view.ClinicName = tc.Clinic.Name
+			view.LogoURL = fmt.Sprintf("/static/clinics/%d-logo.jpg", tc.Clinic.Code)
+			view.Phone = tc.Clinic.Phone
+			view.Address = tc.Clinic.Address
+			view.City = tc.Clinic.City.Name
+			view.Province = tc.Clinic.City.Province
 		}
 		err = layouts.PrivateLayout(view).Render(ctx, c.Writer)
 	default:
@@ -98,7 +104,9 @@ func publicNavLinks(active string) []components.NavLink {
 		{Label: "صفحه اصلی", Href: "/", Active: active == "home"},
 		{Label: "پزشکان", Href: "/doctors", Active: active == "doctors" || active == "booking"},
 		{Label: "نوبت‌دهی", Href: "/doctors", Active: active == "booking"},
+		{Label: "نوبت هفتگی پزشکان", Href: "/weekly-schedule", Active: active == "weekly-schedule"},
 		{Label: "اخبار", Href: "/news", Active: active == "news"},
 		{Label: "جواب آزمایش", Href: "/test-results", Active: active == "test-results"},
+		{Label: "وضعیت نوبت", Href: "/waiting-queue", Active: active == "waiting-queue"},
 	}
 }

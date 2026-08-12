@@ -229,9 +229,14 @@ func toSlotOptions(slots []models.DoctorSlot) []components.SlotOption {
 		if value == "" {
 			value = slot.StartsAt.UTC().Format(time.RFC3339)
 		}
+		pt := ptime.New(slot.StartsAt)
+		date := pt.Format("yyyy/MM/dd")
+		timeLabel := pt.Format("HH:mm")
 		out = append(out, components.SlotOption{
 			Value: value,
-			Label: ptime.New(slot.StartsAt).Format("yyyy/MM/dd HH:mm"),
+			Date:  date,
+			Time:  timeLabel,
+			Label: date + " " + timeLabel,
 		})
 	}
 	return out

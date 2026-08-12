@@ -34,7 +34,7 @@ type PatientForm struct {
 }
 
 // ValidatePatientForm validates and normalizes public booking form fields.
-// Inputs: raw form strings (first/last name, national id, mobile, birth_date YYYY-MM-DD, sex).
+// Inputs: raw form strings (first/last name, national id, mobile, birth_date Shamsi or Gregorian, sex).
 // Output: normalized PatientForm or a Persian error message wrapping ErrValidation.
 func ValidatePatientForm(firstName, lastName, nationalID, mobile, birthDate, sex string) (*PatientForm, error) {
 	firstName = normalizePersianName(firstName)
@@ -60,12 +60,17 @@ func ValidatePatientForm(firstName, lastName, nationalID, mobile, birthDate, sex
 		return nil, fmt.Errorf("%w: جنسیت باید مرد یا زن باشد", ErrValidation)
 	}
 
-	bd, err := time.ParseInLocation("2006-01-02", birthDate, time.Local)
+	bd, err := parseBirthDate(birthDate)
 	if err != nil {
 		return nil, fmt.Errorf("%w: تاریخ تولد نامعتبر است", ErrValidation)
 	}
-	if bd.After(time.Now()) {
-		return nil, fmt.Errorf("%w: تاریخ تولد نمی‌تواند در آینده باشد", ErrValidation)
+	minAgeDay := time.Now().AddDate(-minPatientAgeYears, 0, 0)
+	if bd.After(minAgeDay) {
+		return nil, fmt.Errorf("%w: حداقل سن بیمار باید ۱ سال باشد", ErrValidation)
+	}
+	maxAgeDay := time.Now().AddDate(-maxPatientAgeYears, 0, 0)
+	if bd.Before(maxAgeDay) {
+		return nil, fmt.Errorf("%w: تاریخ تولد نامعتبر است", ErrValidation)
 	}
 	jalali := ptime.New(bd).Format("yyyy/MM/dd")
 
@@ -87,9 +92,62 @@ func ValidatePatientForm(firstName, lastName, nationalID, mobile, birthDate, sex
 }
 
 const (
-	sexMale   = "مرد"
-	sexFemale = "زن"
+	sexMale            = "مرد"
+	sexFemale          = "زن"
+	minPatientAgeYears = 1
+	maxPatientAgeYears = 120
 )
+
+// parseBirthDate converts a Shamsi YYYY/MM/DD (from persian-datepicker) or Gregorian date to time.Time.
+// Input: raw birth date string. Output: local midnight Time or error.
+func parseBirthDate(raw string) (time.Time, error) {
+	raw = normalizeBirthDigits(strings.TrimSpace(raw))
+	if raw == "" {
+		return time.Time{}, fmt.Errorf("empty")
+	}
+	rawSlash := strings.ReplaceAll(raw, "-", "/")
+	parts := strings.Split(rawSlash, "/")
+	if len(parts) != 3 {
+		return time.Time{}, fmt.Errorf("format")
+	}
+	y, errY := strconv.Atoi(parts[0])
+	m, errM := strconv.Atoi(parts[1])
+	d, errD := strconv.Atoi(parts[2])
+	if errY != nil || errM != nil || errD != nil {
+		return time.Time{}, fmt.Errorf("digits")
+	}
+	// Shamsi from persian-datepicker: convert to Gregorian via go-persian-calendar.
+	if y >= 1200 && y <= 1600 {
+		pt := ptime.Date(y, ptime.Month(m), d, 0, 0, 0, 0, time.Local)
+		t := pt.Time() // Gregorian time.Time
+		if t.IsZero() {
+			return time.Time{}, fmt.Errorf("jalali")
+		}
+		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local), nil
+	}
+	t, err := time.ParseInLocation("2006/01/02", rawSlash, time.Local)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return t, nil
+}
+
+// normalizeBirthDigits maps Persian/Arabic-Indic digits to ASCII.
+func normalizeBirthDigits(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch {
+		case r >= '۰' && r <= '۹':
+			b.WriteRune('0' + (r - '۰'))
+		case r >= '٠' && r <= '٩':
+			b.WriteRune('0' + (r - '٠'))
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
 
 // IsValidIranianNationalID validates a 10-digit Iranian national ID checksum.
 // Inputs: nationalID digits (may include separators; stripped internally when called after digitsOnly).

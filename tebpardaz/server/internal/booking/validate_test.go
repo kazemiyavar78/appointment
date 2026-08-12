@@ -1,6 +1,9 @@
 package booking
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestIsValidIranianNationalID(t *testing.T) {
 	// Well-known valid sample: 0013542419
@@ -27,6 +30,14 @@ func TestValidatePatientForm(t *testing.T) {
 		t.Fatalf("sex code want 1 got %d", form.SexCode)
 	}
 
+	form, err = ValidatePatientForm("علی", "رضایی", "0013542419", "09121234567", "1369/02/20", "زن")
+	if err != nil {
+		t.Fatalf("unexpected shamsi birth error: %v", err)
+	}
+	if form.SexCode != 2 {
+		t.Fatalf("sex code want 2 got %d", form.SexCode)
+	}
+
 	_, err = ValidatePatientForm("Ali", "رضایی", "0013542419", "09121234567", "1990-05-10", "مرد")
 	if err == nil {
 		t.Fatal("expected error for latin first name")
@@ -38,5 +49,11 @@ func TestValidatePatientForm(t *testing.T) {
 	_, err = ValidatePatientForm("علی", "رضایی", "0013542419", "08121234567", "1990-05-10", "مرد")
 	if err == nil {
 		t.Fatal("expected error for invalid mobile")
+	}
+
+	tooYoung := time.Now().AddDate(0, -6, 0).Format("2006-01-02")
+	_, err = ValidatePatientForm("علی", "رضایی", "0013542419", "09121234567", tooYoung, "مرد")
+	if err == nil {
+		t.Fatal("expected error for patient younger than 1 year")
 	}
 }

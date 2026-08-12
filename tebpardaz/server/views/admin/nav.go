@@ -10,6 +10,7 @@ const (
 	NavAppointments = "appointments"
 	NavSpecialties  = "specialties"
 	NavNews         = "news"
+	NavUsers        = "users"
 )
 
 // BuildAdminNav returns sidebar items for the given active page and user role.
@@ -32,11 +33,18 @@ func BuildAdminNav(active string, role string) layouts.AdminLayoutView {
 		},
 	}
 	if constants.UserRole(role) == constants.UserRoleSuperAdmin {
-		items = append(items, layouts.AdminNavItem{
-			Label:  "تخصص‌ها",
-			Href:   "/admin/specialties",
-			Active: active == NavSpecialties,
-		})
+		items = append(items,
+			layouts.AdminNavItem{
+				Label:  "تخصص‌ها",
+				Href:   "/admin/specialties",
+				Active: active == NavSpecialties,
+			},
+			layouts.AdminNavItem{
+				Label:  "کاربران",
+				Href:   "/admin/users",
+				Active: active == NavUsers,
+			},
+		)
 	}
 	return layouts.AdminLayoutView{NavItems: items}
 }

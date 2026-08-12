@@ -47,3 +47,30 @@ func (r *OrganizationRepo) GetBySlug(slug string) (*models.Organization, error) 
 	}
 	return &org, nil
 }
+
+// GetByID loads an organization by primary key.
+// Inputs: id.
+// Output: organization pointer or DB error.
+func (r *OrganizationRepo) GetByID(id uint) (*models.Organization, error) {
+	if r.DB == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	var org models.Organization
+	err := r.DB.First(&org, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &org, nil
+}
+
+// ListAll returns every organization ordered by name for admin dropdowns.
+// Inputs: none (uses repo DB).
+// Output: slice of organizations or DB error.
+func (r *OrganizationRepo) ListAll() ([]models.Organization, error) {
+	if r.DB == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	var orgs []models.Organization
+	err := r.DB.Order("name asc").Find(&orgs).Error
+	return orgs, err
+}

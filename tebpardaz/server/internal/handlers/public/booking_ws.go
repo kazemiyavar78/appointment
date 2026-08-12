@@ -1,6 +1,7 @@
 package public
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -47,26 +48,32 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
+	fmt.Println("tc", tc)
 	clinicSlug, doctorSlug, ok := bookingPathSlugs(c.Param("path"))
 	if !ok {
 		c.Status(http.StatusNotFound)
 		return
 	}
 
+	fmt.Println("clinicSlug", clinicSlug, "doctorSlug", doctorSlug)
+
 	clinicID, doctorSlugResolved, err := h.resolveBookingTarget(tc, clinicSlug, doctorSlug)
 	if err != nil || clinicID == 0 {
 		c.Status(http.StatusNotFound)
 		return
 	}
+	fmt.Println("clinicID", clinicID, "doctorSlugResolved", doctorSlugResolved)
 
 	doctor, err := h.Doctors.GetPublicByClinicAndSlug(clinicID, doctorSlugResolved)
 	if err != nil || doctor == nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
+	fmt.Println("doctor", doctor)
 	_ = h.Doctors.EnsureSlug(doctor)
 
 	ip := c.ClientIP()
+	fmt.Println("ip", ip)
 	if h.Guard != nil {
 		if allowed, reason := h.Guard.Allow(ip); !allowed {
 			c.JSON(http.StatusTooManyRequests, gin.H{"ok": false, "message": reason})
@@ -76,9 +83,11 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 
 	conn, err := bookingUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		fmt.Println("error", err)
 		return
 	}
 	defer conn.Close()
+	fmt.Println("conn", conn)
 	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	_ = conn.SetWriteDeadline(time.Now().Add(90 * time.Second))
 

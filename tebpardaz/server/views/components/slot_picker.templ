@@ -1,25 +1,28 @@
 package components
 
+import "strconv"
+
 // SlotOption is one selectable appointment window on the booking form.
 type SlotOption struct {
 	Value    string
+	Date     string
+	Time     string
 	Label    string
 	Selected bool
 }
 
-// SlotPickerView drives the public slot select control.
+// SlotPickerView drives the public slot table control.
 type SlotPickerView struct {
 	InputName string
 	Options   []SlotOption
 	EmptyText string
 }
 
-// SlotPicker renders a select of available booking slots.
+// SlotPicker renders available booking slots as large touch-friendly choices.
 templ SlotPicker(view SlotPickerView) {
 	<div class="space-y-2">
-		<label class="block text-sm text-ink-muted" for={ view.InputName }>انتخاب نوبت</label>
 		if len(view.Options) == 0 {
-			<p class="text-sm text-ink-muted">
+			<p class="rounded-lg border border-dashed border-surface-border bg-surface-soft px-4 py-6 text-center text-base text-ink-muted">
 				if view.EmptyText != "" {
 					{ view.EmptyText }
 				} else {
@@ -27,16 +30,54 @@ templ SlotPicker(view SlotPickerView) {
 				}
 			</p>
 		} else {
-			<select id={ view.InputName } name={ view.InputName } required class="w-full rounded border border-gray-300 p-2 text-sm">
-				<option value="">انتخاب کنید…</option>
-				for _, opt := range view.Options {
-					if opt.Selected {
-						<option value={ opt.Value } selected>{ opt.Label }</option>
-					} else {
-						<option value={ opt.Value }>{ opt.Label }</option>
-					}
-				}
-			</select>
+			<div class="overflow-x-auto rounded-xl border border-surface-border">
+				<table class="w-full min-w-[320px] text-base">
+					<thead>
+						<tr class="border-b border-surface-border bg-surface-soft text-right">
+							<th class="p-3 w-14 font-medium text-ink-muted">ردیف</th>
+							<th class="p-3 font-medium text-ink-muted">تاریخ</th>
+							<th class="p-3 font-medium text-ink-muted">ساعت</th>
+							<th class="p-3 w-24 font-medium text-ink-muted">انتخاب</th>
+						</tr>
+					</thead>
+					<tbody>
+						for index, opt := range view.Options {
+							<tr class="border-b border-surface-border last:border-0 hover:bg-brand-muted/60">
+								<td class="p-3 text-ink-muted tabular-nums">{ strconv.Itoa(index + 1) }</td>
+								<td class="p-3 whitespace-nowrap tabular-nums" dir="ltr">{ opt.Date }</td>
+								<td class="p-3 whitespace-nowrap tabular-nums font-medium" dir="ltr">{ opt.Time }</td>
+								<td class="p-3">
+									<label class="inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+										if opt.Selected {
+											<input
+												type="radio"
+												class="slot-radio h-5 w-5 accent-brand"
+												name={ view.InputName }
+												id={ view.InputName + "-" + strconv.Itoa(index) }
+												value={ opt.Value }
+												data-slot-label={ opt.Label }
+												required
+												checked
+											/>
+										} else {
+											<input
+												type="radio"
+												class="slot-radio h-5 w-5 accent-brand"
+												name={ view.InputName }
+												id={ view.InputName + "-" + strconv.Itoa(index) }
+												value={ opt.Value }
+												data-slot-label={ opt.Label }
+												required
+											/>
+										}
+										<span class="sr-only">انتخاب نوبت { opt.Label }</span>
+									</label>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
 		}
 	</div>
 }

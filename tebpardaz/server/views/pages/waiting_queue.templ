@@ -1,0 +1,157 @@
+package pages
+
+// WaitingQueueClinicOption گزینه انتخاب مرکز در لایه ارگان/پلتفرم است.
+type WaitingQueueClinicOption struct {
+	ID   uint
+	Name string
+}
+
+// WaitingQueueFormView دادهٔ فرم و نمایش وضعیت صف انتظار را نگه می‌دارد.
+type WaitingQueueFormView struct {
+	ShowClinicSelect bool
+	Clinics          []WaitingQueueClinicOption
+	SelectedClinicID uint
+	NationalID       string
+	AdmissionNo      string
+	CSRFToken        string
+	FormAction       string
+	ErrorMessage     string
+	InfoMessage      string
+	// پس از تأیید موفق، پنل زنده نمایش داده می‌شود
+	ShowLivePanel bool
+	Status        WaitingQueueStatusView
+	WSPath        string
+}
+
+// WaitingQueueStatusView وضعیت بیمار در صف برای نمایش ساده است.
+type WaitingQueueStatusView struct {
+	PatientName  string
+	DoctorName   string
+	VisitTime    string
+	AheadCount   int
+	TotalInQueue int
+}
+
+// WaitingQueueForm صفحه ساده «وضعیت نوبت شما» را رندر می‌کند.
+templ WaitingQueueForm(view WaitingQueueFormView) {
+	<div class="mx-auto max-w-lg">
+		<section class="mb-6 text-center">
+			<h1 class="mb-2 text-3xl font-bold text-brand">وضعیت نوبت شما</h1>
+			<p class="text-base leading-relaxed text-ink-muted">
+				شماره پذیرش را وارد کنید. اگر روی قبض کد ملی دارید، آن را هم بنویسید تا فقط نوبت خودتان را ببینید.
+			</p>
+		</section>
+
+		if view.ErrorMessage != "" {
+			<div class="mb-4 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-lg text-red-800" role="alert">
+				{ view.ErrorMessage }
+			</div>
+		}
+		if view.InfoMessage != "" {
+			<div class="mb-4 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-lg text-amber-900" role="status">
+				{ view.InfoMessage }
+			</div>
+		}
+
+		if !view.ShowLivePanel {
+			<form
+				class="space-y-5 rounded-2xl border-2 border-gray-200 bg-white p-5 shadow-sm"
+				method="post"
+				action={ templ.SafeURL(view.FormAction) }
+				autocomplete="off"
+			>
+				<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
+
+				if view.ShowClinicSelect {
+					<div>
+						<label class="mb-2 block text-lg font-medium text-ink" for="clinic_id">مرکز درمانی</label>
+						<select id="clinic_id" name="clinic_id" required class="block w-full rounded-xl border-2 border-gray-300 p-4 text-lg">
+							<option value="">انتخاب مرکز…</option>
+							for _, clinic := range view.Clinics {
+								if view.SelectedClinicID == clinic.ID {
+									<option value={ uintToString(clinic.ID) } selected>{ clinic.Name }</option>
+								} else {
+									<option value={ uintToString(clinic.ID) }>{ clinic.Name }</option>
+								}
+							}
+						</select>
+					</div>
+				}
+
+				<div>
+					<label class="mb-2 block text-lg font-medium text-ink" for="admission_no">شماره پذیرش</label>
+					<input
+						id="admission_no"
+						name="admission_no"
+						type="text"
+						required
+						inputmode="numeric"
+						placeholder="عدد روی قبض پذیرش"
+						value={ view.AdmissionNo }
+						class="block w-full rounded-xl border-2 border-gray-300 p-4 text-xl"
+					/>
+				</div>
+
+				<div>
+					<label class="mb-2 block text-lg font-medium text-ink" for="national_id">کد ملی (اگر دارید)</label>
+					<input
+						id="national_id"
+						name="national_id"
+						type="text"
+						inputmode="numeric"
+						pattern="[0-9۰-۹]{10}"
+						maxlength="10"
+						placeholder="اگر روی قبض کد ملی نیست، خالی بگذارید"
+						value={ view.NationalID }
+						class="block w-full rounded-xl border-2 border-gray-300 p-4 text-xl tracking-widest"
+					/>
+					<p class="mt-2 text-sm text-ink-muted">برای امنیت، اگر پذیرش شما کد ملی دارد باید همینجا هم وارد شود.</p>
+				</div>
+
+				<button
+					type="submit"
+					class="w-full rounded-xl bg-brand px-6 py-4 text-xl font-bold text-white hover:bg-brand-dark focus:outline-none focus-visible:ring-4 focus-visible:ring-brand"
+				>
+					نمایش وضعیت نوبت
+				</button>
+			</form>
+		}
+
+		if view.ShowLivePanel {
+			<div
+				id="waiting-queue-live"
+				class="space-y-4"
+				data-ws-path={ view.WSPath }
+			>
+				<div class="rounded-2xl border-2 border-brand/30 bg-brand/5 p-5 text-center">
+					<p class="mb-1 text-lg text-ink-muted">نام بیمار</p>
+					<p id="wq-patient-name" class="text-2xl font-bold text-ink">{ view.Status.PatientName }</p>
+				</div>
+
+				<div class="rounded-2xl border-2 border-gray-200 bg-white p-5 text-center">
+					<p class="mb-1 text-lg text-ink-muted">پزشک</p>
+					<p id="wq-doctor-name" class="text-2xl font-bold text-brand">{ view.Status.DoctorName }</p>
+				</div>
+
+				<div class="rounded-2xl border-2 border-gray-200 bg-white p-5 text-center">
+					<p class="mb-1 text-lg text-ink-muted">ساعت نوبت</p>
+					<p id="wq-visit-time" class="text-3xl font-bold text-ink">{ view.Status.VisitTime }</p>
+				</div>
+
+				<div class="rounded-2xl border-4 border-green-400 bg-green-50 p-6 text-center shadow-md">
+					<p class="mb-2 text-xl text-green-900">چند نفر جلوتر از شما هستند؟</p>
+					<p id="wq-ahead-count" class="text-6xl font-black text-green-700">{ intToString(view.Status.AheadCount) }</p>
+					if view.Status.AheadCount == 0 {
+						<p id="wq-ahead-hint" class="mt-2 text-lg font-medium text-green-800">نوبت شماست! لطفاً به اتاق پزشک بروید.</p>
+					} else {
+						<p id="wq-ahead-hint" class="mt-2 text-lg text-green-800">لطفاً در سالن منتظر بمانید.</p>
+					}
+				</div>
+
+				<p id="wq-status-msg" class="text-center text-sm text-ink-faint">در حال بروزرسانی خودکار…</p>
+				<p class="text-center text-xs text-ink-faint">این صفحه هر ۵ ثانیه خودکار بروز می‌شود.</p>
+			</div>
+			<script src="/static/js/waiting_queue.js" defer></script>
+		}
+	</div>
+}

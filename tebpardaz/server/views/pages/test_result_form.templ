@@ -1,14 +1,107 @@
 package pages
 
-// TODO: props مورد نیاز -> ClinicName, FormAction, ErrorMessage, Result (optional)
-templ TestResultForm() {
-	<div class="mx-auto max-w-xl p-4">
-		<h1 class="mb-4 text-2xl text-brand">جواب آزمایش</h1>
-		<form class="space-y-3 rounded border border-gray-200 bg-white p-4" method="post">
-			<!-- TODO: کد ملی / بارکد و دکمه جستجو -->
-			<p class="text-sm text-ink-muted">
-				<!-- TODO: پیاده‌سازی فرم جوابدهی -->
-			</p>
+// TestResultClinicOption is a select option for organ/platform clinic choice.
+type TestResultClinicOption struct {
+	ID   uint
+	Name string
+}
+
+// TestResultFormView drives the public lab-result lookup form.
+type TestResultFormView struct {
+	ShowClinicSelect bool
+	Clinics          []TestResultClinicOption
+	SelectedClinicID uint
+	AdmissionNo      string
+	Password         string
+	CSRFToken        string
+	FormAction       string
+	ErrorMessage     string
+	InfoMessage      string
+	DownloadURL      string
+}
+
+// TestResultForm renders the admission lookup form and optional PDF download link.
+templ TestResultForm(view TestResultFormView) {
+	<div class="mx-auto max-w-xl">
+		<section class="mb-6">
+			<h1 class="mb-2 text-2xl text-brand">جواب آزمایش</h1>
+			<p class="text-sm text-ink-muted">شماره و رمز پذیرش را وارد کنید تا در صورت آماده بودن، فایل PDF را دریافت کنید.</p>
+		</section>
+
+		if view.ErrorMessage != "" {
+			<p class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{ view.ErrorMessage }</p>
+		}
+		if view.InfoMessage != "" {
+			<p class="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{ view.InfoMessage }</p>
+		}
+
+		<form
+			class="space-y-4 rounded-lg border border-gray-200 bg-white p-4"
+			method="post"
+			action={ templ.SafeURL(view.FormAction) }
+			autocomplete="off"
+		>
+			<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
+
+			if view.ShowClinicSelect {
+				<div>
+					<label class="mb-1 block text-sm text-ink-muted" for="clinic_id">کلینیک</label>
+					<select id="clinic_id" name="clinic_id" required class="block w-full rounded border border-gray-300 p-2 text-sm">
+						<option value="">انتخاب کلینیک…</option>
+						for _, clinic := range view.Clinics {
+							if view.SelectedClinicID == clinic.ID {
+								<option value={ uintToString(clinic.ID) } selected>{ clinic.Name }</option>
+							} else {
+								<option value={ uintToString(clinic.ID) }>{ clinic.Name }</option>
+							}
+						}
+					</select>
+				</div>
+			}
+
+			<div>
+				<label class="mb-1 block text-sm text-ink-muted" for="admission_no">شماره پذیرش</label>
+				<input
+					id="admission_no"
+					name="admission_no"
+					type="text"
+					required
+					inputmode="numeric"
+					value={ view.AdmissionNo }
+					class="block w-full rounded border border-gray-300 p-2 text-sm"
+				/>
+			</div>
+
+			<div>
+				<label class="mb-1 block text-sm text-ink-muted" for="password">رمز پذیرش</label>
+				<input
+					id="password"
+					name="password"
+					type="text"
+					required
+					value={ view.Password }
+					class="block w-full rounded border border-gray-300 p-2 text-sm"
+				/>
+			</div>
+
+			<button type="submit" class="rounded bg-brand px-4 py-2 text-sm text-white">
+				جستجوی جواب آزمایش
+			</button>
 		</form>
+
+		if view.DownloadURL != "" {
+			<div class="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm">
+				<p class="mb-2 text-green-800">جواب آزمایش آماده است.</p>
+				<a
+					class="inline-block rounded bg-brand px-4 py-2 text-white"
+					href={ templ.SafeURL(view.DownloadURL) }
+					download
+					target="_blank"
+					rel="noopener"
+				>
+					دانلود فایل PDF
+				</a>
+			</div>
+		}
 	</div>
 }

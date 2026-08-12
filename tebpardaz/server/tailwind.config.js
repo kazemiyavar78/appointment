@@ -26,7 +26,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Vazirmatn', 'Tahoma', 'Arial', 'sans-serif'],
+        sans: ['iransans', 'Tahoma', 'Arial', 'sans-serif'],
       },
     },
   },

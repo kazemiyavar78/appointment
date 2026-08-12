@@ -28,6 +28,9 @@ type HomeNewsItem struct {
 // HomeView drives the tenant home page content.
 type HomeView struct {
 	LatestNews      []HomeNewsItem
+	Specialties     []components.SpecialtyCardView
+	Clinics         []components.ClinicCardView
+	ShowClinicCards bool
 	ShowClinicBadge bool
 	NewsListURL     string
 }
@@ -46,7 +49,7 @@ func homeNewsToCard(item HomeNewsItem, featured bool) components.NewsCardView {
 	}
 }
 
-// Home renders the tenant landing content including latest news.
+// Home renders the tenant landing content including specialties, clinics, and news.
 func Home(view HomeView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -68,30 +71,68 @@ func Home(view HomeView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-6xl\"><section class=\"mb-10 border-b border-surface-border pb-8\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between\"><div class=\"min-w-0\"><p class=\"mb-1 text-sm text-brand\">سامانه نوبت\u200cدهی</p><h1 class=\"text-2xl font-bold text-ink sm:text-3xl\">رزرو نوبت، ساده و سریع</h1><p class=\"mt-2 max-w-lg text-sm leading-relaxed text-ink-muted sm:text-base\">پزشک را انتخاب کنید و نزدیک\u200cترین زمان آزاد را رزرو کنید.</p></div><a class=\"inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md bg-brand px-6 text-base font-medium text-white hover:bg-brand-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"/doctors\">نوبت بگیرید</a></div></section><section><div class=\"mb-5 flex items-center justify-between gap-3\"><h2 class=\"text-lg font-bold text-ink sm:text-xl\">آخرین اخبار</h2><a class=\"inline-flex min-h-[44px] items-center text-sm text-brand hover:underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-6xl\"><section class=\"mb-10 border-b border-surface-border pb-8\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between\"><div class=\"min-w-0\"><p class=\"mb-1 text-sm text-brand\">سامانه نوبت\u200cدهی</p><h1 class=\"text-2xl font-bold text-ink sm:text-3xl\">رزرو نوبت، ساده و سریع</h1><p class=\"mt-2 max-w-lg text-sm leading-relaxed text-ink-muted sm:text-base\">پزشک را انتخاب کنید و نزدیک\u200cترین زمان آزاد را رزرو کنید.</p></div><a class=\"inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md bg-brand px-6 text-base font-medium text-white hover:bg-brand-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"/doctors\">نوبت بگیرید</a></div></section>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if len(view.Specialties) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<section class=\"mb-10\"><div class=\"mb-5\"><h2 class=\"text-lg font-bold text-ink sm:text-xl\">تخصص\u200cها</h2><p class=\"mt-1 text-sm text-ink-muted\">برای فیلتر سریع پزشکان، تخصص را انتخاب کنید.</p></div><div class=\"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, sp := range view.Specialties {
+				templ_7745c5c3_Err = components.SpecialtyCard(sp).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></section>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if view.ShowClinicCards {
+			if len(view.Clinics) > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<section class=\"mb-10\"><div class=\"mb-5\"><h2 class=\"text-lg font-bold text-ink sm:text-xl\">مراکز درمانی</h2><p class=\"mt-1 text-sm text-ink-muted\">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p></div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				for _, cl := range view.Clinics {
+					templ_7745c5c3_Err = components.ClinicCard(cl).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></section>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section><div class=\"mb-5 flex items-center justify-between gap-3\"><h2 class=\"text-lg font-bold text-ink sm:text-xl\">آخرین اخبار</h2><a class=\"inline-flex min-h-[44px] items-center text-sm text-brand hover:underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.NewsListURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/home.templ`, Line: 66, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/home.templ`, Line: 97, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">مشاهده همه</a></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">مشاهده همه</a></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(view.LatestNews) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"py-10 text-center text-sm text-ink-muted\">خبری برای نمایش وجود ندارد.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"py-10 text-center text-sm text-ink-muted\">خبری برای نمایش وجود ندارد.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"news-grid\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"news-grid\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -101,12 +142,12 @@ func Home(view HomeView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

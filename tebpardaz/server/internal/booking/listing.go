@@ -30,6 +30,7 @@ type DoctorCard struct {
 	ID              uint
 	Name            string
 	SpecialtyName   string
+	DoctorSystemID  int
 	PhotoURL        string
 	ClinicID        uint
 	ClinicName      string
@@ -146,6 +147,7 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 			ID:              d.ID,
 			Name:            doctorDisplayName(d),
 			SpecialtyName:   d.Specialty.Name,
+			DoctorSystemID:  d.DoctorSystemID,
 			PhotoURL:        d.PhotoURL,
 			ClinicID:        d.ClinicID,
 			ClinicName:      meta.Name,

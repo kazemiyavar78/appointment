@@ -80,6 +80,26 @@
     };
   }
 
+  function showPatientFields() {
+    var fields = $("booking-fields");
+    if (fields) fields.classList.remove("hidden");
+    if (typeof window.initPersianDatepickers === "function") {
+      window.initPersianDatepickers(fields || document);
+    }
+  }
+
+  function selectedSlotLabel(radio) {
+    if (!radio) return "";
+    return radio.getAttribute("data-slot-label") || radio.value || "";
+  }
+
+  function updateSelectedSlot(radio) {
+    var pTag = $("selected-slot-date");
+    if (!pTag) return;
+    var label = selectedSlotLabel(radio);
+    pTag.textContent = label ? "نوبت انتخاب‌شده: " + label : "";
+  }
+
   function init() {
     var root = $("booking-root");
     var form = $("booking-form");
@@ -89,6 +109,23 @@
 
     var path = root.getAttribute("data-ws-url") || "";
     var busy = false;
+
+    var radios = form.querySelectorAll(".slot-radio");
+    var i;
+    for (i = 0; i < radios.length; i++) {
+      (function (radio) {
+        radio.addEventListener("change", function () {
+          if (radio.checked) {
+            showPatientFields();
+            updateSelectedSlot(radio);
+          }
+        });
+        if (radio.checked) {
+          showPatientFields();
+          updateSelectedSlot(radio);
+        }
+      })(radios[i]);
+    }
 
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();

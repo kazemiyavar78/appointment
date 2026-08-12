@@ -33,87 +33,120 @@ type UpsertResult struct {
 	Pending    bool
 }
 
-// UpsertFromSync creates or updates doctors from a clinic push and queues approval when needed.
-// ExternalID is assigned only after admin approval, not during sync.
-func (r *DoctorRepo) UpsertFromSync(clinicID uint, doctors []protocol.DoctorDTO) ([]UpsertResult, error) {
-	results := make([]UpsertResult, 0, len(doctors))
+// SyncFromClinic updates approved doctors by clinic_id + national_id and reports which DTOs remain pending.
+// Unapproved doctors are never written to the database; callers must store them in cache.
+// Inputs: clinicID, doctors from the clinic push.
+// Output: results for ack, pending DTOs (not in DB as approved), and error.
+func (r *DoctorRepo) SyncFromClinic(clinicID uint, doctors []protocol.DoctorDTO) (results []UpsertResult, pending []protocol.DoctorDTO, err error) {
+	results = make([]UpsertResult, 0, len(doctors))
+	pending = make([]protocol.DoctorDTO, 0)
 	for _, dto := range doctors {
-		res, err := r.upsertOne(clinicID, dto)
-		if err != nil {
-			return results, err
+		res, isPending, syncErr := r.syncOne(clinicID, dto)
+		if syncErr != nil {
+			return results, pending, syncErr
+		}
+		if isPending {
+			pending = append(pending, dto)
+			results = append(results, UpsertResult{
+				LocalCode:  dto.LocalCode,
+				ExternalID: "",
+				DoctorID:   0,
+				Pending:    true,
+			})
+			continue
 		}
 		results = append(results, res)
 	}
-	return results, nil
+	return results, pending, nil
 }
 
-func (r *DoctorRepo) upsertOne(clinicID uint, dto protocol.DoctorDTO) (UpsertResult, error) {
-	doctor, found, err := r.findExisting(clinicID, dto)
+// syncOne updates an approved doctor matched by national_id (+ clinic) or returns pending=true.
+// Inputs: clinicID, dto.
+// Output: UpsertResult when updated, pending flag when not in DB as approved, error on failure.
+func (r *DoctorRepo) syncOne(clinicID uint, dto protocol.DoctorDTO) (UpsertResult, bool, error) {
+	doctor, found, err := r.findApproved(clinicID, dto)
 	if err != nil {
-		return UpsertResult{}, err
+		return UpsertResult{}, false, err
+	}
+	if !found {
+		// پزشک تأییدنشده نباید در DB بماند؛ ردیف‌های قدیمی حذف می‌شوند
+		_ = r.deleteUnapprovedMatch(clinicID, dto)
+		return UpsertResult{}, true, nil
 	}
 
-	if found {
-		r.applyDTO(&doctor, dto)
-		if err := r.DB.Save(&doctor).Error; err != nil {
-			return UpsertResult{}, err
-		}
-		return UpsertResult{
-			LocalCode:  dto.LocalCode,
-			ExternalID: doctor.ExternalID,
-			DoctorID:   doctor.ID,
-			Pending:    !doctor.IsApproved,
-		}, nil
+	r.applyHISFields(&doctor, dto)
+	if err := r.DB.Save(&doctor).Error; err != nil {
+		return UpsertResult{}, false, err
 	}
-
-	doctor = models.Doctor{
-		ClinicID:       clinicID,
-		SpecialtyID:    0,
-		Name:           dto.Name,
-		FirstName:      dto.FirstName,
-		LastName:       dto.LastName,
-		Mobile:         dto.Mobile,
-		NationalID:     dto.NationalID,
-		DoctorSystemID: dto.DoctorSystemID,
-		SpecialtyCode:  dto.SpecialtyCode,
-		PhotoURL:       dto.PhotoURL,
-		ExternalID:     "",
-		LocalCode:      dto.LocalCode,
-		IsApproved:     false,
-		IsActive:       dto.IsActive,
-	}
-	if doctor.Name == "" {
-		doctor.Name = dto.FirstName + " " + dto.LastName
-	}
-	if err := r.DB.Create(&doctor).Error; err != nil {
-		return UpsertResult{}, err
-	}
-	if err := r.EnsureSlug(&doctor); err != nil {
-		return UpsertResult{}, err
-	}
-
-	payload, _ := json.Marshal(dto)
-	req := models.DoctorApprovalRequest{
-		ClinicID:      clinicID,
-		DoctorID:      &doctor.ID,
-		ExternalID:    "",
-		RequestedName: doctor.Name,
-		Status:        string(constants.ApprovalPending),
-		PayloadJSON:   string(payload),
-	}
-	if err := r.DB.Create(&req).Error; err != nil {
-		return UpsertResult{}, err
-	}
-
 	return UpsertResult{
 		LocalCode:  dto.LocalCode,
-		ExternalID: "",
+		ExternalID: doctor.ExternalID,
 		DoctorID:   doctor.ID,
-		Pending:    true,
-	}, nil
+		Pending:    false,
+	}, false, nil
 }
 
-func (r *DoctorRepo) applyDTO(doctor *models.Doctor, dto protocol.DoctorDTO) {
+// deleteUnapprovedMatch removes leftover unapproved DB rows matching national_id or local_code.
+// Inputs: clinicID, dto.
+// Output: error from delete (ignored by callers for sync continuity).
+func (r *DoctorRepo) deleteUnapprovedMatch(clinicID uint, dto protocol.DoctorDTO) error {
+	q := r.DB.Where("clinic_id = ? AND is_approved = ?", clinicID, false)
+	nid := strings.TrimSpace(dto.NationalID)
+	switch {
+	case nid != "":
+		q = q.Where("national_id = ?", nid)
+	case dto.LocalCode > 0:
+		q = q.Where("local_code = ?", dto.LocalCode)
+	default:
+		return nil
+	}
+	return q.Delete(&models.Doctor{}).Error
+}
+
+// findApproved locates an approved doctor by clinic_id + national_id (primary), then external_id.
+// Inputs: clinicID, dto.
+// Output: doctor, found flag, error.
+func (r *DoctorRepo) findApproved(clinicID uint, dto protocol.DoctorDTO) (models.Doctor, bool, error) {
+	var doctor models.Doctor
+	nid := strings.TrimSpace(dto.NationalID)
+	if nid != "" {
+		tx := r.DB.Where(
+			"clinic_id = ? AND national_id = ? AND is_approved = ? AND external_id <> ''",
+			clinicID, nid, true,
+		).Limit(1).Find(&doctor)
+		if tx.Error != nil {
+			return doctor, false, tx.Error
+		}
+		if tx.RowsAffected > 0 {
+			return doctor, true, nil
+		}
+	}
+	if dto.ExternalID != "" {
+		tx := r.DB.Where(
+			"clinic_id = ? AND external_id = ? AND is_approved = ?",
+			clinicID, dto.ExternalID, true,
+		).Limit(1).Find(&doctor)
+		if tx.Error != nil {
+			return doctor, false, tx.Error
+		}
+		if tx.RowsAffected > 0 {
+			return doctor, true, nil
+		}
+	}
+	return doctor, false, nil
+}
+
+// FindExistingPublic locates an approved doctor by national_id or external_id within a clinic.
+// Inputs: clinicID, dto.
+// Output: doctor, found flag, error.
+func (r *DoctorRepo) FindExistingPublic(clinicID uint, dto protocol.DoctorDTO) (models.Doctor, bool, error) {
+	return r.findApproved(clinicID, dto)
+}
+
+// applyHISFields copies HIS-sourced fields onto an approved doctor without overwriting admin specialty/photo.
+// Inputs: doctor pointer, dto from clinic.
+// Output: none (mutates doctor).
+func (r *DoctorRepo) applyHISFields(doctor *models.Doctor, dto protocol.DoctorDTO) {
 	if dto.Name != "" {
 		doctor.Name = dto.Name
 	}
@@ -135,98 +168,133 @@ func (r *DoctorRepo) applyDTO(doctor *models.Doctor, dto protocol.DoctorDTO) {
 	if dto.SpecialtyCode != "" {
 		doctor.SpecialtyCode = dto.SpecialtyCode
 	}
-	if dto.PhotoURL != "" {
-		doctor.PhotoURL = dto.PhotoURL
-	}
 	if dto.LocalCode > 0 {
 		doctor.LocalCode = dto.LocalCode
 	}
 	doctor.IsActive = dto.IsActive
 }
 
-// FindExistingPublic locates a doctor by ExternalID, LocalCode, or NationalID within a clinic.
-func (r *DoctorRepo) FindExistingPublic(clinicID uint, dto protocol.DoctorDTO) (models.Doctor, bool, error) {
-	return r.findExisting(clinicID, dto)
+// ApproveInput holds admin-assigned fields required to persist a doctor for the first time.
+type ApproveInput struct {
+	ClinicID       uint
+	LocalCode      int
+	NationalID     string
+	FirstName      string
+	LastName       string
+	Name           string
+	Mobile         string
+	DoctorSystemID int
+	SpecialtyCode  string
+	SpecialtyID    uint
+	PhotoURL       string
+	IsActive       bool
+	ReviewerID     uint
+	Note           string
 }
 
-func (r *DoctorRepo) findExisting(clinicID uint, dto protocol.DoctorDTO) (models.Doctor, bool, error) {
-	var doctor models.Doctor
-	if dto.ExternalID != "" {
-		tx := r.DB.Where("clinic_id = ? AND external_id = ?", clinicID, dto.ExternalID).Limit(1).Find(&doctor)
-		if tx.Error != nil {
-			return doctor, false, tx.Error
-		}
-		if tx.RowsAffected > 0 {
-			return doctor, true, nil
-		}
+// CreateApproved persists a newly approved doctor (photo + specialty required) and an audit approval row.
+// Inputs: ApproveInput with SpecialtyID and PhotoURL set.
+// Output: created DoctorApprovalRequest (with ExternalID) or error.
+func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequest, error) {
+	if strings.TrimSpace(in.PhotoURL) == "" {
+		return nil, fmt.Errorf("photo_url required")
 	}
-	if dto.LocalCode > 0 {
-		tx := r.DB.Where("clinic_id = ? AND local_code = ?", clinicID, dto.LocalCode).Limit(1).Find(&doctor)
-		if tx.Error != nil {
-			return doctor, false, tx.Error
-		}
-		if tx.RowsAffected > 0 {
-			return doctor, true, nil
-		}
+	if in.SpecialtyID == 0 {
+		return nil, fmt.Errorf("specialty_id required")
 	}
-	if dto.NationalID != "" {
-		tx := r.DB.Where("clinic_id = ? AND national_id = ?", clinicID, dto.NationalID).Limit(1).Find(&doctor)
-		if tx.Error != nil {
-			return doctor, false, tx.Error
-		}
-		if tx.RowsAffected > 0 {
-			return doctor, true, nil
-		}
+	nid := strings.TrimSpace(in.NationalID)
+	if nid == "" {
+		return nil, fmt.Errorf("national_id required")
 	}
-	return doctor, false, nil
-}
 
-// DecideApproval sets approved/rejected, assigns ExternalID and specialty on approve.
-func (r *DoctorRepo) DecideApproval(requestID, reviewerID uint, approve bool, specialtyID uint, note string) (*models.DoctorApprovalRequest, error) {
-	var req models.DoctorApprovalRequest
-	if err := r.DB.First(&req, requestID).Error; err != nil {
+	// جلوگیری از تکرار پزشک تأییدشده با همان کد ملی در مرکز
+	var existing models.Doctor
+	tx := r.DB.Where("clinic_id = ? AND national_id = ? AND is_approved = ?", in.ClinicID, nid, true).
+		Limit(1).Find(&existing)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected > 0 {
+		return nil, fmt.Errorf("doctor already approved")
+	}
+
+	externalID := uuid.NewString()
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		name = strings.TrimSpace(in.FirstName + " " + in.LastName)
+	}
+	doctor := models.Doctor{
+		ClinicID:       in.ClinicID,
+		SpecialtyID:    in.SpecialtyID,
+		Name:           name,
+		FirstName:      in.FirstName,
+		LastName:       in.LastName,
+		Mobile:         in.Mobile,
+		NationalID:     nid,
+		DoctorSystemID: in.DoctorSystemID,
+		SpecialtyCode:  in.SpecialtyCode,
+		PhotoURL:       in.PhotoURL,
+		ExternalID:     externalID,
+		LocalCode:      in.LocalCode,
+		IsApproved:     true,
+		IsActive:       in.IsActive,
+	}
+	if err := r.DB.Create(&doctor).Error; err != nil {
 		return nil, err
 	}
+	if err := r.EnsureSlug(&doctor); err != nil {
+		return nil, err
+	}
+
+	payload, _ := json.Marshal(in)
 	now := time.Now()
-	req.ReviewedBy = &reviewerID
-	req.ReviewedAt = &now
-	req.Note = note
-	if approve {
-		req.Status = string(constants.ApprovalApproved)
-	} else {
-		req.Status = string(constants.ApprovalRejected)
+	req := models.DoctorApprovalRequest{
+		ClinicID:      in.ClinicID,
+		DoctorID:      &doctor.ID,
+		ExternalID:    externalID,
+		RequestedName: name,
+		Status:        string(constants.ApprovalApproved),
+		PayloadJSON:   string(payload),
+		ReviewedBy:    &in.ReviewerID,
+		ReviewedAt:    &now,
+		Note:          in.Note,
 	}
-	if err := r.DB.Save(&req).Error; err != nil {
+	if err := r.DB.Create(&req).Error; err != nil {
 		return nil, err
-	}
-	if req.DoctorID == nil {
-		return &req, nil
-	}
-
-	updates := map[string]any{"is_approved": approve}
-	if approve {
-		externalID := uuid.NewString()
-		req.ExternalID = externalID
-		updates["external_id"] = externalID
-		if specialtyID > 0 {
-			updates["specialty_id"] = specialtyID
-		}
-		if err := r.DB.Save(&req).Error; err != nil {
-			return nil, err
-		}
-	}
-	if err := r.DB.Model(&models.Doctor{}).Where("id = ?", *req.DoctorID).Updates(updates).Error; err != nil {
-		return nil, err
-	}
-	if approve {
-		if doc, err := r.GetByID(*req.DoctorID); err == nil && doc != nil {
-			_ = r.EnsureSlug(doc)
-		}
 	}
 	return &req, nil
 }
 
+// UpdateApprovedProfile updates photo and/or specialty for an already-approved doctor.
+// Inputs: doctorID, specialtyID (0 = leave), photoURL (empty = leave).
+// Output: updated doctor or error.
+func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photoURL string) (*models.Doctor, error) {
+	doc, err := r.GetByID(doctorID)
+	if err != nil {
+		return nil, err
+	}
+	if doc == nil || !doc.IsApproved {
+		return nil, fmt.Errorf("doctor not approved")
+	}
+	updates := map[string]any{}
+	if specialtyID > 0 {
+		updates["specialty_id"] = specialtyID
+	}
+	if strings.TrimSpace(photoURL) != "" {
+		updates["photo_url"] = strings.TrimSpace(photoURL)
+	}
+	if len(updates) == 0 {
+		return doc, nil
+	}
+	if err := r.DB.Model(doc).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+	return r.GetByID(doctorID)
+}
+
 // GetByID loads a doctor by primary key.
+// Inputs: id.
+// Output: doctor with Specialty preloaded, or error.
 func (r *DoctorRepo) GetByID(id uint) (*models.Doctor, error) {
 	var doctor models.Doctor
 	if err := r.DB.Preload("Specialty").First(&doctor, id).Error; err != nil {
@@ -265,21 +333,21 @@ func (r *DoctorRepo) EnsureSlug(doctor *models.Doctor) error {
 		return nil
 	}
 	base := slugifyDoctorName(doctor)
-	slug := base
+	slugVal := base
 	for i := 0; i < 100; i++ {
 		if i > 0 {
-			slug = fmt.Sprintf("%s-%d", base, i+1)
+			slugVal = fmt.Sprintf("%s-%d", base, i+1)
 		}
 		var count int64
 		err := r.DB.Model(&models.Doctor{}).
-			Where("clinic_id = ? AND slug = ? AND id <> ?", doctor.ClinicID, slug, doctor.ID).
+			Where("clinic_id = ? AND slug = ? AND id <> ?", doctor.ClinicID, slugVal, doctor.ID).
 			Count(&count).Error
 		if err != nil {
 			return err
 		}
 		if count == 0 {
-			doctor.Slug = slug
-			return r.DB.Model(doctor).Update("slug", slug).Error
+			doctor.Slug = slugVal
+			return r.DB.Model(doctor).Update("slug", slugVal).Error
 		}
 	}
 	return fmt.Errorf("unable to allocate unique doctor slug")
@@ -295,6 +363,8 @@ func slugifyDoctorName(doctor *models.Doctor) string {
 }
 
 // ListByClinic returns all doctors stored for a clinic (newest first).
+// Inputs: clinicID.
+// Output: doctor rows or error.
 func (r *DoctorRepo) ListByClinic(clinicID uint) ([]models.Doctor, error) {
 	var rows []models.Doctor
 	err := r.DB.Where("clinic_id = ?", clinicID).
@@ -353,20 +423,4 @@ func (r *DoctorRepo) ListPublic(filter DoctorPublicFilter) ([]models.Doctor, err
 	var rows []models.Doctor
 	err := q.Preload("Specialty").Order("name asc").Find(&rows).Error
 	return rows, err
-}
-
-// FindPendingApprovalByDoctorID returns the pending approval request for a doctor, if any.
-func (r *DoctorRepo) FindPendingApprovalByDoctorID(doctorID uint) (*models.DoctorApprovalRequest, error) {
-	var rows []models.DoctorApprovalRequest
-	err := r.DB.Where("doctor_id = ? AND status = ?", doctorID, string(constants.ApprovalPending)).
-		Order("id DESC").
-		Limit(1).
-		Find(&rows).Error
-	if err != nil {
-		return nil, err
-	}
-	if len(rows) == 0 {
-		return nil, nil
-	}
-	return &rows[0], nil
 }

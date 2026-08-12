@@ -226,6 +226,91 @@ func (h *Hub) RequestBookingCreate(clinicID uint, timeout time.Duration, req pro
 	}
 }
 
+// RequestWaitingQueueList از مرکز صف انتظار می‌خواهد و منتظر پوش پاسخ می‌ماند.
+// ورودی: clinicID، timeout، requestID از پیش‌ساخته.
+// خروجی: WaitingQueueListPush یا ErrClinicOffline / ErrRequestTimeout.
+func (h *Hub) RequestWaitingQueueList(clinicID uint, timeout time.Duration, requestID string) (*protocol.WaitingQueueListPush, error) {
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
+	replyCh := make(chan *protocol.Envelope, 1)
+
+	h.mu.Lock()
+	h.pending[requestID] = replyCh
+	h.mu.Unlock()
+	defer func() {
+		h.mu.Lock()
+		delete(h.pending, requestID)
+		h.mu.Unlock()
+	}()
+
+	env, err := protocol.NewEnvelope(protocol.TypeWaitingQueueListRequest, requestID, protocol.WaitingQueueListRequest{})
+	if err != nil {
+		return nil, err
+	}
+	if !h.sendEnvelope(clinicID, env) {
+		return nil, ErrClinicOffline
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case reply := <-replyCh:
+		var push protocol.WaitingQueueListPush
+		if err := reply.DecodePayload(&push); err != nil {
+			return nil, err
+		}
+		return &push, nil
+	case <-timer.C:
+		return nil, ErrRequestTimeout
+	}
+}
+
+// RequestTestResult sends test_result.request to the clinic and waits for test_result.response.
+// Inputs: clinicID, timeout, admission/password lookup payload.
+// Output: TestResultResponse or ErrClinicOffline / ErrRequestTimeout / decode error.
+func (h *Hub) RequestTestResult(clinicID uint, timeout time.Duration, req protocol.TestResultRequest) (*protocol.TestResultResponse, error) {
+	requestID := uuid.NewString()
+	replyCh := make(chan *protocol.Envelope, 1)
+
+	h.mu.Lock()
+	h.pending[requestID] = replyCh
+	h.mu.Unlock()
+	defer func() {
+		h.mu.Lock()
+		delete(h.pending, requestID)
+		h.mu.Unlock()
+	}()
+
+	env, err := protocol.NewEnvelope(protocol.TypeTestResultRequest, requestID, req)
+	if err != nil {
+		return nil, err
+	}
+	if !h.sendEnvelope(clinicID, env) {
+		return nil, ErrClinicOffline
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case reply := <-replyCh:
+		if reply.Error != nil {
+			return &protocol.TestResultResponse{
+				AdmissionNo: req.AdmissionNo,
+				Found:       false,
+				Message:     reply.Error.Message,
+			}, nil
+		}
+		var resp protocol.TestResultResponse
+		if err := reply.DecodePayload(&resp); err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	case <-timer.C:
+		return nil, ErrRequestTimeout
+	}
+}
+
 // DeliverReply fulfills a pending request-response waiter when RequestID matches.
 // Inputs: env (inbound envelope from clinic).
 // Output: true when a waiter consumed the envelope.

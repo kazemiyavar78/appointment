@@ -8,6 +8,7 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "strconv"
 import "time"
 import ptime "github.com/yaa110/go-persian-calendar"
 
@@ -15,6 +16,7 @@ import ptime "github.com/yaa110/go-persian-calendar"
 type DoctorCardView struct {
 	Name            string
 	SpecialtyName   string
+	DoctorSystemID  int
 	PhotoURL        string
 	ClinicName      string
 	ShowClinicBadge bool
@@ -23,6 +25,8 @@ type DoctorCardView struct {
 	BookingURL      string
 }
 
+// formatShamsiDateTime formats t as a Jalali date-time string for card display.
+// Input: wall-clock time. Output: yyyy/MM/dd HH:mm, or "—" when zero.
 func formatShamsiDateTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -30,14 +34,35 @@ func formatShamsiDateTime(t time.Time) string {
 	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
 }
 
-func doctorCardSlotLabel(hasSlot bool, t time.Time) string {
-	if !hasSlot || t.IsZero() {
-		return "هنوز رزروی باز نشده"
+// doctorCardSlotDate returns only the Jalali date-time for an available slot.
+// Input: nearest slot time. Output: formatted string, empty when zero.
+func doctorCardSlotDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
 	}
-	return "نزدیک‌ترین نوبت: " + formatShamsiDateTime(t)
+	return formatShamsiDateTime(t)
+}
+
+// formatDoctorSystemID returns the medical council number as a string.
+// Input: DoctorSystemID. Output: decimal digits, or empty when unset.
+func formatDoctorSystemID(id int) string {
+	if id <= 0 {
+		return ""
+	}
+	return strconv.Itoa(id)
+}
+
+// doctorCardCTALabel picks the primary action label from slot availability.
+// Input: hasSlot. Output: Persian CTA text.
+func doctorCardCTALabel(hasSlot bool) string {
+	if hasSlot {
+		return "رزرو نوبت"
+	}
+	return "مشاهده جزئیات"
 }
 
 // DoctorCard renders a clickable doctor summary linking to the booking page.
+// Long names wrap fully; layout stays stable via min-w-0 and break-words.
 func DoctorCard(view DoctorCardView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -59,43 +84,43 @@ func DoctorCard(view DoctorCardView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-brand/40 hover:shadow-sm\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-white shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.BookingURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 35, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 61, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><div class=\"flex flex-1 gap-3 p-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><div class=\"flex min-w-0 flex-1 gap-3.5 p-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if view.PhotoURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<img class=\"h-16 w-16 shrink-0 rounded-full object-cover\" src=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<img class=\"h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-brand/10\" src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.PhotoURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 38, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 67, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" alt=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" alt=\"\" loading=\"lazy\" decoding=\"async\" width=\"64\" height=\"64\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg text-brand\">دکتر</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-muted text-sm font-medium text-brand ring-2 ring-brand/10\" aria-hidden=\"true\">دکتر</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -105,14 +130,14 @@ func DoctorCard(view DoctorCardView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.ShowClinicBadge && view.ClinicName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"mb-1 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"mb-1.5 inline-block max-w-full break-words rounded-md bg-brand-muted px-2 py-0.5 text-xs text-brand\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(view.ClinicName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 46, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 82, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -123,14 +148,14 @@ func DoctorCard(view DoctorCardView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<h2 class=\"truncate text-lg text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<h2 class=\"break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(view.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 48, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 86, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -141,14 +166,14 @@ func DoctorCard(view DoctorCardView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.SpecialtyName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"mt-0.5 text-sm text-ink-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"mt-1 break-words text-sm leading-relaxed text-ink-muted [overflow-wrap:anywhere]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(view.SpecialtyName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 50, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 90, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -159,53 +184,67 @@ func DoctorCard(view DoctorCardView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var7 = []any{"mt-2 text-sm", templ.KV("text-ink-muted", !view.HasSlot), templ.KV("text-brand", view.HasSlot)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
+		if id := formatDoctorSystemID(view.DoctorSystemID); id != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-ink-faint\"><span class=\"shrink-0\">نظام پزشکی</span> <span class=\"font-medium tabular-nums tracking-wide text-ink-muted\" dir=\"ltr\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(id)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 96, Col: 88}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</span></p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></div><div class=\"mx-4 mb-3 min-w-0 rounded-lg bg-surface-soft px-3 py-2.5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if view.HasSlot {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-xs text-ink-muted\">نزدیک\u200cترین نوبت</p><p class=\"mt-0.5 break-words text-sm font-medium tabular-nums text-brand [overflow-wrap:anywhere]\" dir=\"ltr\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(doctorCardSlotDate(view.NearestStartsAt))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 106, Col: 47}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<p class=\"text-sm text-ink-muted\">هنوز رزروی باز نشده</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var7).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div><div class=\"mt-auto flex items-center justify-between gap-2 border-t border-surface-border bg-surface-soft/60 px-4 py-3\"><span class=\"text-sm font-medium text-brand transition group-hover:text-brand-dark\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(doctorCardSlotLabel(view.HasSlot, view.NearestStartsAt))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(doctorCardCTALabel(view.HasSlot))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 53, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/doctor_card.templ`, Line: 115, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</p></div></div><div class=\"border-t border-gray-100 px-4 py-3\"><span class=\"inline-flex text-sm text-brand underline\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if view.HasSlot {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "رزرو نوبت")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "مشاهده جزئیات")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span></div></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span> <span class=\"inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white\" aria-hidden=\"true\"><svg class=\"h-3.5 w-3.5 rotate-180\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"></path></svg></span></div></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

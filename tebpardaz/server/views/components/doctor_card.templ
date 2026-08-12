@@ -1,5 +1,6 @@
 package components
 
+import "strconv"
 import "time"
 import ptime "github.com/yaa110/go-persian-calendar"
 
@@ -7,6 +8,7 @@ import ptime "github.com/yaa110/go-persian-calendar"
 type DoctorCardView struct {
 	Name            string
 	SpecialtyName   string
+	DoctorSystemID  int
 	PhotoURL        string
 	ClinicName      string
 	ShowClinicBadge bool
@@ -15,6 +17,8 @@ type DoctorCardView struct {
 	BookingURL      string
 }
 
+// formatShamsiDateTime formats t as a Jalali date-time string for card display.
+// Input: wall-clock time. Output: yyyy/MM/dd HH:mm, or "—" when zero.
 func formatShamsiDateTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -22,45 +26,98 @@ func formatShamsiDateTime(t time.Time) string {
 	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
 }
 
-func doctorCardSlotLabel(hasSlot bool, t time.Time) string {
-	if !hasSlot || t.IsZero() {
-		return "هنوز رزروی باز نشده"
+// doctorCardSlotDate returns only the Jalali date-time for an available slot.
+// Input: nearest slot time. Output: formatted string, empty when zero.
+func doctorCardSlotDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
 	}
-	return "نزدیک‌ترین نوبت: " + formatShamsiDateTime(t)
+	return formatShamsiDateTime(t)
+}
+
+// formatDoctorSystemID returns the medical council number as a string.
+// Input: DoctorSystemID. Output: decimal digits, or empty when unset.
+func formatDoctorSystemID(id int) string {
+	if id <= 0 {
+		return ""
+	}
+	return strconv.Itoa(id)
+}
+
+// doctorCardCTALabel picks the primary action label from slot availability.
+// Input: hasSlot. Output: Persian CTA text.
+func doctorCardCTALabel(hasSlot bool) string {
+	if hasSlot {
+		return "رزرو نوبت"
+	}
+	return "مشاهده جزئیات"
 }
 
 // DoctorCard renders a clickable doctor summary linking to the booking page.
+// Long names wrap fully; layout stays stable via min-w-0 and break-words.
 templ DoctorCard(view DoctorCardView) {
-	<a class="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition hover:border-brand/40 hover:shadow-sm" 
-	href={ templ.SafeURL(view.BookingURL) }>
-		<div class="flex flex-1 gap-3 p-4">
+	<a
+		class="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-white shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+		href={ templ.SafeURL(view.BookingURL) }
+	>
+		<div class="flex min-w-0 flex-1 gap-3.5 p-4">
 			if view.PhotoURL != "" {
-				<img class="h-16 w-16 shrink-0 rounded-full object-cover" src={ view.PhotoURL } alt=""/>
+				<img
+					class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-brand/10"
+					src={ view.PhotoURL }
+					alt=""
+					loading="lazy"
+					decoding="async"
+					width="64"
+					height="64"
+				/>
 			} else {
-				<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg text-brand">
+				<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-muted text-sm font-medium text-brand ring-2 ring-brand/10" aria-hidden="true">
 					دکتر
 				</div>
 			}
 			<div class="min-w-0 flex-1">
 				if view.ShowClinicBadge && view.ClinicName != "" {
-					<span class="mb-1 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+					<span class="mb-1.5 inline-block max-w-full break-words rounded-md bg-brand-muted px-2 py-0.5 text-xs text-brand">
+						{ view.ClinicName }
+					</span>
 				}
-				<h2 class="truncate text-lg text-ink">{ view.Name }</h2>
+				<h2 class="break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">
+					{ view.Name }
+				</h2>
 				if view.SpecialtyName != "" {
-					<p class="mt-0.5 text-sm text-ink-muted">{ view.SpecialtyName }</p>
+					<p class="mt-1 break-words text-sm leading-relaxed text-ink-muted [overflow-wrap:anywhere]">
+						{ view.SpecialtyName }
+					</p>
 				}
-				<p class={ "mt-2 text-sm", templ.KV("text-ink-muted", !view.HasSlot), templ.KV("text-brand", view.HasSlot) }>
-					{ doctorCardSlotLabel(view.HasSlot, view.NearestStartsAt) }
-				</p>
+				if id := formatDoctorSystemID(view.DoctorSystemID); id != "" {
+					<p class="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
+						<span class="shrink-0">نظام پزشکی</span>
+						<span class="font-medium tabular-nums tracking-wide text-ink-muted" dir="ltr">{ id }</span>
+					</p>
+				}
 			</div>
 		</div>
-		<div class="border-t border-gray-100 px-4 py-3">
-			<span class="inline-flex text-sm text-brand underline">
-				if view.HasSlot {
-					رزرو نوبت
-				} else {
-					مشاهده جزئیات
-				}
+
+		<div class="mx-4 mb-3 min-w-0 rounded-lg bg-surface-soft px-3 py-2.5">
+			if view.HasSlot {
+				<p class="text-xs text-ink-muted">نزدیک‌ترین نوبت</p>
+				<p class="mt-0.5 break-words text-sm font-medium tabular-nums text-brand [overflow-wrap:anywhere]" dir="ltr">
+					{ doctorCardSlotDate(view.NearestStartsAt) }
+				</p>
+			} else {
+				<p class="text-sm text-ink-muted">هنوز رزروی باز نشده</p>
+			}
+		</div>
+
+		<div class="mt-auto flex items-center justify-between gap-2 border-t border-surface-border bg-surface-soft/60 px-4 py-3">
+			<span class="text-sm font-medium text-brand transition group-hover:text-brand-dark">
+				{ doctorCardCTALabel(view.HasSlot) }
+			</span>
+			<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white" aria-hidden="true">
+				<svg class="h-3.5 w-3.5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
+					<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
+				</svg>
 			</span>
 		</div>
 	</a>

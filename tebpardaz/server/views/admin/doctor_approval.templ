@@ -56,6 +56,7 @@ type DoctorApprovalView struct {
 	TotalPages  int
 	TotalItems  int
 	FetchLive   bool
+	Tab         string
 }
 
 func formatUint(v uint) string {
@@ -87,7 +88,14 @@ func onlineBadge(online bool) string {
 	return " (آفلاین)"
 }
 
-// DoctorApproval renders the doctor list with search, pagination, and approve actions.
+func tabQuery(tab string) string {
+	if tab == "approved" {
+		return "approved"
+	}
+	return "pending"
+}
+
+// DoctorApproval renders pending/approved doctor tabs with search, pagination, and approve actions.
 templ DoctorApproval(view DoctorApprovalView) {
 	@layouts.AdminLayout(view.Nav) {
 		<div id="loading-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
@@ -98,11 +106,12 @@ templ DoctorApproval(view DoctorApprovalView) {
 		</div>
 		<div class="mx-auto max-w-[100rem]">
 			<div class="mb-4">
-				<h1 class="text-2xl text-brand">لیست پزشکان</h1>
+				<h1 class="text-2xl text-brand">مدیریت پزشکان</h1>
 			</div>
 			if len(view.Clinics) > 0 {
 				<form id="fetch-form" class="mb-4 flex flex-wrap items-end gap-2" method="get" action="/admin/approvals">
 					<input type="hidden" name="fetch" value="1"/>
+					<input type="hidden" name="tab" value={ tabQuery(view.Tab) }/>
 					<label class="block text-sm text-ink-muted">
 						مرکز
 						<select class="mt-1 block min-w-[12rem] rounded border border-gray-300 p-2" name="clinic_id">
@@ -123,6 +132,16 @@ templ DoctorApproval(view DoctorApprovalView) {
 					<button id="fetch-btn" class="rounded bg-brand px-4 py-2 text-white" type="submit">دریافت لیست زنده</button>
 				</form>
 			}
+			<div class="mb-4 flex gap-2 border-b border-gray-200">
+				<a
+					class={ "px-4 py-2 text-sm", templ.KV("border-b-2 border-brand text-brand font-medium", view.Tab != "approved"), templ.KV("text-ink-muted", view.Tab == "approved") }
+					href={ templ.SafeURL("/admin/approvals?tab=pending&clinic_id=" + formatUint(view.ClinicID) + "&q=" + view.SearchQuery) }
+				>پزشکان تأییدنشده</a>
+				<a
+					class={ "px-4 py-2 text-sm", templ.KV("border-b-2 border-brand text-brand font-medium", view.Tab == "approved"), templ.KV("text-ink-muted", view.Tab != "approved") }
+					href={ templ.SafeURL("/admin/approvals?tab=approved&clinic_id=" + formatUint(view.ClinicID) + "&q=" + view.SearchQuery) }
+				>پزشکان تأییدشده</a>
+			</div>
 			if view.Message != "" {
 				<p class="mb-3 text-sm text-ink-muted">{ view.Message }</p>
 			}
@@ -134,6 +153,7 @@ templ DoctorApproval(view DoctorApprovalView) {
 					<thead>
 						<tr class="border-b border-gray-200 bg-surface-soft text-right">
 							<th class="p-2">ردیف</th>
+							<th class="p-2">عکس</th>
 							<th class="p-2">منبع</th>
 							<th class="p-2">کد</th>
 							<th class="p-2">نام</th>
@@ -153,12 +173,19 @@ templ DoctorApproval(view DoctorApprovalView) {
 					<tbody>
 						if len(view.Items) == 0 {
 							<tr>
-								<td class="p-3 text-ink-muted" colspan="14">موردی برای نمایش نیست.</td>
+								<td class="p-3 text-ink-muted" colspan="16">موردی برای نمایش نیست.</td>
 							</tr>
 						}
 						for index, item := range view.Items {
 							<tr class="border-b border-gray-100">
 								<td class="p-2">{ index + 1 }</td>
+								<td class="p-2">
+									if item.PhotoURL != "" {
+										<img class="h-10 w-10 rounded object-cover" src={ item.PhotoURL } alt=""/>
+									} else {
+										<span class="text-ink-muted">—</span>
+									}
+								</td>
 								<td class="p-2">{ sourceLabel(item.Source) }</td>
 								<td class="p-2">{ formatInt(item.LocalCode) }</td>
 								<td class="p-2">{ item.FirstName }</td>
@@ -173,26 +200,46 @@ templ DoctorApproval(view DoctorApprovalView) {
 								<td class="p-2">{ activeLabel(item.IsActive) }</td>
 								<td class="p-2">{ item.Status }</td>
 								<td class="p-2 whitespace-nowrap">
-									if item.CanDecide && item.ID > 0 {
-										<form class="inline-flex flex-wrap items-center gap-1" method="post" action={ templ.SafeURL("/admin/approvals/" + formatUint(item.ID) + "/decide") }>
+									if item.CanDecide {
+										<form class="inline-flex flex-col gap-1" method="post" action="/admin/approvals/decide" enctype="multipart/form-data">
 											<input type="hidden" name="decision" value="approve"/>
+											<input type="hidden" name="national_id" value={ item.NationalID }/>
 											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+											<input type="hidden" name="tab" value="pending"/>
 											<input type="hidden" name="q" value={ view.SearchQuery }/>
 											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
 											<select class="rounded border border-gray-300 p-1 text-xs" name="specialty_id" required>
-												<option value="">تخصص</option>
+												<option value="">تخصص *</option>
 												for _, sp := range view.Specialties {
 													<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
 												}
 											</select>
+											<input class="block w-40 text-xs" type="file" name="photo" accept="image/*" required/>
 											<button class="rounded bg-brand px-2 py-1 text-white text-xs" type="submit">تأیید</button>
 										</form>
-										<form class="inline" method="post" action={ templ.SafeURL("/admin/approvals/" + formatUint(item.ID) + "/decide") }>
+										<form class="inline mt-1" method="post" action="/admin/approvals/decide">
 											<input type="hidden" name="decision" value="reject"/>
+											<input type="hidden" name="national_id" value={ item.NationalID }/>
 											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+											<input type="hidden" name="tab" value="pending"/>
 											<input type="hidden" name="q" value={ view.SearchQuery }/>
 											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
 											<button class="rounded border border-gray-300 px-2 py-1 text-xs" type="submit">رد</button>
+										</form>
+									} else if view.Tab == "approved" && item.DoctorID > 0 {
+										<form class="inline-flex flex-col gap-1" method="post" action="/admin/approvals/update" enctype="multipart/form-data">
+											<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
+											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+											<input type="hidden" name="q" value={ view.SearchQuery }/>
+											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+											<select class="rounded border border-gray-300 p-1 text-xs" name="specialty_id">
+												<option value="">تغییر تخصص</option>
+												for _, sp := range view.Specialties {
+													<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
+												}
+											</select>
+											<input class="block w-40 text-xs" type="file" name="photo" accept="image/*"/>
+											<button class="rounded border border-gray-300 px-2 py-1 text-xs" type="submit">بروزرسانی</button>
 										</form>
 									} else {
 										<span class="text-ink-muted">—</span>
@@ -211,7 +258,7 @@ templ DoctorApproval(view DoctorApprovalView) {
 						} else {
 							<a
 								class="rounded border border-gray-300 px-3 py-1"
-								href={ templ.SafeURL("/admin/approvals?clinic_id=" + formatUint(view.ClinicID) + "&fetch=1&page=" + formatInt(p) + "&q=" + view.SearchQuery) }
+								href={ templ.SafeURL("/admin/approvals?tab=" + tabQuery(view.Tab) + "&clinic_id=" + formatUint(view.ClinicID) + "&page=" + formatInt(p) + "&q=" + view.SearchQuery) }
 							>{ formatInt(p) }</a>
 						}
 					}

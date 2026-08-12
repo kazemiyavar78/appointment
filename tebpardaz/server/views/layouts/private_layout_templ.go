@@ -18,6 +18,8 @@ type PrivateLayoutView struct {
 	NavLinks   []components.NavLink
 	Phone      string
 	Address    string
+	City       string
+	Province   string
 }
 
 // PrivateLayout renders a private clinic tenant page with navbar + main content.
@@ -120,6 +122,8 @@ func privateFooter(view PrivateLayoutView) components.FooterProps {
 		HomeURL:    view.HomeURL,
 		Phone:      view.Phone,
 		Address:    view.Address,
+		City:       view.City,
+		Province:   view.Province,
 		BookingURL: "/doctors",
 		QuickLinks: components.NavLinksToFooter(nav.NavLinks),
 	}

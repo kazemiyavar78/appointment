@@ -1,0 +1,268 @@
+package pages
+
+import (
+	"net/url"
+	"strings"
+)
+
+// WeeklyScheduleClinicOption گزینه انتخاب مرکز در لایه پلتفرم/ارگان است.
+type WeeklyScheduleClinicOption struct {
+	ID   uint
+	Name string
+}
+
+// WeeklyScheduleFilterOption گزینه فیلتر تاریخ یا شیفت است.
+type WeeklyScheduleFilterOption struct {
+	Value string
+	Label string
+}
+
+// WeeklyScheduleRow یک ردیف نوبت پزشک در جدول هفتگی است.
+type WeeklyScheduleRow struct {
+	DoctorFullName  string
+	Speciality      string
+	ReserveDate     string
+	ReserveTime     string
+	OutTime         string
+	ReserveCount    int
+	ReserveMaxCount int
+}
+
+// WeeklyScheduleShiftSection گروهی از نوبت‌ها با برچسب شیفت (مثل «شنبه صبح») است.
+type WeeklyScheduleShiftSection struct {
+	ShiftName string
+	Date      string
+	Rows      []WeeklyScheduleRow
+}
+
+// WeeklyScheduleView دادهٔ صفحه «لیست نوبت دهی پزشکان هفتگی» را نگه می‌دارد.
+type WeeklyScheduleView struct {
+	Title            string
+	ShowClinicFilter bool
+	Clinics          []WeeklyScheduleClinicOption
+	ClinicID         uint
+	FormAction       string
+	Shifts           []WeeklyScheduleShiftSection
+	UpdatedAt        string
+	EmptyMessage     string
+	InfoMessage      string
+	// فیلترهای جستجو
+	Query        string
+	Date         string
+	Shift        string
+	DateOptions  []WeeklyScheduleFilterOption
+	ShiftOptions []WeeklyScheduleFilterOption
+	TotalDoctors int
+}
+
+// weeklyScheduleHasFilters آیا حداقل یک فیلتر جستجو فعال است.
+func weeklyScheduleHasFilters(view WeeklyScheduleView) bool {
+	return strings.TrimSpace(view.Query) != "" ||
+		strings.TrimSpace(view.Date) != "" ||
+		strings.TrimSpace(view.Shift) != ""
+}
+
+// weeklyScheduleQueryURL آدرس صفحه را با فیلترهای فعلی می‌سازد و در صورت نیاز یکی را حذف می‌کند.
+// ورودی: view و کلید حذف‌شونده (q|date|shift|all). برای all فقط clinic_id می‌ماند.
+func weeklyScheduleQueryURL(view WeeklyScheduleView, clearKey string) string {
+	q := url.Values{}
+	if view.ClinicID > 0 && view.ShowClinicFilter {
+		q.Set("clinic_id", uintToString(view.ClinicID))
+	}
+	if clearKey != "all" {
+		if s := strings.TrimSpace(view.Query); s != "" && clearKey != "q" {
+			q.Set("q", s)
+		}
+		if s := strings.TrimSpace(view.Date); s != "" && clearKey != "date" {
+			q.Set("date", s)
+		}
+		if s := strings.TrimSpace(view.Shift); s != "" && clearKey != "shift" {
+			q.Set("shift", s)
+		}
+	}
+	base := strings.TrimSpace(view.FormAction)
+	if base == "" {
+		base = "/weekly-schedule"
+	}
+	encoded := q.Encode()
+	if encoded == "" {
+		return base
+	}
+	return base + "?" + encoded
+}
+
+// WeeklySchedule صفحه عمومی لیست نوبت‌دهی هفتگی پزشکان را رندر می‌کند (موبایل‌اول).
+templ WeeklySchedule(view WeeklyScheduleView) {
+	<div class="weekly-schedule mx-auto max-w-3xl lg:max-w-5xl">
+		<section class="mb-4">
+			<h1 class="mb-1 text-xl font-bold text-brand sm:text-2xl">
+				if view.Title != "" {
+					{ view.Title }
+				} else {
+					لیست نوبت دهی پزشکان هفتگی
+				}
+			</h1>
+			<p class="text-base leading-relaxed text-ink-muted">
+				ببینید هر پزشک چه روز و ساعتی در مرکز نوبت دارد.
+			</p>
+			if view.UpdatedAt != "" {
+				<p class="mt-1 text-sm text-ink-faint">آخرین بروزرسانی ساعت { view.UpdatedAt }</p>
+			}
+		</section>
+
+		<form
+			class="weekly-schedule-filters mb-4 rounded-xl border border-surface-border bg-white p-4 shadow-sm"
+			method="get"
+			action={ templ.SafeURL(view.FormAction) }
+			role="search"
+			aria-label="جستجوی نوبت پزشکان"
+		>
+			<p class="mb-3 text-sm font-bold text-ink">جستجو کنید</p>
+			<div class="weekly-schedule-filters-grid">
+				if view.ShowClinicFilter {
+					<div>
+						<label class="mb-1.5 block text-base text-ink" for="clinic_id">مرکز درمانی</label>
+						<select id="clinic_id" name="clinic_id" class="doctor-list-field">
+							<option value="">انتخاب مرکز…</option>
+							for _, cl := range view.Clinics {
+								if view.ClinicID == cl.ID {
+									<option value={ uintToString(cl.ID) } selected>{ cl.Name }</option>
+								} else {
+									<option value={ uintToString(cl.ID) }>{ cl.Name }</option>
+								}
+							}
+						</select>
+					</div>
+				}
+				<div>
+					<label class="mb-1.5 block text-base text-ink" for="q">نام پزشک</label>
+					<input
+						id="q"
+						name="q"
+						type="search"
+						value={ view.Query }
+						placeholder="مثال: رضایی"
+						autocomplete="off"
+						class="doctor-list-field"
+					/>
+				</div>
+				<div>
+					<label class="mb-1.5 block text-base text-ink" for="date">روز</label>
+					<select id="date" name="date" class="doctor-list-field">
+						<option value="">همه روزها</option>
+						for _, opt := range view.DateOptions {
+							if view.Date == opt.Value {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</div>
+				<div>
+					<label class="mb-1.5 block text-base text-ink" for="shift">شیفت</label>
+					<select id="shift" name="shift" class="doctor-list-field">
+						<option value="">همه شیفت‌ها</option>
+						for _, opt := range view.ShiftOptions {
+							if view.Shift == opt.Value {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</div>
+			</div>
+			<div class="mt-4 flex flex-col gap-2 sm:flex-row">
+				<button type="submit" class="doctor-list-btn doctor-list-btn-primary sm:flex-1">نمایش نتایج</button>
+				if weeklyScheduleHasFilters(view) {
+					<a class="doctor-list-btn doctor-list-btn-secondary sm:flex-1" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "all")) }>پاک کردن جستجو</a>
+				}
+			</div>
+		</form>
+
+		if view.InfoMessage != "" {
+			<p class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-relaxed text-amber-900">{ view.InfoMessage }</p>
+		}
+
+		if view.EmptyMessage != "" {
+			<div class="rounded-xl border border-dashed border-surface-border bg-white px-4 py-10 text-center">
+				<p class="text-base leading-relaxed text-ink-muted">{ view.EmptyMessage }</p>
+				if weeklyScheduleHasFilters(view) {
+					<a class="mt-4 inline-block text-base font-bold text-brand underline" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "all")) }>دیدن همه نوبت‌ها</a>
+				}
+			</div>
+		}
+
+		if len(view.Shifts) > 0 {
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+				<p class="text-base text-ink-muted">
+					<span class="font-bold tabular-nums text-ink">{ intToString(view.TotalDoctors) }</span>
+					<span> نوبت پزشک</span>
+					if len(view.Shifts) > 1 {
+						<span class="text-ink-faint"> · { intToString(len(view.Shifts)) } شیفت</span>
+					}
+				</p>
+				if weeklyScheduleHasFilters(view) {
+					<div class="flex max-w-full flex-wrap gap-2">
+						if view.Query != "" {
+							<a class="doctor-list-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "q")) }>پزشک: { view.Query } ×</a>
+						}
+						if view.Date != "" {
+							<a class="doctor-list-chip tabular-nums" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "date")) }>{ view.Date } ×</a>
+						}
+						if view.Shift != "" {
+							<a class="doctor-list-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "shift")) }>{ view.Shift } ×</a>
+						}
+					</div>
+				}
+			</div>
+
+			for _, section := range view.Shifts {
+				<section class="weekly-schedule-section mb-5">
+					<header class="weekly-schedule-section-head">
+						<div>
+							<p class="text-lg font-bold text-ink">{ section.ShiftName }</p>
+							if section.Date != "" {
+								<p class="mt-0.5 text-sm tabular-nums text-ink-muted">تاریخ: { section.Date }</p>
+							}
+						</div>
+						<span class="weekly-schedule-count">{ intToString(len(section.Rows)) } پزشک</span>
+					</header>
+
+					<ul class="weekly-schedule-cards">
+						for _, row := range section.Rows {
+							<li class="weekly-schedule-card">
+								<div class="weekly-schedule-card-main">
+									<p class="weekly-schedule-doctor">{ row.DoctorFullName }</p>
+									if row.Speciality != "" {
+										<p class="weekly-schedule-specialty">{ row.Speciality }</p>
+									}
+								</div>
+								<div class="weekly-schedule-card-meta">
+									<div class="weekly-schedule-meta-item">
+										<span class="weekly-schedule-meta-label">ساعت حضور</span>
+										<span class="weekly-schedule-meta-value tabular-nums">
+											{ row.ReserveTime }
+											if row.OutTime != "" {
+												<span class="text-ink-faint"> تا </span>{ row.OutTime }
+											}
+										</span>
+									</div>
+									<div class="weekly-schedule-meta-item">
+										<span class="weekly-schedule-meta-label">نوبت گرفته‌شده</span>
+										<span class="weekly-schedule-meta-value tabular-nums">
+											{ intToString(row.ReserveCount) }
+											<span class="text-ink-faint"> از </span>
+											{ intToString(row.ReserveMaxCount) }
+										</span>
+									</div>
+								</div>
+							</li>
+						}
+					</ul>
+				</section>
+			}
+		}
+	</div>
+}

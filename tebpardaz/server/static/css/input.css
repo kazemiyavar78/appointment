@@ -7,21 +7,21 @@
   Place font files under static/fonts/ when assets are added.
 */
 @font-face {
-  font-family: 'Vazirmatn';
+  font-family: 'iransans';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/vazirmatn-regular.woff2') format('woff2'),
-       url('../fonts/vazirmatn-regular.woff') format('woff');
+  src: url('../fonts/IRANSansX-Medium.woff2') format('woff2'),
+       url('../fonts/IRANSansX-Medium.woff') format('woff');
 }
 
 @font-face {
-  font-family: 'Vazirmatn';
+  font-family: 'iransans';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('../fonts/vazirmatn-bold.woff2') format('woff2'),
-       url('../fonts/vazirmatn-bold.woff') format('woff');
+  src: url('../fonts/IRANSansX-Bold.woff2') format('woff2'),
+       url('../fonts/IRANSansX-Bold.woff') format('woff');
 }
 
 /* Cover ratio via padding-bottom (works without aspect-ratio). */
@@ -122,4 +122,301 @@
   .site-footer-grid--private {
     grid-template-columns: 1.6fr 1fr;
   }
+}
+
+/* Doctor list: filter above cards on phone; beside grid on large screens. */
+.doctor-list-layout {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.doctor-list-filters {
+  -webkit-box-ordinal-group: 2;
+  -ms-flex-order: 1;
+  order: 1;
+}
+
+.doctor-list-results {
+  -webkit-box-ordinal-group: 3;
+  -ms-flex-order: 2;
+  order: 2;
+  min-width: 0;
+}
+
+.doctor-list-filters-panel > summary {
+  list-style: none;
+}
+
+.doctor-list-filters-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Desktop: filter stuck open beside the card grid. */
+@media (min-width: 1024px) {
+  .doctor-list-layout {
+    display: -ms-grid;
+    display: grid;
+    -ms-grid-columns: 18rem minmax(0, 1fr);
+    grid-template-columns: 18rem minmax(0, 1fr);
+    gap: 1.5rem;
+    -webkit-box-align: start;
+    -ms-flex-align: start;
+    align-items: start;
+  }
+
+  .doctor-list-filters {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 1rem;
+  }
+
+  .doctor-list-filters-panel > summary {
+    pointer-events: none;
+    cursor: default;
+  }
+
+  .doctor-list-filters-panel > summary .doctor-list-filters-toggle {
+    display: none;
+  }
+
+  .doctor-list-filters-panel > *:not(summary) {
+    display: block !important;
+  }
+}
+
+.doctor-list-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.5rem;
+  background: #F5F7FA;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #1A202C;
+}
+
+.doctor-list-field:focus {
+  outline: 2px solid rgba(11, 110, 79, 0.35);
+  outline-offset: 1px;
+  border-color: #0B6E4F;
+  background: #fff;
+}
+
+.doctor-list-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.7rem 1rem;
+  border-radius: 0.5rem;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.doctor-list-btn-primary {
+  background: #0B6E4F;
+  color: #fff;
+}
+
+.doctor-list-btn-secondary {
+  border: 1px solid #E2E8F0;
+  background: #fff;
+  color: #4A5568;
+}
+
+.doctor-list-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.375rem;
+  background: #E8F5F0;
+  color: #0B6E4F;
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.doctor-list-pager a,
+.doctor-list-pager span {
+  display: inline-block;
+  min-width: 44px;
+  min-height: 44px;
+  line-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  box-sizing: border-box;
+}
+
+.doctor-list-pager a {
+  border: 1px solid #E2E8F0;
+  background: #fff;
+  color: #4A5568;
+}
+
+.doctor-list-pager .is-current {
+  background: #0B6E4F;
+  color: #fff;
+  border: 1px solid #0B6E4F;
+}
+
+/* لیست نوبت هفتگی: فیلتر روی موبایل ستونی، کارت‌های خوانا */
+.weekly-schedule-filters-grid {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .weekly-schedule-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .weekly-schedule-filters-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.weekly-schedule-section-head {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: #E8F5F0;
+  border: 1px solid #D7EDE4;
+}
+
+.weekly-schedule-count {
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #0B6E4F;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.weekly-schedule-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .weekly-schedule-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}
+
+.weekly-schedule-card {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(26, 32, 44, 0.04);
+}
+
+.weekly-schedule-doctor {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #1A202C;
+}
+
+.weekly-schedule-specialty {
+  margin: 0.2rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: #4A5568;
+}
+
+.weekly-schedule-card-meta {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #EDF2F7;
+}
+
+.weekly-schedule-meta-item {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: baseline;
+  -ms-flex-align: baseline;
+  align-items: baseline;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.weekly-schedule-meta-label {
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.weekly-schedule-meta-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1A202C;
+  text-align: left;
 }

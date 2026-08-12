@@ -216,6 +216,7 @@ func (c *SlotCache) AvailableForDoctor(clinicID, doctorID uint, from time.Time, 
 	}
 	bag := c.loadClinic(clinicID)
 	slots := bag.ByDoctor[doctorID]
+	
 	for _, slot := range slots {
 		if !slot.IsAvailable {
 			continue
@@ -223,9 +224,7 @@ func (c *SlotCache) AvailableForDoctor(clinicID, doctorID uint, from time.Time, 
 		if slot.StartsAt.Before(from) {
 			continue
 		}
-		if slot.Capacity > 0 && slot.BookedCount >= slot.Capacity {
-			continue
-		}
+
 		out = append(out, slot)
 	}
 	sortSlotsByStart(out)

@@ -1,0 +1,83 @@
+package components
+
+import "strconv"
+
+// DatePickerProps configures a Shamsi persian-datepicker text input.
+type DatePickerProps struct {
+	ID          string
+	Name        string
+	Label       string
+	Value       string
+	Help        string
+	Placeholder string
+	Required    bool
+	// Age range (birth date): newest = today-MinAge years, oldest = today-MaxAge years.
+	HasAgeRange bool
+	MinAge      int
+	MaxAge      int
+	// Day range relative to today (booking filter).
+	HasDayRange bool
+	MinDays     int
+	MaxDays     int
+}
+
+// intAttr formats an int for HTML data attributes.
+// Input: n. Output: decimal string.
+func intAttr(n int) string {
+	return strconv.Itoa(n)
+}
+
+// DatePicker renders a Shamsi date text field for persian-datepicker.
+templ DatePicker(p DatePickerProps) {
+	<div class="form-group">
+		if p.Label != "" {
+			<label class="mb-1.5 block text-base text-ink" for={ p.ID }>{ p.Label }</label>
+		}
+		<input
+			type="text"
+			id={ p.ID }
+			name={ p.Name }
+			value={ p.Value }
+			class="persian-datepicker-input doctor-list-field"
+			autocomplete="off"
+			placeholder={ datePickerPlaceholder(p) }
+			dir="ltr"
+			if p.Required {
+				required
+			}
+			if p.Help != "" {
+				aria-describedby={ p.ID + "-help" }
+			}
+			if p.HasAgeRange {
+				data-min-age={ intAttr(p.MinAge) }
+				data-max-age={ intAttr(p.MaxAge) }
+			}
+			if p.HasDayRange {
+				data-min-days={ intAttr(p.MinDays) }
+				data-max-days={ intAttr(p.MaxDays) }
+			}
+		/>
+		if p.Help != "" {
+			<p id={ p.ID + "-help" } class="mt-1.5 text-sm text-ink-muted">{ p.Help }</p>
+		}
+	</div>
+}
+
+// datePickerPlaceholder returns the input placeholder text.
+// Input: DatePickerProps. Output: placeholder string.
+func datePickerPlaceholder(p DatePickerProps) string {
+	if p.Placeholder != "" {
+		return p.Placeholder
+	}
+	return "انتخاب تاریخ"
+}
+
+// PersianDatepickerAssets loads CDN CSS/JS for persian-datepicker and local init.
+templ PersianDatepickerAssets() {
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"/>
+	<script src="/static/js/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/persian-date/dist/persian-date.min.js"></script>
+	
+	<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+	<script src="/static/js/persian-datepicker-init.js"></script>
+}

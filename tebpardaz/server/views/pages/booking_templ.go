@@ -47,33 +47,33 @@ func Booking(view BookingView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-3xl\" id=\"booking-root\" data-ws-url=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"booking-page mx-auto max-w-3xl\" id=\"booking-root\" data-ws-url=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.WSURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 22, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 22, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><a class=\"mb-4 inline-block text-sm text-brand underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><a class=\"booking-back mb-5 inline-flex min-h-[44px] items-center text-base font-bold text-brand underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.BackURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 23, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 23, Col: 144}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\">بازگشت به فهرست پزشکان</a><section class=\"mb-6 flex gap-4 rounded-lg border border-gray-200 bg-white p-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\">بازگشت به فهرست پزشکان</a><section class=\"booking-doctor mb-5 flex gap-4 rounded-xl border border-surface-border bg-white p-4 shadow-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -85,18 +85,18 @@ func Booking(view BookingView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.PhotoURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 26, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 29, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" alt=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" alt=\"\" width=\"80\" height=\"80\" loading=\"lazy\" decoding=\"async\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg text-brand\">دکتر</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand-muted text-lg font-bold text-brand\" aria-hidden=\"true\">دکتر</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -106,14 +106,14 @@ func Booking(view BookingView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.ShowClinic && view.ClinicName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"mb-1 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<span class=\"mb-1.5 inline-block rounded-md bg-brand-muted px-2 py-0.5 text-sm text-brand\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(view.ClinicName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 34, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 37, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -124,14 +124,14 @@ func Booking(view BookingView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<h1 class=\"text-2xl text-brand\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<h1 class=\"text-2xl font-bold leading-snug text-brand\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(view.DoctorName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 36, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 39, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -142,14 +142,14 @@ func Booking(view BookingView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.SpecialtyName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"mt-1 text-sm text-ink-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"mt-1 text-base text-ink-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(view.SpecialtyName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 38, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 41, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -165,14 +165,14 @@ func Booking(view BookingView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.ErrorMessage != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-base text-red-700\" role=\"alert\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(view.ErrorMessage)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 43, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 47, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -183,14 +183,14 @@ func Booking(view BookingView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div id=\"booking-progress\" class=\"mb-4 hidden rounded-lg border border-gray-200 bg-white p-4\" aria-live=\"polite\"><ol class=\"space-y-3\"><li class=\"booking-step flex items-center gap-3\" data-step=\"1\"><span class=\"booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted\">1</span> <span class=\"text-sm text-ink\">اطلاعات دریافت شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"2\"><span class=\"booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted\">2</span> <span class=\"text-sm text-ink\">اعتبار سنجی انجام شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"3\"><span class=\"booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted\">3</span> <span class=\"text-sm text-ink\">برای کلینیک ارسال شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"4\"><span class=\"booking-step-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xs text-ink-muted\">4</span> <span class=\"text-sm text-ink\">جواب از کلینیک دریافت شد</span></li></ol><p id=\"booking-result\" class=\"mt-4 hidden rounded px-3 py-2 text-sm\"></p></div><form id=\"booking-form\" class=\"space-y-4 rounded-lg border border-gray-200 bg-white p-4\" method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div id=\"booking-progress\" class=\"mb-4 hidden rounded-xl border border-surface-border bg-white p-4\" aria-live=\"polite\"><p class=\"mb-3 text-base font-bold text-ink\">وضعیت ثبت نوبت</p><ol class=\"space-y-3\"><li class=\"booking-step flex items-center gap-3\" data-step=\"1\"><span class=\"booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted\">1</span> <span class=\"text-base text-ink\">اطلاعات دریافت شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"2\"><span class=\"booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted\">2</span> <span class=\"text-base text-ink\">اعتبارسنجی انجام شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"3\"><span class=\"booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted\">3</span> <span class=\"text-base text-ink\">برای مرکز ارسال شد</span></li><li class=\"booking-step flex items-center gap-3\" data-step=\"4\"><span class=\"booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted\">4</span> <span class=\"text-base text-ink\">پاسخ مرکز دریافت شد</span></li></ol><p id=\"booking-result\" class=\"mt-4 hidden rounded-lg px-3 py-3 text-base\"></p></div><form id=\"booking-form\" class=\"booking-form space-y-5 rounded-xl border border-surface-border bg-white p-4 shadow-sm sm:p-5\" method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 templ.SafeURL
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.SubmitURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 72, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 77, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -203,13 +203,13 @@ func Booking(view BookingView) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 75, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/booking.templ`, Line: 80, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\"><section><h2 class=\"mb-1 text-lg font-bold text-ink\">۱. نوبت را انتخاب کنید</h2><p class=\"mb-3 text-sm text-ink-muted\">یک روز و ساعت آزاد را بزنید.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -217,17 +217,43 @@ func Booking(view BookingView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"first_name\">نام</label> <input id=\"first_name\" name=\"first_name\" required class=\"block w-full rounded border border-gray-300 p-2 text-sm\"></div><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"last_name\">نام خانوادگی</label> <input id=\"last_name\" name=\"last_name\" required class=\"block w-full rounded border border-gray-300 p-2 text-sm\"></div></div><div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"national_id\">کد ملی</label> <input id=\"national_id\" name=\"national_id\" required inputmode=\"numeric\" maxlength=\"10\" class=\"block w-full rounded border border-gray-300 p-2 text-sm\"></div><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"mobile\">موبایل</label> <input id=\"mobile\" name=\"mobile\" required inputmode=\"tel\" maxlength=\"11\" placeholder=\"09xxxxxxxxx\" class=\"block w-full rounded border border-gray-300 p-2 text-sm\"></div></div><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"birth_date\">تاریخ تولد</label> <input id=\"birth_date\" name=\"birth_date\" type=\"date\" required class=\"block w-full rounded border border-gray-300 p-2 text-sm\"></div><div><label class=\"mb-1 block text-sm text-ink-muted\" for=\"sex\">جنسیت</label> <select id=\"sex\" name=\"sex\" required class=\"block w-full rounded border border-gray-300 p-2 text-sm\"><option value=\"\">انتخاب کنید…</option> <option value=\"مرد\">مرد</option> <option value=\"زن\">زن</option></select></div><button id=\"booking-submit\" type=\"submit\" class=\"rounded bg-brand px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</section><div id=\"booking-fields\" class=\"hidden space-y-4 border-t border-surface-border pt-5\"><div><h2 class=\"mb-1 text-lg font-bold text-ink\">۲. اطلاعات بیمار</h2><p class=\"text-sm text-ink-muted\">همه فیلدها ضروری هستند.</p><p id=\"selected-slot-date\" class=\"mt-2 rounded-lg bg-brand-muted px-3 py-2 text-base font-medium text-brand\" aria-live=\"polite\"></p></div><div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-base text-ink\" for=\"first_name\">نام</label> <input id=\"first_name\" name=\"first_name\" required autocomplete=\"given-name\" class=\"doctor-list-field\" placeholder=\"مثال: علی\"></div><div><label class=\"mb-1.5 block text-base text-ink\" for=\"last_name\">نام خانوادگی</label> <input id=\"last_name\" name=\"last_name\" required autocomplete=\"family-name\" class=\"doctor-list-field\" placeholder=\"مثال: رضایی\"></div></div><div class=\"grid gap-4 sm:grid-cols-2\"><div><label class=\"mb-1.5 block text-base text-ink\" for=\"national_id\">کد ملی</label> <input id=\"national_id\" name=\"national_id\" required inputmode=\"numeric\" maxlength=\"10\" autocomplete=\"off\" class=\"doctor-list-field\" placeholder=\"۱۰ رقم\" dir=\"ltr\"></div><div><label class=\"mb-1.5 block text-base text-ink\" for=\"mobile\">موبایل</label> <input id=\"mobile\" name=\"mobile\" required inputmode=\"tel\" maxlength=\"11\" autocomplete=\"tel\" class=\"doctor-list-field\" placeholder=\"09xxxxxxxxx\" dir=\"ltr\"></div></div><div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.DatePicker(components.DatePickerProps{
+			ID:          "birth_date",
+			Name:        "birth_date",
+			Label:       "تاریخ تولد",
+			Required:    true,
+			Help:        "تقویم شمسی — حداقل سن ۱ سال",
+			Placeholder: "انتخاب تاریخ",
+			HasAgeRange: true,
+			MinAge:      1,
+			MaxAge:      120,
+		}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div><div><label class=\"mb-1.5 block text-base text-ink\" for=\"sex\">جنسیت</label> <select id=\"sex\" name=\"sex\" required class=\"doctor-list-field\"><option value=\"\">انتخاب کنید…</option> <option value=\"مرد\">مرد</option> <option value=\"زن\">زن</option></select></div><button id=\"booking-submit\" type=\"submit\" class=\"doctor-list-btn doctor-list-btn-primary disabled:cursor-not-allowed disabled:opacity-50\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(view.Slots.Options) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " disabled")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " disabled")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, ">ثبت رزرو</button></form><script src=\"/static/js/booking.js\" defer></script></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, ">ثبت رزرو</button></div></form>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.PersianDatepickerAssets().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<script src=\"/static/js/booking.js\" defer></script></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

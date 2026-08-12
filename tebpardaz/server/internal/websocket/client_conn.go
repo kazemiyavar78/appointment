@@ -78,10 +78,16 @@ func (c *ClientConn) WritePump() {
 	}
 }
 
+// maxInboundFrameBytes allows lab PDF payloads (base64) over clinic WebSocket.
+const maxInboundFrameBytes = 32 << 20 // 32 MiB
+
 // ReadPump reads inbound frames and dispatches them via handler.
 // Inputs: handle callback for each raw frame.
 func (c *ClientConn) ReadPump(handle func(*ClientConn, []byte) error) {
 	defer c.Hub.Unregister(c)
+	if c.Conn != nil {
+		c.Conn.SetReadLimit(maxInboundFrameBytes)
+	}
 	for {
 		_, raw, err := c.Conn.ReadMessage()
 		if err != nil {

@@ -20,6 +20,9 @@ type HomeNewsItem struct {
 // HomeView drives the tenant home page content.
 type HomeView struct {
 	LatestNews      []HomeNewsItem
+	Specialties     []components.SpecialtyCardView
+	Clinics         []components.ClinicCardView
+	ShowClinicCards bool
 	ShowClinicBadge bool
 	NewsListURL     string
 }
@@ -38,7 +41,7 @@ func homeNewsToCard(item HomeNewsItem, featured bool) components.NewsCardView {
 	}
 }
 
-// Home renders the tenant landing content including latest news.
+// Home renders the tenant landing content including specialties, clinics, and news.
 templ Home(view HomeView) {
 	<div class="mx-auto max-w-6xl">
 		<section class="mb-10 border-b border-surface-border pb-8">
@@ -58,6 +61,34 @@ templ Home(view HomeView) {
 				</a>
 			</div>
 		</section>
+		if len(view.Specialties) > 0 {
+			<section class="mb-10">
+				<div class="mb-5">
+					<h2 class="text-lg font-bold text-ink sm:text-xl">تخصص‌ها</h2>
+					<p class="mt-1 text-sm text-ink-muted">برای فیلتر سریع پزشکان، تخصص را انتخاب کنید.</p>
+				</div>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					for _, sp := range view.Specialties {
+						@components.SpecialtyCard(sp)
+					}
+				</div>
+			</section>
+		}
+		if view.ShowClinicCards {
+			if len(view.Clinics) > 0 {
+				<section class="mb-10">
+					<div class="mb-5">
+						<h2 class="text-lg font-bold text-ink sm:text-xl">مراکز درمانی</h2>
+						<p class="mt-1 text-sm text-ink-muted">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>
+					</div>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						for _, cl := range view.Clinics {
+							@components.ClinicCard(cl)
+						}
+					</div>
+				</section>
+			}
+		}
 		<section>
 			<div class="mb-5 flex items-center justify-between gap-3">
 				<h2 class="text-lg font-bold text-ink sm:text-xl">آخرین اخبار</h2>

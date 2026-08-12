@@ -26,7 +26,7 @@ type Config struct {
 // Output: Config with defaults filled for missing optional values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		HTTPAddr:       envOr("HTTP_ADDR", ":8080"),
+		HTTPAddr:       envOr("HTTP_ADDR", "192.168.1.60:8080"),
 		ManagementDSN:  os.Getenv("MANAGEMENT_DSN"),
 		AppointmentDSN: os.Getenv("APPOINTMENT_DSN"),
 		WSAuthSecret:   os.Getenv("WS_AUTH_SECRET"),

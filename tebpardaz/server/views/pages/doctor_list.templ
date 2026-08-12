@@ -2,8 +2,6 @@ package pages
 
 import (
 	"tebpardaz/server/views/components"
-	"time"
-	ptime "github.com/yaa110/go-persian-calendar"
 )
 
 // DoctorListFilterOption is a select option for specialty or clinic filters.
@@ -19,61 +17,62 @@ type DoctorListView struct {
 	Clinics          []DoctorListFilterOption
 	ShowClinicFilter bool
 	Query            string
-	Date             string
+	Date             string // Shamsi yyyy/MM/dd for the date filter input
 	SpecialtyID      uint
 	ClinicID         uint
 	FormAction       string
 	EmptyMessage     string
-}
-
-
-func formatShamsiDateTime(t time.Time) string {
-	if t.IsZero() {
-		return "—"
-	}
-	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
-	
+	Page             int
+	TotalPages       int
+	TotalCount       int
+	PageSize         int
 }
 
 // DoctorList renders a responsive filter sidebar and doctor booking cards.
+// Phone: filter block above cards (collapsed by default). Desktop: filter beside the grid.
 templ DoctorList(view DoctorListView) {
 	<div class="mx-auto max-w-6xl">
-		<section class="mb-6">
-			<h1 class="mb-2 text-2xl text-brand">پزشکان</h1>
-			<p class="text-sm text-ink-muted">پزشک مورد نظر را پیدا کنید و نزدیک‌ترین نوبت آزاد را ببینید.</p>
+		<section class="mb-5">
+			<h1 class="mb-1 text-2xl font-bold text-brand">پزشکان</h1>
+			<p class="text-base text-ink-muted">پزشک را پیدا کنید و نوبت بگیرید.</p>
 		</section>
-		<div class="flex flex-col gap-6 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start">
-			<aside class="rounded-lg border border-gray-200 bg-white p-4 lg:sticky lg:top-4">
-				<details class="lg:open" open>
-					<summary class="cursor-pointer list-none text-base text-ink lg:pointer-events-none lg:cursor-default">
-						<span class="font-medium">جستجو و فیلتر</span>
-						<span class="mr-2 text-xs text-ink-muted lg:hidden">برای باز و بسته کردن ضربه بزنید</span>
+
+		<div class="doctor-list-layout">
+			<aside class="doctor-list-filters rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+				<details class="doctor-list-filters-panel">
+					<summary class="flex cursor-pointer items-center justify-between gap-3 text-base font-bold text-ink">
+						<span>جستجو و فیلتر</span>
+						<span class="doctor-list-filters-toggle rounded-md bg-surface-soft px-2.5 py-1 text-sm font-normal text-ink-muted">باز کردن</span>
 					</summary>
 					<form class="mt-4 space-y-4" method="get" action={ templ.SafeURL(view.FormAction) }>
 						<div>
-							<label class="mb-1 block text-sm text-ink-muted" for="q">نام پزشک</label>
+							<label class="mb-1.5 block text-base text-ink" for="q">نام پزشک</label>
 							<input
 								id="q"
 								name="q"
 								type="search"
 								value={ view.Query }
-								placeholder="جستجوی نام..."
-								class="block w-full rounded border border-gray-300 p-2 text-sm"
+								placeholder="مثال: رضایی"
+								autocomplete="off"
+								class="doctor-list-field"
 							/>
 						</div>
 						<div>
-							<label class="mb-1 block text-sm text-ink-muted" for="date">تاریخ</label>
-							<input
-								id="date"
-								name="date"
-								type="date"
-								value={ view.Date }
-								class="block w-full rounded border border-gray-300 p-2 text-sm"
-							/>
+							@components.DatePicker(components.DatePickerProps{
+								ID:          "date",
+								Name:        "date",
+								Label:       "روز نوبت",
+								Value:       view.Date,
+								Help:        "فقط از امروز تا ۱۵ روز بعد. خالی = همه روزها.",
+								Placeholder: "انتخاب تاریخ",
+								HasDayRange: true,
+								MinDays:     0,
+								MaxDays:     15,
+							})
 						</div>
 						<div>
-							<label class="mb-1 block text-sm text-ink-muted" for="specialty_id">تخصص</label>
-							<select id="specialty_id" name="specialty_id" class="block w-full rounded border border-gray-300 p-2 text-sm">
+							<label class="mb-1.5 block text-base text-ink" for="specialty_id">تخصص</label>
+							<select id="specialty_id" name="specialty_id" class="doctor-list-field">
 								<option value="">همه تخصص‌ها</option>
 								for _, sp := range view.Specialties {
 									if view.SpecialtyID == sp.ID {
@@ -86,8 +85,8 @@ templ DoctorList(view DoctorListView) {
 						</div>
 						if view.ShowClinicFilter {
 							<div>
-								<label class="mb-1 block text-sm text-ink-muted" for="clinic_id">مرکز</label>
-								<select id="clinic_id" name="clinic_id" class="block w-full rounded border border-gray-300 p-2 text-sm">
+								<label class="mb-1.5 block text-base text-ink" for="clinic_id">مرکز درمانی</label>
+								<select id="clinic_id" name="clinic_id" class="doctor-list-field">
 									<option value="">همه مراکز</option>
 									for _, cl := range view.Clinics {
 										if view.ClinicID == cl.ID {
@@ -99,24 +98,101 @@ templ DoctorList(view DoctorListView) {
 								</select>
 							</div>
 						}
-						<div class="flex flex-wrap gap-2">
-							<button type="submit" class="rounded bg-brand px-4 py-2 text-sm text-white">اعمال فیلتر</button>
-							<a class="rounded border border-gray-300 px-4 py-2 text-sm text-ink-muted" href={ templ.SafeURL(view.FormAction) }>پاک کردن</a>
+						<div class="flex flex-col gap-2 pt-1">
+							<button type="submit" class="doctor-list-btn doctor-list-btn-primary">اعمال فیلتر</button>
+							<a class="doctor-list-btn doctor-list-btn-secondary" href={ templ.SafeURL(view.FormAction) }>پاک کردن فیلترها</a>
 						</div>
 					</form>
 				</details>
 			</aside>
-			<section>
+
+			<section class="doctor-list-results">
+				<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+					<p class="text-base text-ink-muted">
+						if view.TotalCount == 0 {
+							پزشکی پیدا نشد
+						} else {
+							<span class="font-bold text-ink tabular-nums">{ intToString(view.TotalCount) }</span>
+							<span>پزشک</span>
+							if view.TotalPages > 1 {
+								<span class="text-ink-faint">· صفحه { intToString(view.Page) } از { intToString(view.TotalPages) }</span>
+							}
+						}
+					</p>
+					if doctorListHasFilters(view) {
+						<div class="flex max-w-full flex-wrap gap-2">
+							if view.Query != "" {
+								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "q")) } title="حذف نام">
+									نام: { view.Query } ×
+								</a>
+							}
+							if view.Date != "" {
+								<a class="doctor-list-chip tabular-nums" href={ templ.SafeURL(doctorListClearURL(view, "date")) } title="حذف تاریخ" dir="ltr">
+									{ view.Date } ×
+								</a>
+							}
+							if name := doctorListSpecialtyName(view); name != "" {
+								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "specialty_id")) } title="حذف تخصص">
+									{ name } ×
+								</a>
+							}
+							if name := doctorListClinicName(view); name != "" {
+								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "clinic_id")) } title="حذف مرکز">
+									{ name } ×
+								</a>
+							}
+						</div>
+					}
+				</div>
+
 				if len(view.Doctors) == 0 {
-					<p class="text-sm text-ink-muted">{ view.EmptyMessage }</p>
+					<div class="rounded-xl border border-dashed border-surface-border bg-white px-5 py-10 text-center">
+						<p class="text-base text-ink-muted">{ view.EmptyMessage }</p>
+						if doctorListHasFilters(view) {
+							<a class="mt-4 inline-block text-base font-bold text-brand underline" href={ templ.SafeURL(view.FormAction) }>دیدن همه پزشکان</a>
+						}
+					</div>
 				} else {
-					<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					<div class="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
 						for _, item := range view.Doctors {
 							@components.DoctorCard(item)
 						}
 					</div>
+					if view.TotalPages > 1 {
+						<nav class="doctor-list-pager mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌بندی">
+							if view.Page > 1 {
+								<a href={ templ.SafeURL(doctorListPageURL(view, view.Page-1)) }>قبلی</a>
+							}
+							for _, p := range doctorListPaginationPages(view.Page, view.TotalPages) {
+								if p == 0 {
+									<span class="text-ink-faint">…</span>
+								} else if p == view.Page {
+									<span class="is-current tabular-nums" aria-current="page">{ intToString(p) }</span>
+								} else {
+									<a class="tabular-nums" href={ templ.SafeURL(doctorListPageURL(view, p)) }>{ intToString(p) }</a>
+								}
+							}
+							if view.Page < view.TotalPages {
+								<a href={ templ.SafeURL(doctorListPageURL(view, view.Page+1)) }>بعدی</a>
+							}
+						</nav>
+					}
 				}
 			</section>
 		</div>
+		@components.PersianDatepickerAssets()
+		<script>
+			(function () {
+				var panel = document.querySelector(".doctor-list-filters-panel");
+				if (!panel) return;
+				var toggle = panel.querySelector(".doctor-list-filters-toggle");
+				if (!toggle) return;
+				function sync() {
+					toggle.textContent = panel.open ? "بستن" : "باز کردن";
+				}
+				panel.addEventListener("toggle", sync);
+				sync();
+			})();
+		</script>
 	</div>
 }
