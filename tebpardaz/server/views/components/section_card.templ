@@ -1,0 +1,137 @@
+package components
+
+// SectionCardView مدل داده برای رندر کارت بخش الهام‌گرفته از بنر است.
+type SectionCardView struct {
+	Title           string
+	Slug            string
+	ClinicName      string
+	ShowClinicBadge bool
+	Slogan          string
+	Description     string
+	Services        []string
+	ImageURL        string
+	BackgroundColor string
+	URL             string
+	WorkingHoursURL string
+	EquipmentURL    string
+	MessagesURL     string
+	HasSchedules    bool
+	HasEquipment    bool
+	HasMessages     bool
+}
+
+// sectionCardBgColor رنگ پس‌زمینه کارت بنر را اعتبارسنجی و برمی‌گرداند.
+// ورودی: رشته کد رنگ هگزادسیمال. خروجی: رنگ معتبر یا رنگ پیش‌فرض سازمانی.
+func sectionCardBgColor(bg string) string {
+	if bg == "" {
+		return "#0a2e2e"
+	}
+	return bg
+}
+
+// SectionCard کارت معرفی بخش بر اساس طراحی بنر را با تگ مرکز و لینک‌های ناوبری رندر می‌کند.
+// ورودی: view حاوی مشخصات بخش و مرکز. خروجی: کامپوننت templ.
+templ SectionCard(view SectionCardView) {
+	<article class="ui-card group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+		<!-- بخش بالایی بنری کارت با تصویر و عنوان -->
+		<div
+			class="relative flex min-h-[160px] flex-col justify-between overflow-hidden p-5 text-white"
+			style={ "background-color: " + sectionCardBgColor(view.BackgroundColor) + ";" }
+		>
+			if view.ImageURL != "" {
+				<img
+					src={ view.ImageURL }
+					alt={ view.Title }
+					class="absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-overlay transition-transform duration-500 group-hover:scale-105"
+					loading="lazy"
+				/>
+			}
+			<div class="relative z-10 flex items-start justify-between gap-2">
+				<div class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm border border-white/10">
+					<span class="h-2 w-2 rounded-full bg-teal-300"></span>
+					<span>بخش تخصصی</span>
+				</div>
+				if view.ShowClinicBadge && view.ClinicName != "" {
+					<span class="inline-flex items-center gap-1 rounded-full bg-black/40 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm border border-white/10">
+						<svg class="h-3.5 w-3.5 text-teal-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+							<path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd"/>
+						</svg>
+						{ view.ClinicName }
+					</span>
+				}
+			</div>
+			<div class="relative z-10 mt-3">
+				<h3 class="text-xl font-bold tracking-tight text-white drop-shadow-sm">
+					{ view.Title }
+				</h3>
+				if view.Slogan != "" {
+					<p class="mt-1 line-clamp-1 text-xs text-white/80">
+						{ view.Slogan }
+					</p>
+				}
+			</div>
+		</div>
+
+		<!-- بدنه کارت با توضیحات و خدمات -->
+		<div class="flex flex-1 flex-col justify-between p-5">
+			<div>
+				if view.Description != "" {
+					<p class="line-clamp-2 text-sm leading-relaxed text-ink-muted">
+						{ view.Description }
+					</p>
+				}
+				if len(view.Services) > 0 {
+					<div class="mt-4 flex flex-wrap gap-1.5">
+						for idx, s := range view.Services {
+							if idx < 3 {
+								<span class="inline-flex items-center rounded-md bg-surface-soft px-2.5 py-1 text-xs font-medium text-ink">
+									{ s }
+								</span>
+							}
+						}
+						if len(view.Services) > 3 {
+							<span class="inline-flex items-center rounded-md bg-surface-soft px-2 py-1 text-xs text-ink-muted">
+								+{ string(rune('0' + (len(view.Services) - 3))) }
+							</span>
+						}
+					</div>
+				}
+			</div>
+
+			<!-- زیرمنوهای سریع بخش -->
+			<div class="mt-5 border-t border-surface-border pt-4">
+				<div class="mb-3 flex flex-wrap gap-2 text-xs font-medium">
+					if view.WorkingHoursURL != "" {
+						<a href={ templ.SafeURL(view.WorkingHoursURL) } class="ui-link text-xs text-ink-muted hover:text-brand">
+							🕒 ساعات کاری
+						</a>
+					}
+					if view.EquipmentURL != "" {
+						<span class="text-surface-border">|</span>
+						<a href={ templ.SafeURL(view.EquipmentURL) } class="ui-link text-xs text-ink-muted hover:text-brand">
+							🔬 تجهیزات
+						</a>
+					}
+					if view.MessagesURL != "" {
+						<span class="text-surface-border">|</span>
+						<a href={ templ.SafeURL(view.MessagesURL) } class="ui-link text-xs text-ink-muted hover:text-brand">
+							📢 پیام‌ها
+						</a>
+					}
+				</div>
+
+				<!-- دکمه اقدام اصلی برای ورود به صفحه بخش -->
+				<a
+					href={ templ.SafeURL(view.URL) }
+					class="ui-btn ui-btn-primary w-full justify-center !py-2.5 text-sm font-semibold"
+					aria-label={ "مشاهده کامل بخش " + view.Title }
+				>
+					<span>مشاهده و معرفی بخش</span>
+					<svg class="h-4 w-4 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+						<path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+					</svg>
+				</a>
+			</div>
+		</div>
+	</article>
+}

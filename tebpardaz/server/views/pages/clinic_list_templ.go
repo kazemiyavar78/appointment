@@ -8,7 +8,7 @@ package pages
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// TODO: props مورد نیاز -> Clinics ([]ClinicCard), Cities, SelectedCityID
+// ClinicList صفحه فهرست مراکز (جایگاه فیلتر شهر و کارت‌ها) را رندر می‌کند.
 func ClinicList() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -30,7 +30,7 @@ func ClinicList() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl p-4\"><h1 class=\"mb-4 text-2xl text-brand\">لیست مراکز</h1><!-- TODO: فیلتر شهر و لیست کلینیک\u200cها --><ul class=\"space-y-2\"><li class=\"rounded border border-gray-200 bg-white p-3\"><!-- TODO: آیتم کلینیک --></li></ul></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"ui-fade-in mx-auto max-w-5xl\"><section class=\"ui-section\"><h1 class=\"ui-page-title\">لیست مراکز</h1><p class=\"ui-page-desc\">مرکز درمانی مورد نظر را انتخاب کنید.</p></section><ul class=\"space-y-3\"><li class=\"ui-panel text-sm text-ink-muted\">هنوز مرکزی برای نمایش ثبت نشده است.</li></ul></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

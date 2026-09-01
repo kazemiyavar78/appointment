@@ -171,7 +171,7 @@ func (r *DoctorRepo) applyHISFields(doctor *models.Doctor, dto protocol.DoctorDT
 	if dto.LocalCode > 0 {
 		doctor.LocalCode = dto.LocalCode
 	}
-	doctor.IsActive = dto.IsActive
+	// IsActive is owned by admin after approval (website visibility); do not overwrite from HIS.
 }
 
 // ApproveInput holds admin-assigned fields required to persist a doctor for the first time.
@@ -187,16 +187,37 @@ type ApproveInput struct {
 	SpecialtyCode  string
 	SpecialtyID    uint
 	PhotoURL       string
+	Photo300       string
+	Photo600       string
+	Photo900       string
+	Photo1200      string
 	IsActive       bool
 	ReviewerID     uint
 	Note           string
+}
+
+// DoctorPhotosUpdate مقادیر تصاویر در ابعاد مختلف را نگهداری می‌کند.
+type DoctorPhotosUpdate struct {
+	PhotoURL  string
+	Photo300  string
+	Photo600  string
+	Photo900  string
+	Photo1200 string
 }
 
 // CreateApproved persists a newly approved doctor (photo + specialty required) and an audit approval row.
 // Inputs: ApproveInput with SpecialtyID and PhotoURL set.
 // Output: created DoctorApprovalRequest (with ExternalID) or error.
 func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequest, error) {
-	if strings.TrimSpace(in.PhotoURL) == "" {
+	photoURL := strings.TrimSpace(in.PhotoURL)
+	photo1200 := strings.TrimSpace(in.Photo1200)
+	if photoURL == "" && photo1200 != "" {
+		photoURL = photo1200
+	}
+	if photo1200 == "" && photoURL != "" {
+		photo1200 = photoURL
+	}
+	if photoURL == "" {
 		return nil, fmt.Errorf("photo_url required")
 	}
 	if in.SpecialtyID == 0 {
@@ -233,7 +254,11 @@ func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequ
 		NationalID:     nid,
 		DoctorSystemID: in.DoctorSystemID,
 		SpecialtyCode:  in.SpecialtyCode,
-		PhotoURL:       in.PhotoURL,
+		PhotoURL:       photoURL,
+		Photo300:       strings.TrimSpace(in.Photo300),
+		Photo600:       strings.TrimSpace(in.Photo600),
+		Photo900:       strings.TrimSpace(in.Photo900),
+		Photo1200:      photo1200,
 		ExternalID:     externalID,
 		LocalCode:      in.LocalCode,
 		IsApproved:     true,
@@ -265,10 +290,10 @@ func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequ
 	return &req, nil
 }
 
-// UpdateApprovedProfile updates photo and/or specialty for an already-approved doctor.
-// Inputs: doctorID, specialtyID (0 = leave), photoURL (empty = leave).
-// Output: updated doctor or error.
-func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photoURL string) (*models.Doctor, error) {
+// UpdateApprovedProfile عکس‌ها (۴ سایز)، تخصص و توضیحات پزشک تأییدشده را بروزرسانی می‌کند.
+// ورودی: doctorID شناسه پزشک، specialtyID شناسه تخصص (۰=بدون تغییر)، photos تصاویر در ابعاد مختلف، shortDesc توضیح کوتاه، longDesc توضیح بلند، setDesc اعمال توضیحات.
+// خروجی: رکورد بروزرسانی‌شده پزشک یا خطا در صورت عدم وجود یا اشکال پایگاه‌داده.
+func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photos DoctorPhotosUpdate, shortDesc, longDesc string, setDesc bool) (*models.Doctor, error) {
 	doc, err := r.GetByID(doctorID)
 	if err != nil {
 		return nil, err
@@ -280,8 +305,27 @@ func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photoURL 
 	if specialtyID > 0 {
 		updates["specialty_id"] = specialtyID
 	}
-	if strings.TrimSpace(photoURL) != "" {
-		updates["photo_url"] = strings.TrimSpace(photoURL)
+	if p := strings.TrimSpace(photos.PhotoURL); p != "" {
+		updates["photo_url"] = p
+	}
+	if p := strings.TrimSpace(photos.Photo300); p != "" {
+		updates["photo_300"] = p
+	}
+	if p := strings.TrimSpace(photos.Photo600); p != "" {
+		updates["photo_600"] = p
+	}
+	if p := strings.TrimSpace(photos.Photo900); p != "" {
+		updates["photo_900"] = p
+	}
+	if p := strings.TrimSpace(photos.Photo1200); p != "" {
+		updates["photo_1200"] = p
+		updates["photo_url"] = p
+	} else if p := strings.TrimSpace(photos.PhotoURL); p != "" {
+		updates["photo_url"] = p
+	}
+	if setDesc {
+		updates["short_desc"] = strings.TrimSpace(shortDesc)
+		updates["long_desc"] = strings.TrimSpace(longDesc)
 	}
 	if len(updates) == 0 {
 		return doc, nil
@@ -290,6 +334,34 @@ func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photoURL 
 		return nil, err
 	}
 	return r.GetByID(doctorID)
+}
+
+// SetActive sets IsActive for an approved doctor (controls public website visibility).
+// Inputs: doctorID, active flag.
+// Output: error when doctor missing/unapproved or update fails.
+func (r *DoctorRepo) SetActive(doctorID uint, active bool) error {
+	doc, err := r.GetByID(doctorID)
+	if err != nil {
+		return err
+	}
+	if doc == nil || !doc.IsApproved {
+		return fmt.Errorf("doctor not approved")
+	}
+	return r.DB.Model(doc).Update("is_active", active).Error
+}
+
+// DeleteApproved soft-deletes an approved doctor from the server.
+// Inputs: doctorID.
+// Output: error when doctor missing/unapproved or delete fails.
+func (r *DoctorRepo) DeleteApproved(doctorID uint) error {
+	doc, err := r.GetByID(doctorID)
+	if err != nil {
+		return err
+	}
+	if doc == nil || !doc.IsApproved {
+		return fmt.Errorf("doctor not approved")
+	}
+	return r.DB.Delete(doc).Error
 }
 
 // GetByID loads a doctor by primary key.

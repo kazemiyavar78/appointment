@@ -18,6 +18,12 @@ func intToString(n int) string {
 	return strconv.Itoa(n)
 }
 
+// int64ToString formats an int64 for HTML data attributes (e.g. unix timestamps).
+// Input: n. Output: decimal string.
+func int64ToString(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
 // doctorListHasFilters reports whether any list filter is active.
 // Input: DoctorListView filter fields. Output: true when at least one filter is set.
 func doctorListHasFilters(view DoctorListView) bool {
@@ -58,6 +64,11 @@ func doctorListPageURL(view DoctorListView, page int) string {
 	return base + "?" + encoded
 }
 
+// DoctorListURL آدرس فهرست پزشکان با فیلترهای فعلی را برای بازگشت از رزرو می‌سازد.
+func DoctorListURL(view DoctorListView, page int) string {
+	return doctorListPageURL(view, page)
+}
+
 // doctorListSpecialtyName returns the specialty label for the active specialty filter.
 // Input: view. Output: specialty name, or empty when unset/unknown.
 func doctorListSpecialtyName(view DoctorListView) string {
@@ -67,6 +78,20 @@ func doctorListSpecialtyName(view DoctorListView) string {
 	for _, sp := range view.Specialties {
 		if sp.ID == view.SpecialtyID {
 			return sp.Name
+		}
+	}
+	return ""
+}
+
+// doctorListSpecialtyDescription توضیح کامل تخصص فیلترشده را برمی‌گرداند.
+// ورودی: view لیست پزشکان. خروجی: Description تخصص انتخاب‌شده یا رشته خالی.
+func doctorListSpecialtyDescription(view DoctorListView) string {
+	if view.SpecialtyID == 0 {
+		return ""
+	}
+	for _, sp := range view.Specialties {
+		if sp.ID == view.SpecialtyID {
+			return strings.TrimSpace(sp.Description)
 		}
 	}
 	return ""

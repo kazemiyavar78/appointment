@@ -1,0 +1,21 @@
+package components
+
+// SpecialtyBannerGrid لیست کارت بنر تخصص را با کلاس اختیاری رندر می‌کند.
+// ورودی: تخصص‌ها و modifierClass (مثلاً home-preview). خروجی: HTML گرید.
+templ SpecialtyBannerGrid(specialties []SpecialtyCardView, modifierClass string) {
+	<link rel="stylesheet" href="/static/css/CardCss.css"/>
+	<script src="/static/js/specialty_card.js" defer></script>
+	if modifierClass != "" {
+		<div class={ "specialty-banner-list " + modifierClass }>
+			for i, sp := range specialties {
+				@SpecialtyCardBanner(SpecialtyCardBannerTestProps(sp, i))
+			}
+		</div>
+	} else {
+		<div class="specialty-banner-list">
+			for i, sp := range specialties {
+				@SpecialtyCardBanner(SpecialtyCardBannerTestProps(sp, i))
+			}
+		</div>
+	}
+}

@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strconv"
 
-// ClinicCardView is a subsidiary clinic summary for organ/platform home pages.
+// ClinicCardView خلاصه یک مرکز تابعه برای صفحه اصلی ارگان/پلتفرم است.
 type ClinicCardView struct {
 	ID       uint
 	Name     string
@@ -20,13 +20,13 @@ type ClinicCardView struct {
 	City     string
 }
 
-// clinicFilterURL builds /doctors?clinic_id={id} for quick booking filter.
-// Input: clinic ID. Output: relative filter URL.
+// clinicFilterURL آدرس فیلتر پزشکان بر اساس clinic_id را می‌سازد.
+// ورودی: شناسه مرکز. خروجی: URL نسبی فیلتر.
 func clinicFilterURL(id uint) string {
 	return "/doctors?clinic_id=" + strconv.FormatUint(uint64(id), 10)
 }
 
-// ClinicCard renders clinic contact/location details linking to the doctor list filter.
+// ClinicCard کارت مرکز را با میکرواینتراکشن مشترک ui-card رندر می‌کند.
 func ClinicCard(view ClinicCardView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -48,7 +48,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-white shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"ui-card group flex flex-col\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -170,7 +170,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-auto flex items-center justify-between gap-2 border-t border-surface-border bg-surface-soft/60 px-4 py-3\"><span class=\"text-sm font-medium text-brand transition group-hover:text-brand-dark\">مشاهده پزشکان</span> <span class=\"inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white\" aria-hidden=\"true\"><svg class=\"h-3.5 w-3.5 rotate-180\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"></path></svg></span></div></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-auto flex items-center justify-between gap-2 border-t border-surface-border bg-surface-soft/60 px-4 py-3\"><span class=\"text-sm font-medium text-brand\">مشاهده پزشکان</span> <span class=\"ui-icon-btn\" aria-hidden=\"true\"><svg class=\"inline-block h-3.5 w-3.5 rotate-180 align-middle\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"></path></svg></span></div></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -28,12 +28,13 @@ func StepLabel(step int) string {
 
 // ProgressEvent is pushed to the browser over the booking WebSocket.
 type ProgressEvent struct {
-	Step    int    `json:"step"`
-	Status  string `json:"status"` // loading | done | error
-	Label   string `json:"label"`
-	Message string `json:"message,omitempty"`
-	OK      *bool  `json:"ok,omitempty"`
-	Done    bool   `json:"done,omitempty"`
+	Step       int    `json:"step"`
+	Status     string `json:"status"` // loading | done | error
+	Label      string `json:"label"`
+	Message    string `json:"message,omitempty"`
+	ExternalID string `json:"external_id,omitempty"`
+	OK         *bool  `json:"ok,omitempty"`
+	Done       bool   `json:"done,omitempty"`
 }
 
 // NewStepLoading builds a loading progress event for the given step.
@@ -47,15 +48,16 @@ func NewStepDone(step int) ProgressEvent {
 }
 
 // NewFinal builds the terminal progress event with the booking result message.
-func NewFinal(ok bool, message string) ProgressEvent {
+func NewFinal(ok bool, message, externalID string) ProgressEvent {
 	status := "error"
 	if ok {
 		status = "done"
 	}
 	return ProgressEvent{
-		Status:  status,
-		Message: message,
-		OK:      &ok,
-		Done:    true,
+		Status:     status,
+		Message:    message,
+		ExternalID: externalID,
+		OK:         &ok,
+		Done:       true,
 	}
 }

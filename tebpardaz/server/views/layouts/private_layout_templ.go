@@ -10,8 +10,9 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "tebpardaz/server/views/components"
 
-// PrivateLayoutView drives a single-clinic private public shell.
+// PrivateLayoutView دادهٔ پوسته عمومی یک کلینیک خصوصی را نگه می‌دارد.
 type PrivateLayoutView struct {
+	Head       PageHead
 	ClinicName string
 	LogoURL    string
 	HomeURL    string
@@ -22,7 +23,7 @@ type PrivateLayoutView struct {
 	Province   string
 }
 
-// PrivateLayout renders a private clinic tenant page with navbar + main content.
+// PrivateLayout صفحه tenant کلینیک خصوصی را با نوار، محتوا و فوتر رندر می‌کند.
 func PrivateLayout(view PrivateLayoutView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -64,7 +65,7 @@ func PrivateLayout(view PrivateLayoutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"flex-1 p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"ui-shell-main flex-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -86,7 +87,7 @@ func PrivateLayout(view PrivateLayoutView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Document().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Document(view.Head).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -94,7 +95,7 @@ func PrivateLayout(view PrivateLayoutView) templ.Component {
 	})
 }
 
-// privateNavbar maps PrivateLayoutView to NavbarProps.
+// privateNavbar نمای کلینیک خصوصی را به NavbarProps نگاشت می‌کند.
 func privateNavbar(view PrivateLayoutView) components.NavbarProps {
 	name := view.ClinicName
 	if name == "" {
@@ -112,7 +113,7 @@ func privateNavbar(view PrivateLayoutView) components.NavbarProps {
 	}
 }
 
-// privateFooter maps PrivateLayoutView to a warm single-clinic FooterProps.
+// privateFooter نمای کلینیک خصوصی را به FooterProps نگاشت می‌کند.
 func privateFooter(view PrivateLayoutView) components.FooterProps {
 	nav := privateNavbar(view)
 	return components.FooterProps{

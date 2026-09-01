@@ -1,0 +1,112 @@
+package components
+
+import "fmt"
+
+// ReviewItemView یک نظر تأییدشده برای نمایش است.
+type ReviewItemView struct {
+	AuthorName string
+	Rating     int
+	Body       string
+}
+
+// ReviewSectionView بلوک امتیاز و نظرات + فرم ثبت را نگه می‌دارد.
+type ReviewSectionView struct {
+	Title        string
+	Count        int
+	Average      float64
+	Items        []ReviewItemView
+	FormAction   string
+	RedirectURL  string
+	CSRFToken    string
+	TargetType   string
+	TargetID     string
+	ClinicID     string
+	InfoMessage  string
+	ErrorMessage string
+}
+
+// formatAvg میانگین را با یک رقم اعشار برمی‌گرداند.
+func formatAvg(v float64) string {
+	return fmt.Sprintf("%.1f", v)
+}
+
+// ReviewSection امتیاز، نظرات تأییدشده و فرم ثبت را رندر می‌کند.
+templ ReviewSection(view ReviewSectionView) {
+	<section class="ui-section">
+		<div class="ui-section-head">
+			<h2 class="ui-section-title">
+				if view.Title != "" {
+					{ view.Title }
+				} else {
+					نظرات و امتیاز
+				}
+			</h2>
+		</div>
+
+		<div class="ui-panel mb-5">
+			if view.Count == 0 {
+				<p class="text-sm text-ink-muted">هنوز امتیازی ثبت نشده است.</p>
+			} else {
+				<p class="text-lg font-bold text-brand tabular-nums">
+					{ formatAvg(view.Average) }
+					<span class="text-sm font-medium text-ink-muted"> از ۵</span>
+				</p>
+				<p class="mt-1 text-sm text-ink-muted">بر اساس { fmt.Sprintf("%d", view.Count) } امتیاز</p>
+			}
+		</div>
+
+		if len(view.Items) > 0 {
+			<ul class="mb-6 space-y-3">
+				for _, item := range view.Items {
+					<li class="ui-panel !p-3">
+						<div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+							<p class="text-sm font-bold text-ink">{ item.AuthorName }</p>
+							<p class="text-xs font-bold text-brand tabular-nums">{ fmt.Sprintf("%d", item.Rating) } / ۵</p>
+						</div>
+						if item.Body != "" {
+							<p class="text-sm leading-relaxed text-ink-muted">{ item.Body }</p>
+						}
+					</li>
+				}
+			</ul>
+		}
+
+		if view.ErrorMessage != "" {
+			<p class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{ view.ErrorMessage }</p>
+		}
+		if view.InfoMessage != "" {
+			<p class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">{ view.InfoMessage }</p>
+		}
+
+		if view.FormAction != "" {
+			<form class="ui-panel space-y-3" method="post" action={ templ.SafeURL(view.FormAction) } autocomplete="off">
+				<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
+				<input type="hidden" name="target_type" value={ view.TargetType }/>
+				<input type="hidden" name="target_id" value={ view.TargetID }/>
+				<input type="hidden" name="clinic_id" value={ view.ClinicID }/>
+				<input type="hidden" name="redirect" value={ view.RedirectURL }/>
+				<p class="text-sm font-bold text-ink">ثبت نظر و امتیاز</p>
+				<div>
+					<label class="ui-label" for="author_name">نام شما</label>
+					<input id="author_name" name="author_name" class="ui-field" maxlength="100" required/>
+				</div>
+				<div>
+					<label class="ui-label" for="rating">امتیاز (۱ تا ۵)</label>
+					<select id="rating" name="rating" class="ui-field" required>
+						<option value="">انتخاب کنید…</option>
+						<option value="5">۵</option>
+						<option value="4">۴</option>
+						<option value="3">۳</option>
+						<option value="2">۲</option>
+						<option value="1">۱</option>
+					</select>
+				</div>
+				<div>
+					<label class="ui-label" for="body">متن نظر (اختیاری — پس از تأیید نمایش داده می‌شود)</label>
+					<textarea id="body" name="body" class="ui-field min-h-[5rem]" maxlength="1000" rows="3"></textarea>
+				</div>
+				<button type="submit" class="ui-btn ui-btn-primary">ارسال</button>
+			</form>
+		}
+	</section>
+}

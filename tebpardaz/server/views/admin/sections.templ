@@ -1,0 +1,212 @@
+package admin
+
+import (
+	"strconv"
+	"tebpardaz/server/views/layouts"
+)
+
+// SectionRow represents a summary of a clinic section in the admin list.
+type SectionRow struct {
+	ID        uint
+	ClinicID  uint
+	Title     string
+	Slug      string
+	SortOrder int
+	IsActive  bool
+	PublicURL string
+}
+
+// SectionsPageView holds data for rendering the sections management page.
+type SectionsPageView struct {
+	Nav              layouts.AdminLayoutView
+	ClinicID         uint
+	Clinics          []ClinicOption
+	ShowClinicPicker bool
+	Sections         []SectionRow
+	Message          string
+	EditID           uint
+	EditTitle        string
+	EditSlug         string
+	EditSortOrder    int
+	EditIsActive     bool
+	IsSuperAdmin     bool
+	CurrentCount     int
+	MaxSections      int
+}
+
+// Sections renders the section listing, creation, and editing form.
+templ Sections(view SectionsPageView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">مدیریت بخش‌های مرکز</h1>
+					<p class="text-sm text-ink-muted">تعریف و مدیریت صفحات اختصاصی بخش‌ها (آزمایشگاه، تصویربرداری و ...)</p>
+				</div>
+				<div class="flex items-center gap-2">
+					<span class="rounded-lg border border-brand/20 bg-brand/5 px-3 py-1.5 text-xs font-semibold text-brand">
+						تعداد بخش‌ها: { strconv.Itoa(view.CurrentCount) } از { strconv.Itoa(view.MaxSections) } مجاز
+					</span>
+				</div>
+			</div>
+
+			if view.ShowClinicPicker {
+				<div class="ui-panel mb-6">
+					<form method="get" action="/admin/sections" class="flex flex-wrap items-end gap-3">
+						<label class="block text-sm text-ink-muted">
+							انتخاب مرکز درمانی
+							<select name="clinic_id" class="ui-field mt-1 w-64" onchange="this.form.submit()">
+								for _, c := range view.Clinics {
+									if c.ID == view.ClinicID {
+										<option value={ formatUint(c.ID) } selected>{ c.Name }</option>
+									} else {
+										<option value={ formatUint(c.ID) }>{ c.Name }</option>
+									}
+								}
+							</select>
+						</label>
+						<noscript><button class="ui-btn ui-btn-primary" type="submit">انتخاب</button></noscript>
+					</form>
+				</div>
+			}
+
+			if view.Message != "" {
+				<p class="ui-panel mb-4 text-sm text-brand">{ view.Message }</p>
+			}
+
+			if view.IsSuperAdmin {
+				<div class="ui-panel mb-6 border-r-4 border-amber-500 bg-amber-50/40">
+					<h2 class="mb-1 text-sm font-bold text-amber-900">کنترل سقف مجاز بخش‌ها (مخصوص سوپر ادمین)</h2>
+					<p class="mb-3 text-xs text-amber-700">سوپر ادمین می‌تواند حداکثر تعداد بخش‌های مجاز برای این مرکز را تعیین نماید. مرکز نمی‌تواند بیش از این سقف بخش ایجاد کند.</p>
+					<form method="post" action="/admin/sections/quota" class="flex flex-wrap items-end gap-3">
+						<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+						<label class="block text-xs font-medium text-amber-900">
+							حداکثر تعداد بخش مجاز
+							<input class="ui-field mt-1 w-32 bg-white text-center font-bold" type="number" name="max_sections" value={ strconv.Itoa(view.MaxSections) } min="1" max="100" required/>
+						</label>
+						<button class="ui-btn ui-btn-primary text-xs" type="submit">ثبت و ذخیره سقف مجاز</button>
+					</form>
+				</div>
+			}
+
+			<section class="ui-panel mb-6">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg font-bold text-ink">ویرایش بخش</h2>
+					<form class="space-y-4" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.EditID) + "/update") }>
+						<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+						@sectionFormFields(view.EditTitle, view.EditSlug, view.EditSortOrder, view.EditIsActive)
+						<div class="flex items-center gap-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+							<a class="ui-btn ui-btn-ghost" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>انصراف</a>
+						</div>
+					</form>
+				} else if !view.IsSuperAdmin && view.CurrentCount >= view.MaxSections {
+					<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
+						<p class="font-bold text-red-800">سقف ایجاد بخش برای این مرکز تکمیل شده است</p>
+						<p class="mt-1 text-xs text-red-600">
+							این مرکز به حداکثر تعداد مجاز ({ strconv.Itoa(view.MaxSections) } بخش) رسیده است و امکان ایجاد بخش جدید وجود ندارد. جهت افزایش سقف مجاز با مدیر ارشد سیستم (سوپر ادمین) تماس حاصل فرمایید.
+						</p>
+					</div>
+				} else {
+					<h2 class="mb-3 text-lg font-bold text-ink">افزودن بخش جدید</h2>
+					<form class="space-y-4" method="post" action="/admin/sections">
+						<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+						@sectionFormFields("", "", 0, true)
+						<div>
+							<button class="ui-btn ui-btn-primary" type="submit">ایجاد بخش جدید</button>
+						</div>
+					</form>
+				}
+			</section>
+
+			<section class="ui-panel">
+				<h2 class="mb-3 text-lg font-bold text-ink">لیست بخش‌های تعریف‌شده</h2>
+				<div class="ui-table-wrap overflow-x-auto">
+					<table class="ui-table min-w-[700px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-3">ردیف</th>
+								<th class="p-3">عنوان بخش</th>
+								<th class="p-3">شناسه روت (Slug)</th>
+								<th class="p-3">ترتیب</th>
+								<th class="p-3">وضعیت</th>
+								<th class="p-3">زیربخش‌ها</th>
+								<th class="p-3">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Sections) == 0 {
+								<tr>
+									<td class="p-4 text-center text-ink-muted" colspan="7">هیچ بخشی برای این مرکز تعریف نشده است.</td>
+								</tr>
+							}
+							for index, s := range view.Sections {
+								<tr class="border-b border-gray-100 hover:bg-surface-soft/50">
+									<td class="p-3">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-3 font-semibold text-ink">{ s.Title }</td>
+									<td class="p-3 font-mono text-xs text-ink-muted" dir="ltr">{ s.Slug }</td>
+									<td class="p-3">{ strconv.Itoa(s.SortOrder) }</td>
+									<td class="p-3">
+										if s.IsActive {
+											<span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">فعال</span>
+										} else {
+											<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">غیرفعال</span>
+										}
+									</td>
+									<td class="p-3 whitespace-nowrap">
+										<div class="flex flex-wrap items-center gap-1.5 text-xs">
+											<a class="rounded bg-teal-50 px-2 py-1 text-teal-700 hover:bg-teal-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/banner") }>بنر</a>
+											<a class="rounded bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/schedule") }>ساعات کاری</a>
+											<a class="rounded bg-indigo-50 px-2 py-1 text-indigo-700 hover:bg-indigo-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/messages") }>پیام‌ها</a>
+											<a class="rounded bg-purple-50 px-2 py-1 text-purple-700 hover:bg-purple-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/equipment") }>تجهیزات</a>
+										</div>
+									</td>
+									<td class="p-3 whitespace-nowrap">
+										<div class="flex items-center gap-2">
+											<a class="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID) + "&edit=" + formatUint(s.ID)) }>ویرایش</a>
+											if s.PublicURL != "" && s.IsActive {
+												<a class="rounded border border-teal-300 px-2.5 py-1 text-xs text-teal-700 hover:bg-teal-50" href={ templ.SafeURL(s.PublicURL) } target="_blank">مشاهده</a>
+											}
+											<form class="inline" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/delete") } onsubmit="return confirm('آیا از حذف این بخش و تمامی داده‌های مربوط به آن (بنر، ساعات، پیام‌ها، تجهیزات) اطمینان دارید؟');">
+												<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+												<button class="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700 hover:bg-red-50" type="submit">حذف</button>
+											</form>
+										</div>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// sectionFormFields renders the input fields for title, slug, sort order, and active toggle.
+templ sectionFormFields(title, slug string, sortOrder int, isActive bool) {
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<label class="block text-sm text-ink-muted">
+			عنوان بخش (مثال: آزمایشگاه، تصویربرداری)
+			<input class="ui-field mt-1 w-full" type="text" name="title" value={ title } required maxlength="100" placeholder="آزمایشگاه تخصصی"/>
+		</label>
+		<label class="block text-sm text-ink-muted">
+			شناسه انگلیسی روت (Slug)
+			<input class="ui-field mt-1 w-full font-mono text-xs" dir="ltr" type="text" name="slug" value={ slug } required maxlength="100" placeholder="lab"/>
+		</label>
+		<label class="block text-sm text-ink-muted">
+			ترتیب نمایش (عدد کوچک‌تر جلوتر)
+			<input class="ui-field mt-1 w-full" type="number" name="sort_order" value={ strconv.Itoa(sortOrder) } min="0" max="999"/>
+		</label>
+		<div class="flex items-center pt-6">
+			<label class="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer">
+				if isActive {
+					<input type="checkbox" name="is_active" value="1" checked class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+				} else {
+					<input type="checkbox" name="is_active" value="1" class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+				}
+				فعال در سایت و منوی اصلی
+			</label>
+		</div>
+	</div>
+}

@@ -181,7 +181,12 @@ func firstPathSegment(path string) string {
 	seg := strings.ToLower(parts[0])
 	switch seg {
 	case "static", "api", "ws", "admin", "favicon.ico",
-		"doctors", "booking", "news", "clinics", "test-results", "weekly-schedule", "waiting-queue", "healthz":
+		"doctors", "booking", "news", "clinics", "specialties",
+		"about", "contact", "terms", "reviews", "otp", "patient",
+		"test-results", "weekly-schedule", "waiting-queue", "healthz",
+		"working-hours", "message-to-visitors", "equipment", "section",
+		"ساعات-کاری", "پیام-به-مراجعین", "تجهیزات", "برنامه-هفتگی-پزشکان", "معرفی",
+		"sitemap.xml", "robots.txt":
 		return ""
 	}
 	return seg

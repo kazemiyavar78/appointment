@@ -14,7 +14,7 @@ import (
 	"tebpardaz/server/views/components"
 )
 
-// NewsDetailView drives the public news detail page.
+// NewsDetailView دادهٔ صفحه جزئیات خبر عمومی را نگه می‌دارد.
 type NewsDetailView struct {
 	TitleHTML       string
 	BodyHTML        string
@@ -25,6 +25,8 @@ type NewsDetailView struct {
 	BackURL         string
 }
 
+// newsDetailDate تاریخ انتشار جزئیات خبر را قالب‌بندی می‌کند.
+// ورودی: زمان انتشار. خروجی: رشته تاریخ-ساعت یا خالی.
 func newsDetailDate(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -32,7 +34,7 @@ func newsDetailDate(t time.Time) string {
 	return t.Format("2006/01/02 15:04")
 }
 
-// NewsDetail renders a single news article with rich HTML body.
+// NewsDetail یک مقاله خبر با بدنه HTML غنی را رندر می‌کند.
 func NewsDetail(view NewsDetailView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -54,14 +56,14 @@ func NewsDetail(view NewsDetailView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"mx-auto max-w-3xl\"><a class=\"mb-4 inline-block text-sm text-brand underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"ui-fade-in mx-auto max-w-3xl\"><a class=\"ui-link mb-5 inline-flex min-h-[44px] items-center text-sm font-bold\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.BackURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 30, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 32, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -72,14 +74,14 @@ func NewsDetail(view NewsDetailView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.ShowClinicBadge && view.ClinicName != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"mb-3 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"ui-chip mb-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.ClinicName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 32, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 34, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -90,7 +92,7 @@ func NewsDetail(view NewsDetailView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h1 class=\"mb-2 text-2xl text-brand\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<h1 class=\"ui-page-title mb-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -103,14 +105,14 @@ func NewsDetail(view NewsDetailView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d := newsDetailDate(view.PublishedAt); d != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"mb-4 text-sm text-ink-muted\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"mb-5 text-sm text-ink-muted\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 38, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 40, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -122,20 +124,20 @@ func NewsDetail(view NewsDetailView) templ.Component {
 			}
 		}
 		if view.CoverURL != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<img class=\"mb-6 max-h-[28rem] w-full rounded object-cover\" src=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<img class=\"mb-6 max-h-[28rem] w-full rounded-xl object-cover\" src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.CoverURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 41, Col: 82}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 43, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" alt=\"\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" alt=\"\" loading=\"lazy\" decoding=\"async\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -156,14 +158,14 @@ func NewsDetail(view NewsDetailView) templ.Component {
 	})
 }
 
-// NewsListView drives the public news listing page.
+// NewsListView دادهٔ فهرست اخبار عمومی را نگه می‌دارد.
 type NewsListView struct {
 	Items           []components.NewsCardView
 	ShowClinicBadge bool
 	EmptyMessage    string
 }
 
-// NewsList renders all published news cards for the tenant.
+// NewsList همه کارت‌های خبر منتشرشده tenant را رندر می‌کند.
 func NewsList(view NewsListView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -185,7 +187,7 @@ func NewsList(view NewsListView) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"mx-auto max-w-5xl\"><h1 class=\"mb-4 text-2xl text-brand\">اخبار</h1>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"ui-fade-in mx-auto max-w-4xl\"><section class=\"ui-section\"><h1 class=\"ui-page-title\">اخبار</h1><p class=\"ui-page-desc\">اطلاعیه\u200cها و توضیح تجهیزات مراکز.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -197,7 +199,7 @@ func NewsList(view NewsListView) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(view.EmptyMessage)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 61, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/news_detail.templ`, Line: 66, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {

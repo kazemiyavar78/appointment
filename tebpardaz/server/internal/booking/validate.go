@@ -33,6 +33,28 @@ type PatientForm struct {
 	SexCode    int       // HIS pjens: 1=مرد, 2=زن
 }
 
+// ValidatePatientIdentity فیلدهای هویتی را قبل از ارسال OTP بررسی می‌کند.
+// ورودی: نام، نام‌خانوادگی، کدملی، موبایل. خروجی: خطای فارسی یا nil.
+func ValidatePatientIdentity(firstName, lastName, nationalID, mobile string) error {
+	firstName = normalizePersianName(firstName)
+	lastName = normalizePersianName(lastName)
+	nationalID = digitsOnly(nationalID)
+	mobile = digitsOnly(mobile)
+	if firstName == "" || !persianNameRe.MatchString(firstName) {
+		return fmt.Errorf("%w: نام باید فارسی باشد", ErrValidation)
+	}
+	if lastName == "" || !persianNameRe.MatchString(lastName) {
+		return fmt.Errorf("%w: نام خانوادگی باید فارسی باشد", ErrValidation)
+	}
+	if !IsValidIranianNationalID(nationalID) {
+		return fmt.Errorf("%w: کد ملی معتبر نیست", ErrValidation)
+	}
+	if !mobileRe.MatchString(mobile) {
+		return fmt.Errorf("%w: موبایل باید ۱۱ رقم و با ۰۹ شروع شود", ErrValidation)
+	}
+	return nil
+}
+
 // ValidatePatientForm validates and normalizes public booking form fields.
 // Inputs: raw form strings (first/last name, national id, mobile, birth_date Shamsi or Gregorian, sex).
 // Output: normalized PatientForm or a Persian error message wrapping ErrValidation.
@@ -215,4 +237,11 @@ func allSameDigits(s string) bool {
 		}
 	}
 	return true
+}
+
+// MobileLooksValid reports whether mobile matches the public booking mobile format.
+// Inputs: digits-only or raw mobile string.
+// Output: true when it matches ^09\d{9}$.
+func MobileLooksValid(mobile string) bool {
+	return mobileRe.MatchString(digitsOnly(mobile))
 }

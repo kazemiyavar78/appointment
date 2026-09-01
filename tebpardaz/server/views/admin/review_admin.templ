@@ -1,0 +1,88 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// ReviewAdminItem یک ردیف نظر در انتظار تأیید است.
+type ReviewAdminItem struct {
+	ID         uint
+	TargetType string
+	TargetID   uint
+	ClinicID   uint
+	AuthorName string
+	Rating     int
+	Body       string
+}
+
+// ReviewAdminView مدل صفحه تأیید نظرات است.
+type ReviewAdminView struct {
+	Nav     layouts.AdminLayoutView
+	Items   []ReviewAdminItem
+	Message string
+}
+
+// ReviewAdminPage صفحه تأیید نظرات ادمین را رندر می‌کند.
+templ ReviewAdminPage(view ReviewAdminView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-4xl">
+			<h1 class="ui-page-title mb-4">تأیید نظرات</h1>
+			if view.Message == "approved" {
+				<p class="ui-panel mb-3 text-sm text-emerald-800">نظر تأیید شد.</p>
+			}
+			if view.Message == "deleted" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">نظر حذف شد.</p>
+			}
+			if view.Message == "notfound" {
+				<p class="ui-panel mb-3 text-sm text-red-700">نظر پیدا نشد.</p>
+			}
+			if len(view.Items) == 0 {
+				<p class="ui-panel text-sm text-ink-muted">نظری در انتظار تأیید نیست.</p>
+			} else {
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[640px] text-sm">
+						<thead>
+							<tr>
+								<th>هدف</th>
+								<th>نام</th>
+								<th>امتیاز</th>
+								<th>متن</th>
+								<th>اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, item := range view.Items {
+								<tr>
+									<td class="whitespace-nowrap">
+										if item.TargetType == "doctor" {
+											پزشک #{ strconv.FormatUint(uint64(item.TargetID), 10) }
+										} else {
+											مرکز #{ strconv.FormatUint(uint64(item.ClinicID), 10) }
+										}
+									</td>
+									<td>{ item.AuthorName }</td>
+									<td class="tabular-nums">{ strconv.Itoa(item.Rating) }</td>
+									<td class="max-w-xs break-words">{ item.Body }</td>
+									<td class="whitespace-nowrap">
+										<form class="mb-1 inline" method="post" action="/admin/reviews/decide">
+											<input type="hidden" name="id" value={ strconv.FormatUint(uint64(item.ID), 10) }/>
+											<input type="hidden" name="action" value="approve"/>
+											<button class="ui-btn ui-btn-primary !min-h-0 !px-2 !py-1 text-xs" type="submit">تأیید</button>
+										</form>
+										<form class="inline" method="post" action="/admin/reviews/decide" onsubmit="return confirm('این نظر حذف شود؟');">
+											<input type="hidden" name="id" value={ strconv.FormatUint(uint64(item.ID), 10) }/>
+											<input type="hidden" name="action" value="reject"/>
+											<button class="ui-btn ui-btn-ghost !min-h-0 !px-2 !py-1 text-xs" type="submit">حذف</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</div>
+	}
+}

@@ -34,3 +34,4 @@ type Clinic struct {
 
 	Organization Organization `gorm:"foreignKey:OrganizationID;references:ID"`
 }
+

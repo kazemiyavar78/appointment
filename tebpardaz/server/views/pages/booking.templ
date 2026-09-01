@@ -2,173 +2,122 @@ package pages
 
 import "tebpardaz/server/views/components"
 
-// BookingView drives the dedicated public doctor booking page.
-type BookingView struct {
-	DoctorName    string
-	SpecialtyName string
-	ClinicName    string
-	PhotoURL      string
-	ShowClinic    bool
-	BackURL       string
-	SubmitURL     string
-	WSURL         string
-	CSRFToken     string
-	Slots         components.SlotPickerView
-	ErrorMessage  string
-}
-
-// Booking renders doctor details, slot picker, and patient booking form with live progress.
+// Booking جزئیات پزشک و ویزارد چندمرحله‌ای رزرو را رندر می‌کند.
 templ Booking(view BookingView) {
-	<div class="booking-page mx-auto max-w-3xl" id="booking-root" data-ws-url={ view.WSURL }>
-		<a class="booking-back mb-5 inline-flex min-h-[44px] items-center text-base font-bold text-brand underline" href={ templ.SafeURL(view.BackURL) }>
+	<div
+		class="bk-page"
+		id="booking-root"
+		data-ws-url={ view.WSURL }
+		data-clinic-path={ view.ClinicPath }
+		data-doctor-name={ view.DoctorName }
+		data-otp-send-url="/otp/send"
+		data-otp-verify-url="/otp/verify"
+		data-patient-lookup-url="/patient/lookup"
+	>
+		<a class="bk-back" href={ templ.SafeURL(view.BackURL) }>
 			بازگشت به فهرست پزشکان
 		</a>
-
-		<section class="booking-doctor mb-5 flex gap-4 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+		<section class="bk-doctor-card">
 			if view.PhotoURL != "" {
-				<img class="h-20 w-20 shrink-0 rounded-full object-cover" src={ view.PhotoURL } alt="" width="80" height="80" loading="lazy" decoding="async"/>
+				<img class="bk-doctor-card__photo" src={ view.PhotoURL } alt="" width="80" height="80" loading="lazy"/>
 			} else {
-				<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand-muted text-lg font-bold text-brand" aria-hidden="true">
-					دکتر
-				</div>
+				<div class="bk-doctor-card__placeholder" aria-hidden="true">دکتر</div>
 			}
-			<div class="min-w-0">
+			<div class="bk-doctor-card__info">
 				if view.ShowClinic && view.ClinicName != "" {
-					<span class="mb-1.5 inline-block rounded-md bg-brand-muted px-2 py-0.5 text-sm text-brand">{ view.ClinicName }</span>
+					<span class="bk-doctor-card__clinic">{ view.ClinicName }</span>
 				}
-				<h1 class="text-2xl font-bold leading-snug text-brand">{ view.DoctorName }</h1>
+				<h1 class="bk-doctor-card__name">{ view.DoctorName }</h1>
 				if view.SpecialtyName != "" {
-					<p class="mt-1 text-base text-ink-muted">{ view.SpecialtyName }</p>
+					<p class="bk-doctor-card__spec">{ view.SpecialtyName }</p>
 				}
 			</div>
 		</section>
-
 		if view.ErrorMessage != "" {
-			<p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-base text-red-700" role="alert">{ view.ErrorMessage }</p>
+			<p class="bk-alert" role="alert">{ view.ErrorMessage }</p>
 		}
-
-		<div id="booking-progress" class="mb-4 hidden rounded-xl border border-surface-border bg-white p-4" aria-live="polite">
-			<p class="mb-3 text-base font-bold text-ink">وضعیت ثبت نوبت</p>
-			<ol class="space-y-3">
-				<li class="booking-step flex items-center gap-3" data-step="1">
-					<span class="booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted">1</span>
-					<span class="text-base text-ink">اطلاعات دریافت شد</span>
-				</li>
-				<li class="booking-step flex items-center gap-3" data-step="2">
-					<span class="booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted">2</span>
-					<span class="text-base text-ink">اعتبارسنجی انجام شد</span>
-				</li>
-				<li class="booking-step flex items-center gap-3" data-step="3">
-					<span class="booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted">3</span>
-					<span class="text-base text-ink">برای مرکز ارسال شد</span>
-				</li>
-				<li class="booking-step flex items-center gap-3" data-step="4">
-					<span class="booking-step-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border text-sm text-ink-muted">4</span>
-					<span class="text-base text-ink">پاسخ مرکز دریافت شد</span>
-				</li>
-			</ol>
-			<p id="booking-result" class="mt-4 hidden rounded-lg px-3 py-3 text-base"></p>
-		</div>
-
+		@components.BookingStepper(components.BookingStepperView{ActiveStep: 1})
 		<form
 			id="booking-form"
-			class="booking-form space-y-5 rounded-xl border border-surface-border bg-white p-4 shadow-sm sm:p-5"
+			class="bk-wizard"
 			method="post"
 			action={ templ.SafeURL(view.SubmitURL) }
 			autocomplete="off"
+			novalidate
 		>
 			<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
-
-			<section>
-				<h2 class="mb-1 text-lg font-bold text-ink">۱. نوبت را انتخاب کنید</h2>
-				<p class="mb-3 text-sm text-ink-muted">یک روز و ساعت آزاد را بزنید.</p>
-				@components.SlotPicker(view.Slots)
-			</section>
-
-			<div id="booking-fields" class="hidden space-y-4 border-t border-surface-border pt-5">
-				<div>
-					<h2 class="mb-1 text-lg font-bold text-ink">۲. اطلاعات بیمار</h2>
-					<p class="text-sm text-ink-muted">همه فیلدها ضروری هستند.</p>
-					<p id="selected-slot-date" class="mt-2 rounded-lg bg-brand-muted px-3 py-2 text-base font-medium text-brand" aria-live="polite"></p>
-				</div>
-
-				<div class="grid gap-4 sm:grid-cols-2">
-					<div>
-						<label class="mb-1.5 block text-base text-ink" for="first_name">نام</label>
-						<input id="first_name" name="first_name" required autocomplete="given-name" class="doctor-list-field" placeholder="مثال: علی"/>
-					</div>
-					<div>
-						<label class="mb-1.5 block text-base text-ink" for="last_name">نام خانوادگی</label>
-						<input id="last_name" name="last_name" required autocomplete="family-name" class="doctor-list-field" placeholder="مثال: رضایی"/>
-					</div>
-				</div>
-
-				<div class="grid gap-4 sm:grid-cols-2">
-					<div>
-						<label class="mb-1.5 block text-base text-ink" for="national_id">کد ملی</label>
-						<input
-							id="national_id"
-							name="national_id"
-							required
-							inputmode="numeric"
-							maxlength="10"
-							autocomplete="off"
-							class="doctor-list-field"
-							placeholder="۱۰ رقم"
-							dir="ltr"
-						/>
-					</div>
-					<div>
-						<label class="mb-1.5 block text-base text-ink" for="mobile">موبایل</label>
-						<input
-							id="mobile"
-							name="mobile"
-							required
-							inputmode="tel"
-							maxlength="11"
-							autocomplete="tel"
-							class="doctor-list-field"
-							placeholder="09xxxxxxxxx"
-							dir="ltr"
-						/>
-					</div>
-				</div>
-
-				<div>
-					@components.DatePicker(components.DatePickerProps{
-						ID:          "birth_date",
-						Name:        "birth_date",
-						Label:       "تاریخ تولد",
-						Required:    true,
-						Help:        "تقویم شمسی — حداقل سن ۱ سال",
-						Placeholder: "انتخاب تاریخ",
-						HasAgeRange: true,
-						MinAge:      1,
-						MaxAge:      120,
-					})
-				</div>
-
-				<div>
-					<label class="mb-1.5 block text-base text-ink" for="sex">جنسیت</label>
-					<select id="sex" name="sex" required class="doctor-list-field">
-						<option value="">انتخاب کنید…</option>
-						<option value="مرد">مرد</option>
-						<option value="زن">زن</option>
-					</select>
-				</div>
-
-				<button
-					id="booking-submit"
-					type="submit"
-					class="doctor-list-btn doctor-list-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-					disabled?={ len(view.Slots.Options) == 0 }
-				>
-					ثبت رزرو
+			<input type="hidden" name="otp_ticket" id="otp_ticket" value=""/>
+			<section class="bk-panel" id="booking-step-slots" data-step="1">
+				<h2 class="bk-panel__title">نوبت را انتخاب کنید</h2>
+				<p class="bk-panel__desc">روی یکی از کارت‌های زیر بزنید.</p>
+				@components.BookingSlotGrid(components.BookingSlotCardView{
+					InputName:  view.Slots.InputName,
+					Options:    view.Slots.Options,
+					EmptyText:  view.Slots.EmptyText,
+					DoctorName: view.DoctorName,
+				})
+				<button type="button" id="booking-to-info" class="bk-btn bk-btn--primary bk-btn--block" disabled>
+					ادامه
 				</button>
+			</section>
+			<section class="bk-panel bk-hidden" id="booking-step-info" data-step="2" aria-hidden="true">
+				<h2 class="bk-panel__title">اطلاعات بیمار</h2>
+				@components.BookingPatientForm(components.BookingPatientFormView{})
+			</section>
+			@components.BookingOTPPanel(components.BookingOTPPanelView{CodeLength: 5})
+			<div id="booking-progress" class="bk-hidden" aria-hidden="true">
+				<ol class="bk-progress-steps">
+					<li class="booking-step" data-step="1"><span class="booking-step-icon">1</span></li>
+					<li class="booking-step" data-step="2"><span class="booking-step-icon">2</span></li>
+					<li class="booking-step" data-step="3"><span class="booking-step-icon">3</span></li>
+					<li class="booking-step" data-step="4"><span class="booking-step-icon">4</span></li>
+				</ol>
 			</div>
 		</form>
-
+		if len(view.Services) > 0 {
+			<section class="bk-services-section">
+				<h2 class="bk-services-section__title">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand">
+						<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+					</svg>
+					خدمات و بیمه‌های تحت پوشش
+				</h2>
+				<div class="bk-services-grid">
+					for _, srv := range view.Services {
+						<div class="bk-service-card">
+							<div class="bk-service-card__header">
+								<h3 class="bk-service-card__name">{ srv.Name }</h3>
+								if srv.Description != "" {
+									<p class="bk-service-card__desc">{ srv.Description }</p>
+								}
+							</div>
+							<div class="bk-service-card__insurances">
+								<span class="bk-service-card__ins-label">بیمه‌های تحت پوشش:</span>
+								if len(srv.Insurances) > 0 {
+									<div class="bk-service-card__ins-list">
+										for _, ins := range srv.Insurances {
+											<div class="bk-service-ins-badge">
+												if ins.LogoURL != "" {
+													<img class="bk-service-ins-badge__logo" src={ ins.LogoURL } alt={ ins.Name } width="18" height="18" loading="lazy"/>
+												}
+												<span class="bk-service-ins-badge__name">{ ins.Name }</span>
+											</div>
+										}
+									</div>
+								} else {
+									<span class="bk-service-card__ins-empty">فاقد پوشش بیمه‌ای اختصاصی (تعرفه آزاد)</span>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			</section>
+		}
+		@components.BookingResultModal(components.BookingResultModalView{})
 		@components.PersianDatepickerAssets()
+		<link rel="stylesheet" href="/static/css/booking.css"/>
+		<script src="/static/js/booking_validate.js" defer></script>
 		<script src="/static/js/booking.js" defer></script>
+		@components.ReviewSection(view.Reviews)
 	</div>
 }

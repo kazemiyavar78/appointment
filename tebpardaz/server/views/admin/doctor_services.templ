@@ -1,0 +1,317 @@
+package admin
+
+import (
+	"strings"
+	"tebpardaz/server/views/layouts"
+)
+
+// DoctorOption یک گزینه در لیست انتخاب پزشک است.
+type DoctorOption struct {
+	ID       uint
+	Name     string
+	Selected bool
+}
+
+// DoctorServicesView مدل داده صفحه انتصاب خدمات به پزشکان است.
+type DoctorServicesView struct {
+	Nav              layouts.AdminLayoutView
+	Message          string
+	Clinics          []ClinicOption
+	SelectedClinicID uint
+	Doctors          []DoctorOption
+	SelectedDoctorID uint
+	Services         []ServiceAssignOption
+}
+
+// DoctorServices صفحه انتصاب خدمات به پزشکان را رندر می‌کند.
+// ورودی: view مدل داده صفحه انتصاب خدمات پزشک. خروجی: کامپوننت templ صفحه ادمین.
+templ DoctorServices(view DoctorServicesView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">انتصاب خدمات به پزشکان</h1>
+					<p class="mt-1 text-xs text-ink-muted">
+						خدمات درمانی و پوشش‌های هر پزشک را در مرکز درمانی مشخص کنید.
+					</p>
+				</div>
+				<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services">
+					<i class="fa-solid fa-arrow-right ml-1"></i>
+					بازگشت به لیست خدمات
+				</a>
+			</div>
+			if view.Message != "" {
+				<div class="ui-panel mb-4 text-sm font-medium text-brand-dark bg-brand/5 border border-brand/20">
+					{ view.Message }
+				</div>
+			}
+
+			<!-- فیلتر انتخاب مرکز درمانی -->
+			<div class="mb-6 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+				<form class="flex flex-wrap items-end gap-3" method="get" action="/admin/services/doctor-services">
+					<label class="block text-xs font-semibold text-ink-muted">
+						مرکز درمانی
+						<select class="ui-field mt-1.5 min-w-[14rem] text-sm" name="clinic_id" onchange="this.form.submit()" required>
+							<option value="">-- انتخاب مرکز درمانی --</option>
+							for _, clinic := range view.Clinics {
+								<option value={ formatUint(clinic.ID) } selected?={ clinic.Selected }>{ clinic.Name }</option>
+							}
+						</select>
+					</label>
+					<noscript>
+						<button class="ui-btn ui-btn-ghost text-xs" type="submit">انتخاب مرکز</button>
+					</noscript>
+				</form>
+			</div>
+
+			if view.SelectedClinicID == 0 {
+				<div class="ui-panel text-center py-10 text-sm text-ink-muted">
+					<i class="fa-solid fa-hospital text-3xl mb-2 text-gray-300 block"></i>
+					لطفاً برای مدیریت انتصاب خدمات، ابتدا یک مرکز درمانی را انتخاب نمایید.
+				</div>
+			} else if len(view.Doctors) == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-user-doctor text-3xl mb-2 text-gray-300 block"></i>
+					هیچ پزشک تأییدشده‌ای برای این مرکز درمانی یافت نشد.
+				</div>
+			} else if len(view.Services) == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-list-check text-3xl mb-2 text-gray-300 block"></i>
+					هنوز هیچ خدمتی در کاتالوگ خدمات سامانه ثبت نشده است.
+				</div>
+			} else {
+				<form method="post" action="/admin/services/doctor-services" id="doctor-services-form" onsubmit="return validateDoctorServicesForm()">
+					<input type="hidden" name="clinic_id" value={ formatUint(view.SelectedClinicID) }/>
+
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+						<!-- ستون انتخاب پزشکان -->
+						<div class="flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]">
+							<div class="flex items-center justify-between pb-3 border-b border-gray-100">
+								<div class="flex items-center gap-2">
+									<i class="fa-solid fa-user-doctor text-brand text-sm"></i>
+									<h2 class="text-sm font-bold text-ink">انتخاب پزشک(ها)</h2>
+								</div>
+								<span id="doc-selected-badge" class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+									۰ پزشک انتخاب شده
+								</span>
+							</div>
+
+							<!-- جستجوی پزشک -->
+							<div class="mt-3 relative">
+								<input
+									type="search"
+									id="doc-search-input"
+									placeholder="جستجوی پزشک بر اساس نام..."
+									oninput="filterDocItems()"
+									class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+								/>
+								<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+							</div>
+
+							<!-- دکمه‌های اقدام سریع پزشکان -->
+							<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+								<button type="button" onclick="toggleAllDocs(true)" class="text-brand hover:underline font-medium">
+									انتخاب همه
+								</button>
+								<button type="button" onclick="toggleAllDocs(false)" class="text-ink-muted hover:underline">
+									لغو انتخاب همه
+								</button>
+							</div>
+
+							<!-- لیست اسکرول‌شونده پزشکان -->
+							<div id="doc-list-container" class="mt-2 flex-1 overflow-y-auto space-y-1 pr-1">
+								for _, doc := range view.Doctors {
+									<label class="doc-item flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ strings.ToLower(doc.Name) }>
+										<input
+											type="checkbox"
+											name="doctor_ids"
+											value={ formatUint(doc.ID) }
+											onchange="updateDocCount()"
+											class="doc-checkbox h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+											checked?={ doc.Selected }
+										/>
+										<span class="text-xs font-medium text-ink">{ doc.Name }</span>
+									</label>
+								}
+								<p id="doc-empty-msg" class="hidden text-center text-xs text-ink-muted py-8">
+									پزشکی مطابق با عبارت جستجو یافت نشد.
+								</p>
+							</div>
+						</div>
+
+						<!-- ستون انتخاب خدمات -->
+						<div class="flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]">
+							<div class="flex items-center justify-between pb-3 border-b border-gray-100">
+								<div class="flex items-center gap-2">
+									<i class="fa-solid fa-list-check text-brand text-sm"></i>
+									<h2 class="text-sm font-bold text-ink">انتخاب خدمات</h2>
+								</div>
+								<span id="srv-selected-badge" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+									۰ خدمت انتخاب شده
+								</span>
+							</div>
+
+							<!-- جستجوی خدمت -->
+							<div class="mt-3 relative">
+								<input
+									type="search"
+									id="srv-search-input"
+									placeholder="جستجوی خدمت بر اساس عنوان یا شرح..."
+									oninput="filterSrvItems()"
+									class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+								/>
+								<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+							</div>
+
+							<!-- دکمه‌های اقدام سریع خدمات -->
+							<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+								<button type="button" onclick="toggleAllSrvs(true)" class="text-brand hover:underline font-medium">
+									انتخاب همه
+								</button>
+								<button type="button" onclick="toggleAllSrvs(false)" class="text-ink-muted hover:underline">
+									لغو انتخاب همه
+								</button>
+							</div>
+
+							<!-- لیست اسکرول‌شونده خدمات -->
+							<div id="srv-list-container" class="mt-2 flex-1 overflow-y-auto space-y-1.5 pr-1 divide-y divide-gray-50">
+								for _, item := range view.Services {
+									<label class="srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ strings.ToLower(item.Name + " " + item.Description) }>
+										<input
+											type="checkbox"
+											name="service_ids"
+											value={ formatUint(item.ID) }
+											onchange="updateSrvCount()"
+											class="srv-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+											checked?={ item.Selected }
+										/>
+										<div class="min-w-0 flex-1">
+											<span class="text-xs font-semibold text-ink block">{ item.Name }</span>
+											if item.Description != "" {
+												<span class="text-[11px] text-ink-muted block mt-0.5">{ item.Description }</span>
+											}
+										</div>
+									</label>
+								}
+								<p id="srv-empty-msg" class="hidden text-center text-xs text-ink-muted py-8">
+									خدمتی مطابق با عبارت جستجو یافت نشد.
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- نوار ذخیره -->
+					<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+						<div class="text-xs text-ink-muted leading-relaxed">
+							<i class="fa-solid fa-circle-info text-brand ml-1"></i>
+							با ذخیره اطلاعات، خدمات علامت‌خورده به تمام پزشکان انتخاب‌شده در بالا اختصاص داده می‌شوند.
+						</div>
+						<button class="ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold" type="submit">
+							<i class="fa-solid fa-floppy-disk ml-1.5"></i>
+							ذخیره انتصاب خدمات
+						</button>
+					</div>
+				</form>
+
+				<script>
+					function toPersianDigits(n) {
+						var id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+						return String(n).replace(/[0-9]/g, function(w){ return id[+w]; });
+					}
+
+					function updateDocCount() {
+						var checked = document.querySelectorAll('.doc-checkbox:checked').length;
+						var badge = document.getElementById('doc-selected-badge');
+						if (badge) {
+							badge.textContent = toPersianDigits(checked) + ' پزشک انتخاب شده';
+						}
+					}
+
+					function filterDocItems() {
+						var q = (document.getElementById('doc-search-input').value || '').trim().toLowerCase();
+						var items = document.querySelectorAll('.doc-item');
+						var visibleCount = 0;
+						items.forEach(function(item) {
+							var text = item.getAttribute('data-search') || '';
+							if (!q || text.indexOf(q) !== -1) {
+								item.style.display = '';
+								visibleCount++;
+							} else {
+								item.style.display = 'none';
+							}
+						});
+						var emptyMsg = document.getElementById('doc-empty-msg');
+						if (emptyMsg) {
+							emptyMsg.classList.toggle('hidden', visibleCount > 0);
+						}
+					}
+
+					function toggleAllDocs(checked) {
+						var items = document.querySelectorAll('.doc-item');
+						items.forEach(function(item) {
+							if (item.style.display !== 'none') {
+								var cb = item.querySelector('.doc-checkbox');
+								if (cb) cb.checked = checked;
+							}
+						});
+						updateDocCount();
+					}
+
+					function updateSrvCount() {
+						var checked = document.querySelectorAll('.srv-checkbox:checked').length;
+						var badge = document.getElementById('srv-selected-badge');
+						if (badge) {
+							badge.textContent = toPersianDigits(checked) + ' خدمت انتخاب شده';
+						}
+					}
+
+					function filterSrvItems() {
+						var q = (document.getElementById('srv-search-input').value || '').trim().toLowerCase();
+						var items = document.querySelectorAll('.srv-item');
+						var visibleCount = 0;
+						items.forEach(function(item) {
+							var text = item.getAttribute('data-search') || '';
+							if (!q || text.indexOf(q) !== -1) {
+								item.style.display = '';
+								visibleCount++;
+							} else {
+								item.style.display = 'none';
+							}
+						});
+						var emptyMsg = document.getElementById('srv-empty-msg');
+						if (emptyMsg) {
+							emptyMsg.classList.toggle('hidden', visibleCount > 0);
+						}
+					}
+
+					function toggleAllSrvs(checked) {
+						var items = document.querySelectorAll('.srv-item');
+						items.forEach(function(item) {
+							if (item.style.display !== 'none') {
+								var cb = item.querySelector('.srv-checkbox');
+								if (cb) cb.checked = checked;
+							}
+						});
+						updateSrvCount();
+					}
+
+					function validateDoctorServicesForm() {
+						var docChecked = document.querySelectorAll('.doc-checkbox:checked').length;
+						if (docChecked === 0) {
+							alert('لطفاً حداقل یک پزشک را برای انتصاب خدمات انتخاب نمایید.');
+							return false;
+						}
+						return true;
+					}
+
+					document.addEventListener('DOMContentLoaded', function() {
+						updateDocCount();
+						updateSrvCount();
+					});
+					updateDocCount();
+					updateSrvCount();
+				</script>
+			}
+		</div>
+	}
+}

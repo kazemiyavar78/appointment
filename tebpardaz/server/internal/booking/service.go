@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,6 +33,8 @@ type ProgressFn func(ProgressEvent)
 // BookRequest is the input for a public website booking (raw form fields).
 type BookRequest struct {
 	ClinicID   uint
+	ClinicCode int
+	ClinicName string
 	Doctor     *models.Doctor
 	ClientIP   string
 	SlotID     string
@@ -41,6 +44,7 @@ type BookRequest struct {
 	Mobile     string
 	BirthDate  string
 	Sex        string
+	OTPTicket  string // one-time ticket from OTP verify step
 }
 
 // BookResult is the outcome of a booking attempt.
@@ -57,13 +61,29 @@ type Service struct {
 	Slots        *cache.SlotCache
 	Appointments *repository.AppointmentRepo
 	Guard        *Guard
+	OTP          *OTPStore
+	Notifier     *Notifier
 }
 
 // NewService constructs a booking Service.
-// Inputs: hub, slot cache, appointment repo, abuse/rate guard.
+// Inputs: hub, slot cache, appointment repo, abuse/rate guard, OTP store, notifier.
 // Output: pointer to Service.
-func NewService(hub *websocket.Hub, slots *cache.SlotCache, appointments *repository.AppointmentRepo, guard *Guard) *Service {
-	return &Service{Hub: hub, Slots: slots, Appointments: appointments, Guard: guard}
+func NewService(
+	hub *websocket.Hub,
+	slots *cache.SlotCache,
+	appointments *repository.AppointmentRepo,
+	guard *Guard,
+	otp *OTPStore,
+	notifier *Notifier,
+) *Service {
+	return &Service{
+		Hub:          hub,
+		Slots:        slots,
+		Appointments: appointments,
+		Guard:        guard,
+		OTP:          otp,
+		Notifier:     notifier,
+	}
 }
 
 // Book runs the end-to-end public booking flow and reports progress via emit.
@@ -92,6 +112,19 @@ func (s *Service) Book(req BookRequest, emit ProgressFn) (*BookResult, error) {
 	form.SlotID = strings.TrimSpace(req.SlotID)
 	if form.SlotID == "" {
 		return &BookResult{OK: false, Message: "نوبت انتخاب نشده است"}, ErrValidation
+	}
+
+	if s.OTP != nil {
+		if err := s.OTP.ConsumeTicket(req.OTPTicket, form.Mobile, form.NationalID); err != nil {
+			msg := "ابتدا شماره موبایل را با کد تایید کنید"
+			switch {
+			case errors.Is(err, ErrOTPExpired):
+				msg = "اعتبار تایید موبایل تمام شده؛ دوباره کد بگیرید"
+			case errors.Is(err, ErrOTPSessionExhausted):
+				msg = "سقف ۵ نوبت با این موبایل پر شده؛ دوباره کد تایید بگیرید"
+			}
+			return &BookResult{OK: false, Message: msg}, ErrOTPNotVerified
+		}
 	}
 
 	slot, ok := s.findSlot(req.ClinicID, req.Doctor.ID, form.SlotID)
@@ -197,9 +230,32 @@ func (s *Service) Book(req BookRequest, emit ProgressFn) (*BookResult, error) {
 		_ = s.Appointments.MarkConfirmed(appt.ID, ack.ExternalID, time.Now())
 	}
 	emit(NewStepDone(StepClinicAck))
+
+	if s.Notifier != nil {
+		doctorName := ""
+		if req.Doctor != nil {
+			doctorName = strings.TrimSpace(req.Doctor.Name)
+			if doctorName == "" {
+				doctorName = strings.TrimSpace(req.Doctor.FirstName + " " + req.Doctor.LastName)
+			}
+		}
+		_ = s.Notifier.NotifyBookingConfirmed(context.Background(), BookingNotifyParams{
+			Phone:      form.Mobile,
+			FirstName:  form.FirstName,
+			LastName:   form.LastName,
+			NationalID: form.NationalID,
+			ClinicCode: req.ClinicCode,
+			ClinicName: req.ClinicName,
+			DoctorName: doctorName,
+			StartsAt:   slot.StartsAt,
+			ExternalID: ack.ExternalID,
+			ClientIP:   req.ClientIP,
+		})
+	}
+
 	return &BookResult{
 		OK:         true,
-		Message:    "نوبت شما با موفقیت ثبت شد",
+		Message:    "نوبت شما با موفقیت ثبت شد؛ پیامک تایید ارسال شد",
 		ExternalID: ack.ExternalID,
 	}, nil
 }

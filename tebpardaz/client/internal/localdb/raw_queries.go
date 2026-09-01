@@ -63,7 +63,8 @@ func Open(dsn string) (*Store, error) {
 	return &Store{DB: db}, nil
 }
 
-// ListDoctors returns HIS doctors eligible for registration (no external_id yet).
+// ListDoctors returns HIS doctors for sync (approved and pending) so the server can
+// update by national_id + clinic_id and cache unapproved rows.
 // Inputs: none (uses clinic DB).
 // Output: slice of LocalDoctor or error.
 func (s *Store) ListDoctors() ([]LocalDoctor, error) {
@@ -79,7 +80,7 @@ func (s *Store) ListDoctors() ([]LocalDoctor, error) {
 	cnezam,
 	external_id
 	FROM personel
-	WHERE cnezam <> '' AND external_id is null AND LEN(cmelli) = 10
+	WHERE cnezam <> '' AND LEN(cmelli) = 10
 	`)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,119 @@
+/* Specialty category cards (home / specialties list) */
+
+.specialty-cat-cards {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 24px;
+	width: 100%;
+	text-align: center;
+}
+
+.specialty-cat-card {
+	display: block;
+	background: #ffffff;
+	border-radius: 16px;
+	padding: 32px 20px 28px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+	transition: transform 0.25s ease, box-shadow 0.25s ease;
+	border: 1px solid #f1f5f9;
+	text-decoration: none;
+	color: inherit;
+	--sp-icon-color: #0d9488;
+}
+
+.specialty-cat-card:hover {
+	transform: translateY(-6px);
+	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+}
+
+.specialty-cat-card:focus-visible {
+	outline: 2px solid #0d9488;
+	outline-offset: 3px;
+}
+
+.specialty-cat-card__icon {
+	width: 56px;
+	height: 56px;
+	margin: 0 auto 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--sp-icon-color);
+}
+
+.specialty-cat-card__icon i {
+	font-size: 2.75rem;
+	line-height: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.specialty-cat-card__icon svg {
+	width: 48px;
+	height: 48px;
+	fill: currentColor;
+}
+
+.specialty-cat-card__icon img {
+	width: 48px;
+	height: 48px;
+	object-fit: contain;
+}
+
+.specialty-cat-card__icon-text {
+	font-size: 2rem;
+	line-height: 1;
+}
+
+.specialty-cat-card__title {
+	font-size: 1.15rem;
+	font-weight: 600;
+	color: #1e293b;
+	margin: 0 0 10px;
+	line-height: 1.4;
+}
+
+.specialty-cat-card__desc {
+	font-size: 0.9rem;
+	line-height: 1.5;
+	color: #64748b;
+	margin: 0;
+}
+
+.specialty-filter-desc {
+	margin-top: 0.75rem;
+	padding: 0.85rem 1rem;
+	border-radius: 12px;
+	border: 1px solid #e2e8f0;
+	background: #f8fafc;
+}
+
+.specialty-filter-desc__title {
+	margin: 0 0 0.35rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: #1e293b;
+}
+
+.specialty-filter-desc__body {
+	margin: 0;
+	font-size: 0.875rem;
+	line-height: 1.65;
+	color: #475569;
+	white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+	.specialty-cat-cards {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 520px) {
+	.specialty-cat-cards {
+		grid-template-columns: minmax(0, 1fr);
+		max-width: 320px;
+		margin-inline: auto;
+	}
+}

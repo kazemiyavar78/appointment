@@ -1,0 +1,30 @@
+package components
+
+// BookingResultModalView دادهٔ مودال نتیجه ثبت نوبت.
+type BookingResultModalView struct{}
+
+// BookingResultModal پاپ‌آپ نتیجه موفق/ناموفق ثبت نوبت.
+templ BookingResultModal(view BookingResultModalView) {
+	<div class="bk-modal bk-hidden" id="booking-result-modal" role="dialog" aria-modal="true" aria-labelledby="bk-modal-title" aria-hidden="true">
+		<div class="bk-modal__backdrop" id="bk-modal-backdrop"></div>
+		<div class="bk-modal__sheet">
+			<div class="bk-modal__icon" id="bk-modal-icon" aria-hidden="true">
+				<svg class="bk-modal__check" viewBox="0 0 52 52" aria-hidden="true">
+					<circle class="bk-modal__check-circle" cx="26" cy="26" r="25" fill="none"/>
+					<path class="bk-modal__check-path" fill="none" d="M14 27l7 7 16-16"/>
+				</svg>
+			</div>
+			<h2 class="bk-modal__title" id="bk-modal-title">نتیجه ثبت نوبت</h2>
+			<p class="bk-modal__message" id="bk-modal-message"></p>
+			<div class="bk-modal__summary bk-hidden" id="bk-modal-summary">
+				<div class="bk-modal__row"><span>📅</span><span id="bk-modal-slot"></span></div>
+				<div class="bk-modal__row"><span>👤</span><span id="bk-modal-patient"></span></div>
+				<div class="bk-modal__row"><span>🔖</span><span id="bk-modal-tracking"></span></div>
+			</div>
+			<div class="bk-modal__actions">
+				<button type="button" id="bk-modal-home" class="bk-link">بازگشت به صفحه اصلی</button>
+				<button type="button" id="bk-modal-close" class="bk-btn bk-btn--primary">متوجه شدم</button>
+			</div>
+		</div>
+	</div>
+}

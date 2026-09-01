@@ -1,0 +1,127 @@
+package admin
+
+import (
+	"strconv"
+	"tebpardaz/server/views/layouts"
+)
+
+// DayScheduleForm holds form values for a single day of the week.
+type DayScheduleForm struct {
+	DayOfWeek   int
+	DayName     string
+	IsOpen      bool
+	Shift1Start string
+	Shift1End   string
+	Shift2Start string
+	Shift2End   string
+	HasShift2   bool
+}
+
+// SectionScheduleView holds view model for editing working hours.
+type SectionScheduleView struct {
+	Nav          layouts.AdminLayoutView
+	SectionID    uint
+	SectionTitle string
+	ClinicID     uint
+	Days         []DayScheduleForm
+	Message      string
+}
+
+// SectionScheduleEdit renders the 7-day schedule configuration form.
+templ SectionScheduleEdit(view SectionScheduleView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<div class="flex items-center gap-2 text-sm text-ink-muted mb-1">
+						<a class="hover:text-brand" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بخش‌های مرکز</a>
+						<span>/</span>
+						<span>{ view.SectionTitle }</span>
+					</div>
+					<h1 class="ui-page-title">ساعات کاری بخش: { view.SectionTitle }</h1>
+					<p class="text-xs text-ink-muted mt-1">تعریف روزها و شیفت‌های کاری (حداکثر ۲ شیفت برای هر روز)</p>
+				</div>
+				<div class="flex items-center gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") }>بنر</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>پیام‌ها</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment") }>تجهیزات</a>
+				</div>
+			</div>
+
+			if view.Message != "" {
+				<p class="ui-panel mb-4 text-sm text-brand">{ view.Message }</p>
+			}
+
+			<section class="ui-panel mb-6">
+				<form method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule") }>
+					<div class="space-y-4">
+						for _, day := range view.Days {
+							@dayScheduleRow(day)
+						}
+					</div>
+
+					<div class="mt-6 border-t border-surface-border pt-4 flex items-center gap-3">
+						<button class="ui-btn ui-btn-primary" type="submit">ذخیره ساعات کاری</button>
+						<a class="ui-btn ui-btn-ghost" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بازگشت</a>
+					</div>
+				</form>
+			</section>
+		</div>
+	}
+}
+
+// dayScheduleRow renders one row of daily shift configurations.
+templ dayScheduleRow(day DayScheduleForm) {
+	<div class="rounded-xl border border-gray-200 bg-surface-soft/40 p-4 transition-colors">
+		<div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/60 pb-3 mb-3">
+			<div class="flex items-center gap-3">
+				<span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 font-bold text-brand text-sm">
+					{ strconv.Itoa(day.DayOfWeek + 1) }
+				</span>
+				<span class="font-bold text-ink text-base">{ day.DayName }</span>
+			</div>
+			<label class="flex items-center gap-2 text-sm font-semibold text-ink cursor-pointer">
+				if day.IsOpen {
+					<input type="checkbox" name={ "is_open_" + strconv.Itoa(day.DayOfWeek) } value="1" checked class="h-4 w-4 rounded text-brand focus:ring-brand"/>
+				} else {
+					<input type="checkbox" name={ "is_open_" + strconv.Itoa(day.DayOfWeek) } value="1" class="h-4 w-4 rounded text-brand focus:ring-brand"/>
+				}
+				باز / فعال در این روز
+			</label>
+		</div>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<!-- شیفت اول -->
+			<div class="rounded-lg bg-white p-3 border border-gray-200">
+				<span class="block text-xs font-bold text-ink mb-2">شیفت اول</span>
+				<div class="flex items-center gap-2">
+					<label class="text-xs text-ink-muted">از</label>
+					<input class="ui-field w-24 text-center text-sm font-mono" dir="ltr" type="text" name={ "shift1_start_" + strconv.Itoa(day.DayOfWeek) } value={ day.Shift1Start } placeholder="08:00"/>
+					<label class="text-xs text-ink-muted">تا</label>
+					<input class="ui-field w-24 text-center text-sm font-mono" dir="ltr" type="text" name={ "shift1_end_" + strconv.Itoa(day.DayOfWeek) } value={ day.Shift1End } placeholder="14:00"/>
+				</div>
+			</div>
+
+			<!-- شیفت دوم -->
+			<div class="rounded-lg bg-white p-3 border border-gray-200">
+				<div class="flex items-center justify-between mb-2">
+					<span class="text-xs font-bold text-ink">شیفت دوم</span>
+					<label class="flex items-center gap-1.5 text-xs text-ink-muted cursor-pointer">
+						if day.HasShift2 {
+							<input type="checkbox" name={ "has_shift2_" + strconv.Itoa(day.DayOfWeek) } value="1" checked class="h-3.5 w-3.5 rounded text-brand"/>
+						} else {
+							<input type="checkbox" name={ "has_shift2_" + strconv.Itoa(day.DayOfWeek) } value="1" class="h-3.5 w-3.5 rounded text-brand"/>
+						}
+						فعال‌سازی شیفت دوم
+					</label>
+				</div>
+				<div class="flex items-center gap-2">
+					<label class="text-xs text-ink-muted">از</label>
+					<input class="ui-field w-24 text-center text-sm font-mono" dir="ltr" type="text" name={ "shift2_start_" + strconv.Itoa(day.DayOfWeek) } value={ day.Shift2Start } placeholder="16:00"/>
+					<label class="text-xs text-ink-muted">تا</label>
+					<input class="ui-field w-24 text-center text-sm font-mono" dir="ltr" type="text" name={ "shift2_end_" + strconv.Itoa(day.DayOfWeek) } value={ day.Shift2End } placeholder="20:00"/>
+				</div>
+			</div>
+		</div>
+	</div>
+}

@@ -9,24 +9,35 @@ import (
 
 // Handlers dispatches inbound protocol messages from the central server.
 type Handlers struct {
-	Doctors      *services.DoctorService
-	Appointments *services.AppointmentService
-	Bookings     *services.BookingService
-	Sender       services.Sender
+	Doctors        *services.DoctorService
+	Appointments   *services.AppointmentService
+	Bookings       *services.BookingService
+	TestResults    *services.TestResultService
+	WeeklyReserves *services.WeeklyReserveService
+	Monitoring     *services.MonitoringService
+	Sender         services.Sender
 }
 
 // NewHandlers constructs WebSocket message handlers with the given services.
-// Inputs: doctors, appointments, bookings services and a Sender for replies.
+// Inputs: doctors, appointments, bookings, test-results, weekly-reserves, monitoring services and a Sender for replies.
 // Output: pointer to Handlers.
-func NewHandlers(doctors *services.DoctorService,
+func NewHandlers(
+	doctors *services.DoctorService,
 	appointments *services.AppointmentService,
 	bookings *services.BookingService,
-	sender services.Sender) *Handlers {
+	testResults *services.TestResultService,
+	weeklyReserves *services.WeeklyReserveService,
+	monitoring *services.MonitoringService,
+	sender services.Sender,
+) *Handlers {
 	return &Handlers{
-		Doctors:      doctors,
-		Appointments: appointments,
-		Bookings:     bookings,
-		Sender:       sender,
+		Doctors:        doctors,
+		Appointments:   appointments,
+		Bookings:       bookings,
+		TestResults:    testResults,
+		WeeklyReserves: weeklyReserves,
+		Monitoring:     monitoring,
+		Sender:         sender,
 	}
 }
 
@@ -84,6 +95,36 @@ func (h *Handlers) HandleMessage(raw []byte) error {
 			return nil
 		}
 		return h.Bookings.HandleCancel(env.RequestID, &cancel)
+	case protocol.TypeTestResultRequest:
+		var req protocol.TestResultRequest
+		if err := env.DecodePayload(&req); err != nil {
+			return err
+		}
+		if h.TestResults == nil {
+			return nil
+		}
+		return h.TestResults.HandleRequest(env.RequestID, &req)
+	// سرور درخواست بروزرسانی لیست نوبت هفتگی کرده → از HIS بخوان و push کن
+	case protocol.TypeWeeklyReserveListRequest:
+		var req protocol.WeeklyReserveListRequest
+		if err := env.DecodePayload(&req); err != nil {
+			// payload خالی هم معتبر است
+			req = protocol.WeeklyReserveListRequest{}
+		}
+		if h.WeeklyReserves == nil {
+			return nil
+		}
+		return h.WeeklyReserves.HandleListRequest(env.RequestID, &req)
+	// سرور درخواست بروزرسانی صف انتظار کرده → از HIS بخوان و push کن
+	case protocol.TypeWaitingQueueListRequest:
+		var req protocol.WaitingQueueListRequest
+		if err := env.DecodePayload(&req); err != nil {
+			req = protocol.WaitingQueueListRequest{}
+		}
+		if h.Monitoring == nil {
+			return nil
+		}
+		return h.Monitoring.HandleListRequest(env.RequestID, &req)
 	case protocol.TypeDoctorListAck:
 		var ack protocol.DoctorListAck
 		if err := env.DecodePayload(&ack); err != nil {
@@ -93,7 +134,7 @@ func (h *Handlers) HandleMessage(raw []byte) error {
 			return nil
 		}
 		return h.Doctors.HandleDoctorListAck(&ack)
-	case protocol.TypeDoctorCodeUpdateAck, protocol.TypeAppointmentListAck, protocol.TypePong:
+	case protocol.TypeDoctorCodeUpdateAck, protocol.TypeAppointmentListAck, protocol.TypeWeeklyReserveListAck, protocol.TypeWaitingQueueListAck, protocol.TypePong:
 		return nil
 	default:
 		return nil

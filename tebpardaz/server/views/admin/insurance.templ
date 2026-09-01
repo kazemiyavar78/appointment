@@ -1,0 +1,126 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// InsuranceRow is one catalog insurance in the admin table.
+type InsuranceRow struct {
+	ID          uint
+	Name        string
+	LogoURL     string
+	Description string
+}
+
+// InsurancePageView is the superadmin catalog CRUD page model.
+type InsurancePageView struct {
+	Nav             layouts.AdminLayoutView
+	Items           []InsuranceRow
+	Message         string
+	EditID          uint
+	EditName        string
+	EditLogoURL     string
+	EditDescription string
+}
+
+// Insurances renders list, create, update, and delete for the insurance catalog.
+templ Insurances(view InsurancePageView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-4xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<h1 class="ui-page-title">مدیریت بیمه‌ها</h1>
+				<a class="ui-btn ui-btn-ghost" href="/admin/insurances/assign">انتصاب به مراکز</a>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			<section class="ui-panel mb-6">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg text-ink">بروزرسانی بیمه</h2>
+					<form class="flex flex-wrap items-end gap-3" method="post" action={ templ.SafeURL("/admin/insurances/" + formatUint(view.EditID) + "/update") } enctype="multipart/form-data">
+						@insuranceFormFields(view.EditName, view.EditDescription, view.EditLogoURL)
+						<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+						<a class="ui-btn ui-btn-ghost" href="/admin/insurances">انصراف</a>
+					</form>
+				} else {
+					<h2 class="mb-3 text-lg text-ink">ایجاد بیمه</h2>
+					<form class="flex flex-wrap items-end gap-3" method="post" action="/admin/insurances" enctype="multipart/form-data">
+						@insuranceFormFields("", "", "")
+						<button class="ui-btn ui-btn-primary" type="submit">ایجاد</button>
+					</form>
+				}
+			</section>
+			<section>
+				<h2 class="mb-3 text-lg text-ink">لیست بیمه‌ها</h2>
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[640px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-2">ردیف</th>
+								<th class="p-2">لوگو</th>
+								<th class="p-2">نام</th>
+								<th class="p-2">توضیح</th>
+								<th class="p-2">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Items) == 0 {
+								<tr>
+									<td class="p-3 text-ink-muted" colspan="5">بیمه‌ای ثبت نشده است.</td>
+								</tr>
+							}
+							for index, item := range view.Items {
+								<tr class="border-b border-gray-100">
+									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2">
+										if item.LogoURL != "" {
+											<img class="h-10 w-10 object-contain" src={ item.LogoURL } alt=""/>
+										} else {
+											<span class="text-ink-muted">—</span>
+										}
+									</td>
+									<td class="p-2">{ item.Name }</td>
+									<td class="p-2 text-ink-muted">{ item.Description }</td>
+									<td class="p-2 whitespace-nowrap">
+										<a
+											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
+											href={ templ.SafeURL("/admin/insurances?edit=" + formatUint(item.ID)) }
+										>ویرایش</a>
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/insurances/" + formatUint(item.ID) + "/delete") } onsubmit="return confirm('این بیمه حذف شود؟');">
+											<button class="rounded border border-red-300 px-2 py-1 text-xs text-red-700" type="submit">حذف</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// insuranceFormFields renders name, short description, and logo upload controls.
+templ insuranceFormFields(name, description, logoURL string) {
+	<label class="block text-sm text-ink-muted">
+		نام بیمه
+		<input class="ui-field mt-1 w-48" type="text" name="name" value={ name } required maxlength="100"/>
+	</label>
+	<label class="block text-sm text-ink-muted">
+		توضیح کوتاه
+		<input class="ui-field mt-1 w-64" type="text" name="description" value={ description } maxlength="120" placeholder="حداکثر ۱۲۰ حرف"/>
+	</label>
+	<label class="block text-sm text-ink-muted">
+		لوگو
+		<input class="mt-1 block text-sm" type="file" name="logo" accept="image/*"/>
+	</label>
+	if logoURL != "" {
+		<img class="h-12 w-12 object-contain" src={ logoURL } alt=""/>
+		<label class="flex items-center gap-2 text-sm text-ink-muted">
+			<input type="checkbox" name="clear_logo" value="1"/>
+			حذف لوگو
+		</label>
+	}
+}

@@ -102,12 +102,12 @@ func AppointmentList(view AppointmentListView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"loading-overlay\" class=\"fixed inset-0 z-50 hidden items-center justify-center bg-black/40\"><div class=\"rounded-lg bg-white px-6 py-4 text-center shadow-lg\"><div class=\"mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent\"></div><p class=\"text-sm text-ink\">در حال دریافت لیست نوبت\u200cها از مرکز...</p></div></div><div class=\"mx-auto max-w-[100rem]\"><div class=\"mb-4\"><h1 class=\"text-2xl text-brand\">لیست نوبت\u200cها</h1><p class=\"mt-1 text-sm text-ink-muted\">پزشکان تأیید\u200cشده هر مرکز — با کلیک روی هر پزشک، جزئیات نوبت\u200cدهی نمایش داده می\u200cشود.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"loading-overlay\" class=\"fixed inset-0 z-50 hidden items-center justify-center bg-black/40\"><div class=\"rounded-lg bg-white px-6 py-4 text-center shadow-lg\"><div class=\"mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent\"></div><p class=\"text-sm text-ink\">در حال دریافت لیست نوبت\u200cها از مرکز...</p></div></div><div class=\"mx-auto max-w-[100rem]\"><div class=\"mb-4\"><h1 class=\"ui-page-title\">لیست نوبت\u200cها</h1><p class=\"mt-1 text-sm text-ink-muted\">پزشکان تأیید\u200cشده هر مرکز — با کلیک روی هر پزشک، جزئیات نوبت\u200cدهی نمایش داده می\u200cشود.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(view.Clinics) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<form id=\"fetch-form\" class=\"mb-4 flex flex-wrap items-end gap-2\" method=\"get\" action=\"/admin/appointments\"><input type=\"hidden\" name=\"fetch\" value=\"1\"> <label class=\"block text-sm text-ink-muted\">مرکز <select class=\"mt-1 block min-w-[12rem] rounded border border-gray-300 p-2\" name=\"clinic_id\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<form id=\"fetch-form\" class=\"mb-4 flex flex-wrap items-end gap-2\" method=\"get\" action=\"/admin/appointments\"><input type=\"hidden\" name=\"fetch\" value=\"1\"> <label class=\"block text-sm text-ink-muted\">مرکز <select class=\"ui-field mt-1 min-w-[12rem]\" name=\"clinic_id\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -194,20 +194,20 @@ func AppointmentList(view AppointmentListView) templ.Component {
 						}
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</select></label> <label class=\"block text-sm text-ink-muted\">جستجو <input class=\"mt-1 block w-48 rounded border border-gray-300 p-2\" type=\"search\" name=\"q\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</select></label> <label class=\"block text-sm text-ink-muted\">جستجو <input class=\"ui-field mt-1 w-48\" type=\"search\" name=\"q\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.SearchQuery)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/appointment_list.templ`, Line: 94, Col: 119}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/appointment_list.templ`, Line: 94, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" placeholder=\"نام پزشک، کد...\"></label> <button id=\"fetch-btn\" class=\"rounded bg-brand px-4 py-2 text-white\" type=\"submit\">دریافت لیست زنده</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" placeholder=\"نام پزشک، کد...\"></label> <button id=\"fetch-btn\" class=\"ui-btn ui-btn-primary\" type=\"submit\">دریافت لیست زنده</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -255,13 +255,13 @@ func AppointmentList(view AppointmentListView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(view.Doctors) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"rounded border border-gray-200 bg-white p-4 text-sm text-ink-muted\">موردی برای نمایش نیست.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"ui-panel text-sm text-ink-muted\">موردی برای نمایش نیست.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			for _, doctor := range view.Doctors {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<details class=\"group rounded border border-gray-200 bg-white\"><summary class=\"flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-3 hover:bg-surface-soft\"><div class=\"flex flex-wrap items-center gap-x-4 gap-y-1 text-sm\"><span class=\"font-medium text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<details class=\"group ui-panel !p-0 overflow-hidden\"><summary class=\"flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-3 hover:bg-surface-soft\"><div class=\"flex flex-wrap items-center gap-x-4 gap-y-1 text-sm\"><span class=\"font-medium text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -346,7 +346,7 @@ func AppointmentList(view AppointmentListView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"overflow-x-auto\"><table class=\"w-full min-w-[640px] border border-gray-100 text-sm\"><thead><tr class=\"border-b border-gray-100 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">شروع</th><th class=\"p-2\">پایان</th><th class=\"p-2\">ظرفیت</th><th class=\"p-2\">رزرو شده</th><th class=\"p-2\">وضعیت</th></tr></thead> <tbody>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"ui-table-wrap\"><table class=\"w-full min-w-[640px] border border-gray-100 text-sm\"><thead><tr class=\"border-b border-gray-100 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">شروع</th><th class=\"p-2\">پایان</th><th class=\"p-2\">ظرفیت</th><th class=\"p-2\">رزرو شده</th><th class=\"p-2\">وضعیت</th></tr></thead> <tbody>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

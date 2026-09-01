@@ -1,0 +1,76 @@
+package components
+
+// InsuranceItemView یک بیمه نمایش‌داده‌شده در صفحه اصلی عمومی است.
+type InsuranceItemView struct {
+	Name        string
+	LogoURL     string
+	Description string
+}
+
+// insuranceGridRowsClass کلاس ردیف‌های شبکه را بر اساس تعداد بیمه‌ها تعیین می‌کند.
+// ورودی: count تعداد کل بیمه‌ها. خروجی: کلاس CSS ردیف (grid-rows-1 یا grid-rows-2) برای حفظ حداکثر ۲ ردیف.
+func insuranceGridRowsClass(count int) string {
+	if count <= 1 {
+		return "grid-rows-1"
+	}
+	return "grid-rows-2"
+}
+
+// insuranceDescriptionText متن توضیح بیمه را برمی‌گرداند یا در صورت خالی بودن متن پیش‌فرض را جایگزین می‌کند.
+// ورودی: desc متن توضیحات بیمه. خروجی: متن کامل جهت نمایش در پشت کارت بیمه.
+func insuranceDescriptionText(desc string) string {
+	if desc != "" {
+		return desc
+	}
+	return "طرف قرارداد با مرکز جهت ارائه کلیه خدمات درمانی و تشخیصی."
+}
+
+// InsuranceCard کارت بیمه با تمرکز بر تصویر در رو و محوشدن و نمایش توضیحات در پشت را رندر می‌کند.
+// ورودی: item اطلاعات بیمه شامل نام، لوگو و توضیحات. خروجی: کامپوننت تمپل کارت بیمه.
+templ InsuranceCard(item InsuranceItemView) {
+	<div class="insurance-card group" tabindex="0" role="button" aria-label={ "بیمه " + item.Name }>
+		<!-- روی کارت: تمرکز کامل بر لوگو و تصویر بیمه -->
+		<div class="insurance-card__front">
+			<div class="insurance-card__img-wrap">
+				if item.LogoURL != "" {
+					<img
+						class="insurance-card__img"
+						src={ item.LogoURL }
+						alt={ "لوگوی " + item.Name }
+						loading="lazy"
+						decoding="async"
+					/>
+				} else {
+					<div class="insurance-card__icon-fallback" aria-hidden="true">
+						<i class="fa-solid fa-shield-halved"></i>
+					</div>
+				}
+			</div>
+			<p class="insurance-card__name">{ item.Name }</p>
+		</div>
+
+		<!-- پشت کارت: نمایش مشخصات و توضیحات با افکت محوشدن تصویر -->
+		<div class="insurance-card__back">
+			<p class="insurance-card__back-title">{ item.Name }</p>
+			<p class="insurance-card__desc">{ insuranceDescriptionText(item.Description) }</p>
+			<span class="insurance-card__badge">
+				<i class="fa-solid fa-circle-check text-[11px]" aria-hidden="true"></i>
+				طرف قرارداد
+			</span>
+		</div>
+	</div>
+}
+
+// InsuranceList لیست بیمه‌ها را در قالب حداکثر ۲ ردیف با اسکرول افقی و کارت‌های تعاملی رندر می‌کند.
+// ورودی: items لیست بیمه‌ها. خروجی: کامپوننت تمپل لیست بیمه‌ها.
+templ InsuranceList(items []InsuranceItemView) {
+	<link rel="stylesheet" href="/static/css/CardCss.css"/>
+	<script src="/static/js/insurance_card.js" defer></script>
+	<div class="insurance-scroll-wrap relative">
+		<div class={ "insurance-grid", insuranceGridRowsClass(len(items)) }>
+			for _, item := range items {
+				@InsuranceCard(item)
+			}
+		</div>
+	</div>
+}

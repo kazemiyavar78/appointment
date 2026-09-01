@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>پنل مدیریت مدرن Glassmorphism | طب‌پرداز</title>
+  
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="/static/css/output.css" />
+
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 10% 20%, #1e1b4b 0%, #111827 45%, #0f172a 90%);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-bg-hover: rgba(255, 255, 255, 0.09);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-border-hover: rgba(255, 255, 255, 0.25);
+      --glass-blur: blur(20px);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --primary-gradient: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      background-color: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- المان‌های دایره‌ای شناور محو در پس‌زمینه -->
+  <div class="glass-orbs-container" aria-hidden="true">
+    <div class="glass-orb glass-orb-1"></div>
+    <div class="glass-orb glass-orb-2"></div>
+    <div class="glass-orb glass-orb-3"></div>
+  </div>
+
+  <div class="admin-shell">
+    
+    <!-- هدر شیشه‌ای -->
+    <header class="admin-header">
+      <div class="flex items-center gap-3">
+        <button id="menuToggle" class="admin-menu-toggle md:hidden" aria-label="منوی ناوبری">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="flex items-center gap-2.5">
+          <div class="admin-brand-icon">
+            <i class="fa-solid fa-shield-heart"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="admin-brand-title">طب‌پرداز</span>
+            <span class="admin-brand-subtitle">سامانه نوبت‌دهی آنلاین</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/" target="_blank" class="admin-header-btn">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          <span class="hidden sm:inline">مشاهده سایت</span>
+        </a>
+        <div class="admin-user-pill">
+          <div class="admin-user-avatar">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div class="hidden sm:flex flex-col text-right leading-tight">
+            <span class="text-xs font-medium text-white">دکتر احمدی</span>
+            <span class="text-[10px] text-purple-200/80">مدیر کلینیک</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- بدنه اصلی -->
+    <div class="admin-layout-body">
+      
+      <!-- بک‌دراپ تاریک موبایل -->
+      <div id="mobileBackdrop" class="admin-mobile-backdrop"></div>
+
+      <!-- سایدبار شیشه‌ای -->
+      <aside id="adminSidebar" class="admin-sidebar">
+        <div class="admin-sidebar-header hidden md:flex items-center justify-between p-4 border-b border-white/10">
+          <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-layer-group text-purple-400"></i>
+            <span class="text-sm font-semibold text-white">داشبورد مدیریت</span>
+          </div>
+          <span class="text-[10px] uppercase tracking-wider text-purple-300/60 bg-purple-500/10 border border-purple-400/20 px-2 py-0.5 rounded-full">v2.0</span>
+        </div>
+
+        <div class="admin-sidebar-content p-3 space-y-1 overflow-y-auto custom-glass-scrollbar flex-1">
+          <nav class="space-y-1">
+            <a href="#" class="ui-nav-item is-active">
+              <i class="fa-solid fa-chart-pie w-5 text-center text-sm"></i>
+              <span>داشبورد و آمار</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-user-doctor w-5 text-center text-sm text-purple-200/70"></i>
+              <span>پزشکان مرکز</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-calendar-check w-5 text-center text-sm text-purple-200/70"></i>
+              <span>نوبت‌ها و اسلات‌ها</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-stethoscope w-5 text-center text-sm text-purple-200/70"></i>
+              <span>تخصص‌های درمانی</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-shield-halved w-5 text-center text-sm text-purple-200/70"></i>
+              <span>بیمه‌های طرف قرارداد</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-list-check w-5 text-center text-sm text-purple-200/70"></i>
+              <span>کاتالوگ خدمات</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-newspaper w-5 text-center text-sm text-purple-200/70"></i>
+              <span>اخبار و اطلاعیه‌ها</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-comments w-5 text-center text-sm text-purple-200/70"></i>
+              <span>نظرات مراجعین</span>
+            </a>
+            <a href="#" class="ui-nav-item">
+              <i class="fa-solid fa-users-gear w-5 text-center text-sm text-purple-200/70"></i>
+              <span>مدیریت کاربران</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="admin-sidebar-footer p-3 border-t border-white/10">
+          <a href="#" class="admin-sidebar-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span>خروج از حساب</span>
+          </a>
+        </div>
+      </aside>
+
+      <!-- ناحیه محتوا -->
+      <main class="admin-main">
+        
+        <!-- هدر صفحه -->
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="ui-page-title">داشبورد و وضعیت نوبت‌دهی</h2>
+            <p class="ui-page-desc mt-1">گزارش لحظه‌ای نوبت‌های رزرو شده، پزشکان فعال و مراجعین امروز</p>
+          </div>
+          <div>
+            <button class="ui-btn ui-btn-primary">
+              <i class="fa-solid fa-plus ml-1.5"></i>
+              <span>تعریف نوبت جدید</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- کارت‌های آماری شیشه‌ای -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          
+          <div class="glass-stat-card">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">کل نوبت‌های امروز</p>
+              <h3 class="text-2xl font-bold text-white">۱۲۸</h3>
+              <p class="text-[11px] font-medium text-emerald-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+                <span>۱۲٪ رشد نسبت به دیروز</span>
+              </p>
+            </div>
+            <div class="glass-stat-icon glass-stat-icon-purple">
+              <i class="fa-solid fa-calendar-day"></i>
+            </div>
+          </div>
+
+          <div class="glass-stat-card">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">پزشکان حاضر</p>
+              <h3 class="text-2xl font-bold text-white">۲۴</h3>
+              <p class="text-[11px] font-medium text-emerald-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>آماده ویزیت</span>
+              </p>
+            </div>
+            <div class="glass-stat-icon glass-stat-icon-pink">
+              <i class="fa-solid fa-user-doctor"></i>
+            </div>
+          </div>
+
+          <div class="glass-stat-card">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">در انتظار ویزیت</p>
+              <h3 class="text-2xl font-bold text-white">۱۵</h3>
+              <p class="text-[11px] font-medium text-cyan-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-clock"></i>
+                <span>میانگین انتظار: ۱۲ دقیقه</span>
+              </p>
+            </div>
+            <div class="glass-stat-icon glass-stat-icon-cyan">
+              <i class="fa-solid fa-users"></i>
+            </div>
+          </div>
+
+          <div class="glass-stat-card">
+            <div>
+              <p class="text-xs text-slate-400 mb-1">رضایت مراجعین</p>
+              <h3 class="text-2xl font-bold text-white">۹۸.۴٪</h3>
+              <p class="text-[11px] font-medium text-emerald-400 mt-1 flex items-center gap-1">
+                <i class="fa-solid fa-star"></i>
+                <span>بر اساس ۳۴۰ نظر</span>
+              </p>
+            </div>
+            <div class="glass-stat-icon glass-stat-icon-emerald">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- نوار فیلتر و جستجو -->
+        <div class="ui-panel mb-6 flex flex-wrap items-end gap-3 p-4">
+          <div class="flex-1 min-w-[200px]">
+            <label class="ui-label text-xs mb-1.5">جستجو در مراجعین و پزشکان</label>
+            <input type="text" class="ui-field w-full" placeholder="نام بیمار، کدملی، نام پزشک..." />
+          </div>
+          <div class="min-w-[150px]">
+            <label class="ui-label text-xs mb-1.5">بخش تخصصی</label>
+            <select class="ui-field w-full">
+              <option value="">همه بخش‌ها</option>
+              <option value="1">قلب و عروق</option>
+              <option value="2">داخلی</option>
+              <option value="3">چشم پزشکی</option>
+            </select>
+          </div>
+          <div class="min-w-[150px]">
+            <label class="ui-label text-xs mb-1.5">وضعیت نوبت</label>
+            <select class="ui-field w-full">
+              <option value="">همه وضعیت‌ها</option>
+              <option value="done">انجام شده</option>
+              <option value="pending">در انتظار</option>
+            </select>
+          </div>
+          <div>
+            <button class="ui-btn ui-btn-primary">
+              <i class="fa-solid fa-magnifying-glass ml-1.5"></i>
+              <span>فیلتر</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- جدول داده‌های شیشه‌ای -->
+        <div class="ui-table-wrap">
+          <table class="ui-table min-w-[650px] text-sm">
+            <thead>
+              <tr>
+                <th>ردیف</th>
+                <th>نام بیمار</th>
+                <th>کد ملی</th>
+                <th>پزشک معالج</th>
+                <th>بخش تخصصی</th>
+                <th>ساعت نوبت</th>
+                <th>وضعیت</th>
+                <th>اقدام</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>۱</td>
+                <td class="font-medium text-white">علیرضا رستمی</td>
+                <td>۰۰۱۲۳۴۵۶۷۸</td>
+                <td>دکتر مریم رضایی</td>
+                <td>قلب و عروق</td>
+                <td>۱۰:۳۰</td>
+                <td>
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <i class="fa-solid fa-check"></i> انجام شده
+                  </span>
+                </td>
+                <td>
+                  <a href="#" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/15 text-purple-300 hover:text-white hover:bg-white/10 hover:border-white/30 transition-all">
+                    <i class="fa-solid fa-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td>۲</td>
+                <td class="font-medium text-white">زهرا حسینی</td>
+                <td>۱۲۸۷۶۵۴۳۲۱</td>
+                <td>دکتر سهراب مرادی</td>
+                <td>چشم پزشکی</td>
+                <td>۱۱:۱۵</td>
+                <td>
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <i class="fa-solid fa-spinner fa-spin"></i> در انتظار
+                  </span>
+                </td>
+                <td>
+                  <a href="#" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/15 text-purple-300 hover:text-white hover:bg-white/10 hover:border-white/30 transition-all">
+                    <i class="fa-solid fa-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td>۳</td>
+                <td class="font-medium text-white">محمدصادق کریمی</td>
+                <td>۰۰۸۷۶۵۴۳۲۱</td>
+                <td>دکتر علی پوریا</td>
+                <td>داخلی</td>
+                <td>۱۱:۴۵</td>
+                <td>
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                    <i class="fa-solid fa-clock"></i> رزرو شده
+                  </span>
+                </td>
+                <td>
+                  <a href="#" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/15 text-purple-300 hover:text-white hover:bg-white/10 hover:border-white/30 transition-all">
+                    <i class="fa-solid fa-eye"></i>
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- جاوااسکریپت کنترل دراور -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menuToggle');
+      const adminSidebar = document.getElementById('adminSidebar');
+      const mobileBackdrop = document.getElementById('mobileBackdrop');
+
+      function toggleDrawer() {
+        adminSidebar.classList.toggle('is-open');
+        mobileBackdrop.classList.toggle('is-open');
+        document.body.classList.toggle('overflow-hidden');
+      }
+
+      if (menuToggle && adminSidebar && mobileBackdrop) {
+        menuToggle.addEventListener('click', toggleDrawer);
+        mobileBackdrop.addEventListener('click', toggleDrawer);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -180,17 +180,10 @@ func (c *SlotCache) NearestAvailableByDoctors(clinicIDs, doctorIDs []uint, from,
 				continue
 			}
 			for _, slot := range slots {
-				// if !slot.IsAvailable {
-				// 	continue
-				// }
-				if slot.StartsAt.Before(from) {
+				if !isSlotBookable(slot, from) {
 					continue
 				}
 				if !to.IsZero() && !slot.StartsAt.Before(to) {
-					continue
-				}
-				fmt.Println("slot", slot.BookedCount, slot.Capacity , slot.BookedCount >= slot.Capacity , doctorID)
-				if slot.BookedCount <= 0{
 					continue
 				}
 				prev, ok := out[doctorID]
@@ -203,9 +196,24 @@ func (c *SlotCache) NearestAvailableByDoctors(clinicIDs, doctorIDs []uint, from,
 	return out, nil
 }
 
-// AvailableForDoctor returns available future slots for one doctor from cache.
-// Inputs: clinicID, doctorID, from (inclusive lower bound), limit (0 = all).
-// Output: slots sorted by StartsAt ascending.
+// isSlotBookable بررسی می‌کند اسلات برای رزرو آنلاین قابل نمایش است.
+// ورودی: اسلات و زمان مرجع. خروجی: true اگر آزاد و هنوز تمام نشده.
+func isSlotBookable(slot models.DoctorSlot, now time.Time) bool {
+	if !slot.IsAvailable {
+		return false
+	}
+	if slot.Capacity > 0 && slot.BookedCount >= slot.Capacity {
+		return false
+	}
+	if !slot.EndsAt.After(now) {
+		return false
+	}
+	return true
+}
+
+// AvailableForDoctor اسلات‌های قابل رزرو یک پزشک را از کش برمی‌گرداند.
+// ورودی: clinicID، doctorID، from (زمان مرجع)، limit (۰ = همه).
+// خروجی: اسلات‌های مرتب‌شده صعودی بر اساس StartsAt.
 func (c *SlotCache) AvailableForDoctor(clinicID, doctorID uint, from time.Time, limit int) []models.DoctorSlot {
 	out := make([]models.DoctorSlot, 0)
 	if c == nil || c.store == nil || clinicID == 0 || doctorID == 0 {
@@ -216,17 +224,14 @@ func (c *SlotCache) AvailableForDoctor(clinicID, doctorID uint, from time.Time, 
 	}
 	bag := c.loadClinic(clinicID)
 	slots := bag.ByDoctor[doctorID]
-	
-	for _, slot := range slots {
-		if !slot.IsAvailable {
-			continue
-		}
-		if slot.StartsAt.Before(from) {
-			continue
-		}
 
+	for _, slot := range slots {
+		// if !isSlotBookable(slot, from) {
+		// 	continue
+		// }
 		out = append(out, slot)
 	}
+	fmt.Println(out)
 	sortSlotsByStart(out)
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]

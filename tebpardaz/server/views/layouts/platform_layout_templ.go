@@ -10,9 +10,9 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "tebpardaz/server/views/components"
 
-// PlatformLayoutView drives the company (طب‌پرداز) multi-clinic public shell.
-// Structure mirrors OrganLayoutView: brand + nav + main content.
+// PlatformLayoutView دادهٔ پوسته عمومی شرکت (چندمرکزی) را نگه می‌دارد.
 type PlatformLayoutView struct {
+	Head           PageHead
 	CompanyName    string
 	LogoURL        string
 	HomeURL        string
@@ -20,7 +20,7 @@ type PlatformLayoutView struct {
 	CorporateLinks []components.FooterLink
 }
 
-// PlatformLayout renders the company tenant page with navbar + main content.
+// PlatformLayout صفحه tenant شرکت را با نوار، محتوا و فوتر رندر می‌کند.
 func PlatformLayout(view PlatformLayoutView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -62,7 +62,7 @@ func PlatformLayout(view PlatformLayoutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"flex-1 p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<main class=\"ui-shell-main flex-1\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -84,7 +84,7 @@ func PlatformLayout(view PlatformLayoutView) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Document().Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Document(view.Head).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -92,7 +92,7 @@ func PlatformLayout(view PlatformLayoutView) templ.Component {
 	})
 }
 
-// platformShellNavbar maps PlatformLayoutView to NavbarProps.
+// platformShellNavbar نمای پلتفرم را به NavbarProps نگاشت می‌کند.
 func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 	name := view.CompanyName
 	if name == "" {
@@ -114,7 +114,7 @@ func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 	}
 }
 
-// platformFooter maps PlatformLayoutView to a formal company FooterProps.
+// platformFooter نمای پلتفرم را به FooterProps رسمی شرکت نگاشت می‌کند.
 func platformFooter(view PlatformLayoutView) components.FooterProps {
 	nav := platformShellNavbar(view)
 	return components.FooterProps{

@@ -32,6 +32,11 @@ type DoctorCard struct {
 	SpecialtyName   string
 	DoctorSystemID  int
 	PhotoURL        string
+	Photo300        string
+	Photo600        string
+	Photo900        string
+	Photo1200       string
+	ShortDesc       string
 	ClinicID        uint
 	ClinicName      string
 	ClinicSlug      string
@@ -44,8 +49,9 @@ type DoctorCard struct {
 
 // SpecialtyOption گزینه دراپ‌داون تخصص است.
 type SpecialtyOption struct {
-	ID   uint
-	Name string
+	ID          uint
+	Name        string
+	Description string
 }
 
 // ClinicOption گزینه دراپ‌داون زیر‌مرکز است (مستأجران سازمانی).
@@ -149,6 +155,11 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 			SpecialtyName:   d.Specialty.Name,
 			DoctorSystemID:  d.DoctorSystemID,
 			PhotoURL:        d.PhotoURL,
+			Photo300:        d.Photo300,
+			Photo600:        d.Photo600,
+			Photo900:        d.Photo900,
+			Photo1200:       d.Photo1200,
+			ShortDesc:       strings.TrimSpace(d.ShortDesc),
 			ClinicID:        d.ClinicID,
 			ClinicName:      meta.Name,
 			ClinicSlug:      meta.Slug,
@@ -166,6 +177,83 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 	return result, nil
 }
 
+// ListHomeDoctors حداکثر limit پزشک برای صفحه اول را برمی‌گرداند.
+// خصوصی: اولویت نزدیک‌ترین نوبت. ارگان/پلتفرم: تنوع تخصص‌ها.
+func (s *ListingService) ListHomeDoctors(filter ListFilter, showClinicBadge bool, limit int, diversify bool) ([]DoctorCard, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	result, err := s.ListDoctors(filter, showClinicBadge)
+	if err != nil {
+		return nil, err
+	}
+	cards := result.Doctors
+	if len(cards) == 0 {
+		return nil, nil
+	}
+	if diversify {
+		cards = diversifyBySpecialty(cards, limit)
+	} else {
+		cards = sortByNearestSlot(cards)
+		if len(cards) > limit {
+			cards = cards[:limit]
+		}
+	}
+	return cards, nil
+}
+
+// diversifyBySpecialty تا حد ممکن از تخصص‌های مختلف پزشک برمی‌گزیند.
+func diversifyBySpecialty(cards []DoctorCard, limit int) []DoctorCard {
+	if len(cards) <= limit {
+		return cards
+	}
+	usedSpec := map[string]int{}
+	picked := make([]DoctorCard, 0, limit)
+	rest := make([]DoctorCard, 0)
+	for _, c := range cards {
+		key := strings.TrimSpace(c.SpecialtyName)
+		if key == "" {
+			key = "_"
+		}
+		if usedSpec[key] == 0 && len(picked) < limit {
+			picked = append(picked, c)
+			usedSpec[key]++
+			continue
+		}
+		rest = append(rest, c)
+	}
+	for _, c := range rest {
+		if len(picked) >= limit {
+			break
+		}
+		picked = append(picked, c)
+	}
+	return picked
+}
+
+// sortByNearestSlot پزشکان دارای نوبت را اول و زودتر را بالاتر می‌گذارد.
+func sortByNearestSlot(cards []DoctorCard) []DoctorCard {
+	out := append([]DoctorCard(nil), cards...)
+	for i := 0; i < len(out); i++ {
+		for j := i + 1; j < len(out); j++ {
+			if doctorCardLess(out[j], out[i]) {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
+	}
+	return out
+}
+
+func doctorCardLess(a, b DoctorCard) bool {
+	if a.HasSlot != b.HasSlot {
+		return a.HasSlot
+	}
+	if a.HasSlot && b.HasSlot {
+		return a.NearestStartsAt.Before(b.NearestStartsAt)
+	}
+	return a.Name < b.Name
+}
+
 func (s *ListingService) fillFilterOptions(result *ListResult, orgClinicIDs []uint) error {
 	if s.Specialties != nil {
 		rows, err := s.Specialties.ListApproved()
@@ -173,7 +261,11 @@ func (s *ListingService) fillFilterOptions(result *ListResult, orgClinicIDs []ui
 			return err
 		}
 		for _, row := range rows {
-			result.Specialties = append(result.Specialties, SpecialtyOption{ID: row.ID, Name: row.Name})
+			result.Specialties = append(result.Specialties, SpecialtyOption{
+				ID:          row.ID,
+				Name:        row.Name,
+				Description: row.Description,
+			})
 		}
 	}
 	if result.ShowClinicFilter && s.Clinics != nil {
@@ -204,9 +296,7 @@ func (s *ListingService) clinicMeta(clinicIDs []uint) map[uint]clinicListMeta {
 			continue
 		}
 		meta := clinicListMeta{Name: c.Name}
-		if c.Slug != nil {
-			meta.Slug = strings.TrimSpace(*c.Slug)
-		}
+		meta.Slug = ClinicPathKey(c)
 		out[id] = meta
 	}
 	return out

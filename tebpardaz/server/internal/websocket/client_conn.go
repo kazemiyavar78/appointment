@@ -47,11 +47,15 @@ func (c *ClientConn) Send(raw []byte) bool {
 func (c *ClientConn) SendEnvelope(env *protocol.Envelope) error {
 	raw, err := env.MustMarshal()
 	if err != nil {
+		LogClinicBehavior(c.ClinicID, ActionError, string(env.Type), env.RequestID, "خطا در marshal پیام خروجی", err)
 		return err
 	}
 	if !c.Send(raw) {
+		LogClinicBehavior(c.ClinicID, ActionError, string(env.Type), env.RequestID, "ارسال پیام ناموفق (بافر پر)", nil)
 		return websocket.ErrCloseSent
 	}
+	// لاگ ارسال مستقیم envelope به مرکز (مثلاً ACK)
+	LogClinicBehavior(c.ClinicID, ActionSend, string(env.Type), env.RequestID, "پیام به مرکز صف شد", nil)
 	return nil
 }
 
@@ -73,6 +77,8 @@ func (c *ClientConn) Close() error {
 func (c *ClientConn) WritePump() {
 	for raw := range c.send {
 		if err := c.Conn.WriteMessage(websocket.TextMessage, raw); err != nil {
+			// لاگ خطای نوشتن روی سوکت مرکز
+			LogClinicBehavior(c.ClinicID, ActionError, "", "", "خطا در نوشتن روی WebSocket", err)
 			return
 		}
 	}
@@ -91,9 +97,12 @@ func (c *ClientConn) ReadPump(handle func(*ClientConn, []byte) error) {
 	for {
 		_, raw, err := c.Conn.ReadMessage()
 		if err != nil {
+			// قطع اتصال در Hub.Unregister لاگ می‌شود
 			return
 		}
 		if err := handle(c, raw); err != nil {
+			// لاگ خطای پردازش فریم ورودی
+			LogClinicBehavior(c.ClinicID, ActionError, "", "", "خطا در پردازش فریم ورودی", err)
 			errEnv, _ := protocol.NewEnvelope(protocol.TypeError, "", &protocol.ProtocolError{
 				Code:    protocol.ErrCodeInternal,
 				Message: err.Error(),

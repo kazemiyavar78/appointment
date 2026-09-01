@@ -1,32 +1,104 @@
 package components
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
-// SpecialtyCardView is a text-only specialty shortcut to the doctor list filter.
+// SpecialtyCardView دادهٔ کارت تخصص برای صفحه اصلی و فهرست تخصص‌ها است.
 type SpecialtyCardView struct {
-	ID   uint
-	Name string
+	ID               uint
+	Name             string
+	ShortDescription string
+	Description      string
+	Icon             string
+	Color            string
 }
 
-// specialtyFilterURL builds /doctors?specialty_id={id} for quick booking filter.
-// Input: specialty ID. Output: relative filter URL.
+// SpecialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
+// ورودی: شناسه تخصص. خروجی: URL نسبی فیلتر.
+func SpecialtyFilterURL(id uint) string {
+	return specialtyFilterURL(id)
+}
+
+// specialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
+// ورودی: شناسه تخصص. خروجی: URL نسبی فیلتر.
 func specialtyFilterURL(id uint) string {
 	return "/doctors?specialty_id=" + strconv.FormatUint(uint64(id), 10)
 }
 
-// SpecialtyCard renders a clickable specialty name card without a logo.
+// SpecialtyIconIsURL مشخص می‌کند Icon مسیر/آدرس تصویر است یا متن/ایموجی.
+// ورودی: مقدار فیلد Icon. خروجی: true اگر URL یا مسیر نسبی باشد.
+func SpecialtyIconIsURL(icon string) bool {
+	icon = strings.TrimSpace(icon)
+	return strings.HasPrefix(icon, "/") ||
+		strings.HasPrefix(icon, "http://") ||
+		strings.HasPrefix(icon, "https://")
+}
+
+// SpecialtyIconColor رنگ آیکون را با پیش‌فرض teal برمی‌گرداند.
+// ورودی: Color تخصص. خروجی: رنگ CSS معتبر برای fill/stroke.
+func SpecialtyIconColor(color string) string {
+	color = strings.TrimSpace(color)
+	if color == "" {
+		return "#0d9488"
+	}
+	return color
+}
+
+// SpecialtyFAClass کلاس مناسب Font Awesome را از نام یا کلاس ورودی می‌سازد.
+// ورودی: نام یا کلاس آیکون (مانند "fa-heart", "user-doctor", "fa-solid fa-stethoscope"). خروجی: کلاس‌های کامل CSS برای تگ i در Font Awesome.
+func SpecialtyFAClass(icon string) string {
+	icon = strings.TrimSpace(icon)
+	if icon == "" {
+		return "fa-solid fa-stethoscope"
+	}
+	if strings.HasPrefix(icon, "fa-solid ") ||
+		strings.HasPrefix(icon, "fa-regular ") ||
+		strings.HasPrefix(icon, "fa-brands ") ||
+		strings.HasPrefix(icon, "fa-light ") ||
+		strings.HasPrefix(icon, "fa-thin ") ||
+		strings.HasPrefix(icon, "fa-duotone ") ||
+		strings.HasPrefix(icon, "fas ") ||
+		strings.HasPrefix(icon, "far ") ||
+		strings.HasPrefix(icon, "fab ") ||
+		strings.HasPrefix(icon, "fa ") {
+		return icon
+	}
+	if strings.HasPrefix(icon, "fa-") {
+		return "fa-solid " + icon
+	}
+	return "fa-solid fa-" + icon
+}
+
+// SpecialtyCard کارت تخصص با نام، آیکون و توضیح کوتاه را رندر می‌کند.
 templ SpecialtyCard(view SpecialtyCardView) {
 	<a
-		class="group flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-surface-border bg-white px-4 py-3 shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+		class="specialty-cat-card"
 		href={ templ.SafeURL(specialtyFilterURL(view.ID)) }
+		style={ "--sp-icon-color: " + SpecialtyIconColor(view.Color) }
 	>
-		<span class="min-w-0 break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">
-			{ view.Name }
-		</span>
-		<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white" aria-hidden="true">
-			<svg class="h-3.5 w-3.5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
-				<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
-			</svg>
-		</span>
+		<div class="specialty-cat-card__icon" aria-hidden="true">
+			if SpecialtyIconIsURL(view.Icon) {
+				<img src={ view.Icon } alt="" loading="lazy"/>
+			} else {
+				<i class={ SpecialtyFAClass(view.Icon) }></i>
+			}
+		</div>
+		<h3 class="specialty-cat-card__title">{ view.Name }</h3>
+		if strings.TrimSpace(view.ShortDescription) != "" {
+			<p class="specialty-cat-card__desc">{ view.ShortDescription }</p>
+		}
 	</a>
+}
+
+// SpecialtyCardGrid گرید کارت‌های تخصص و استایل مرتبط را رندر می‌کند.
+// ورودی: لیست تخصص‌ها. خروجی: HTML گرید ریسپانسیو.
+templ SpecialtyCardGrid(specialties []SpecialtyCardView) {
+	<link rel="stylesheet" href="/static/css/specialty_cards.css"/>
+	<div class="specialty-cat-cards">
+		for _, sp := range specialties {
+			@SpecialtyCard(sp)
+		}
+	</div>
 }

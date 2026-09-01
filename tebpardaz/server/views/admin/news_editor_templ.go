@@ -67,29 +67,29 @@ func NewsEditor(view NewsEditorView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if view.EditID > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h1 class=\"text-2xl text-brand\">ویرایش خبر</h1>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<h1 class=\"ui-page-title\">ویرایش خبر</h1>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<h1 class=\"text-2xl text-brand\">ایجاد خبر</h1>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<h1 class=\"ui-page-title\">ایجاد خبر</h1>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a class=\"rounded border border-gray-300 px-4 py-2 text-sm\" href=\"/admin/news\">بازگشت به لیست</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<a class=\"ui-btn ui-btn-ghost\" href=\"/admin/news\">بازگشت به لیست</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.Message != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"ui-panel mb-3 text-sm text-ink-muted\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_editor.templ`, Line: 36, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_editor.templ`, Line: 36, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -100,14 +100,14 @@ func NewsEditor(view NewsEditorView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"news-form\" class=\"space-y-4 rounded border border-gray-200 bg-white p-4\" method=\"post\" action=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"news-form\" class=\"ui-panel space-y-4\" method=\"post\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(view.FormAction))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_editor.templ`, Line: 38, Col: 139}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_editor.templ`, Line: 38, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -118,7 +118,7 @@ func NewsEditor(view NewsEditorView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if view.ShowClinicPick {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"block text-sm text-ink-muted\">مرکز <select class=\"mt-1 block w-full rounded border border-gray-300 p-2\" name=\"clinic_id\" required><option value=\"\">انتخاب مرکز...</option> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label class=\"block text-sm text-ink-muted\">مرکز <select class=\"ui-field mt-1\" name=\"clinic_id\" required><option value=\"\">انتخاب مرکز...</option> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -242,7 +242,7 @@ func NewsEditor(view NewsEditorView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\"> <input id=\"cover_file\" class=\"block text-sm\" type=\"file\" accept=\"image/*\"> <button class=\"rounded border border-gray-300 px-3 py-1 text-sm\" type=\"button\" id=\"cover_clear\">حذف تصویر</button></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\"> <input id=\"cover_file\" class=\"block text-sm\" type=\"file\" accept=\"image/*\"> <button class=\"ui-btn ui-btn-ghost\" type=\"button\" id=\"cover_clear\">حذف تصویر</button></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -340,7 +340,7 @@ func NewsEditor(view NewsEditorView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "منتشر شود</label> <button class=\"rounded bg-brand px-4 py-2 text-white\" type=\"submit\">ذخیره خبر</button></form></div><script>\r\n\t\t\t(function () {\r\n\t\t\t\tfunction exec(cmd, val) {\r\n\t\t\t\t\tdocument.execCommand(cmd, false, val || null);\r\n\t\t\t\t}\r\n\t\t\t\tfunction bindToolbar(prefix) {\r\n\t\t\t\t\tvar bar = document.getElementById('toolbar_' + prefix);\r\n\t\t\t\t\tif (!bar) return;\r\n\t\t\t\t\tbar.addEventListener('click', function (e) {\r\n\t\t\t\t\t\tvar btn = e.target.closest('[data-cmd]');\r\n\t\t\t\t\t\tif (!btn) return;\r\n\t\t\t\t\t\te.preventDefault();\r\n\t\t\t\t\t\tvar editor = document.getElementById(prefix + '_editor');\r\n\t\t\t\t\t\tif (editor) editor.focus();\r\n\t\t\t\t\t\tvar cmd = btn.getAttribute('data-cmd');\r\n\t\t\t\t\t\tif (cmd === 'foreColor') {\r\n\t\t\t\t\t\t\tvar color = bar.querySelector('[data-color]').value;\r\n\t\t\t\t\t\t\texec('foreColor', color);\r\n\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\tif (cmd === 'fontSize') {\r\n\t\t\t\t\t\t\texec('fontSize', '5');\r\n\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\texec(cmd);\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t\t['title', 'excerpt', 'body'].forEach(bindToolbar);\r\n\r\n\t\t\t\tfunction plainLen(html) {\r\n\t\t\t\t\tvar d = document.createElement('div');\r\n\t\t\t\t\td.innerHTML = html || '';\r\n\t\t\t\t\treturn (d.textContent || '').trim().length;\r\n\t\t\t\t}\r\n\t\t\t\tfunction updateExcerptLen() {\r\n\t\t\t\t\tvar el = document.getElementById('excerpt_editor');\r\n\t\t\t\t\tvar out = document.getElementById('excerpt_len');\r\n\t\t\t\t\tif (el && out) out.textContent = String(plainLen(el.innerHTML));\r\n\t\t\t\t}\r\n\t\t\t\tvar excerptEditor = document.getElementById('excerpt_editor');\r\n\t\t\t\tif (excerptEditor) {\r\n\t\t\t\t\texcerptEditor.addEventListener('input', updateExcerptLen);\r\n\t\t\t\t\tupdateExcerptLen();\r\n\t\t\t\t}\r\n\r\n\t\t\t\tasync function uploadFile(file) {\r\n\t\t\t\t\tvar fd = new FormData();\r\n\t\t\t\t\tfd.append('file', file);\r\n\t\t\t\t\tvar res = await fetch('/admin/news/upload', { method: 'POST', body: fd });\r\n\t\t\t\t\tvar data = await res.json();\r\n\t\t\t\t\tif (!res.ok) throw new Error(data.error || 'upload failed');\r\n\t\t\t\t\treturn data.url;\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar coverFile = document.getElementById('cover_file');\r\n\t\t\t\tvar coverURL = document.getElementById('cover_url');\r\n\t\t\t\tvar coverPreview = document.getElementById('cover_preview');\r\n\t\t\t\tif (coverFile) {\r\n\t\t\t\t\tcoverFile.addEventListener('change', async function () {\r\n\t\t\t\t\t\tif (!coverFile.files || !coverFile.files[0]) return;\r\n\t\t\t\t\t\ttry {\r\n\t\t\t\t\t\t\tvar url = await uploadFile(coverFile.files[0]);\r\n\t\t\t\t\t\t\tcoverURL.value = url;\r\n\t\t\t\t\t\t\tcoverPreview.src = url;\r\n\t\t\t\t\t\t\tcoverPreview.classList.remove('hidden');\r\n\t\t\t\t\t\t} catch (err) {\r\n\t\t\t\t\t\t\talert(err.message || 'آپلود تصویر ناموفق بود.');\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t\tvar coverClear = document.getElementById('cover_clear');\r\n\t\t\t\tif (coverClear) {\r\n\t\t\t\t\tcoverClear.addEventListener('click', function () {\r\n\t\t\t\t\t\tcoverURL.value = '';\r\n\t\t\t\t\t\tcoverPreview.src = '';\r\n\t\t\t\t\t\tcoverPreview.classList.add('hidden');\r\n\t\t\t\t\t\tif (coverFile) coverFile.value = '';\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar bodyImage = document.getElementById('body_image_file');\r\n\t\t\t\tif (bodyImage) {\r\n\t\t\t\t\tbodyImage.addEventListener('change', async function () {\r\n\t\t\t\t\t\tif (!bodyImage.files || !bodyImage.files[0]) return;\r\n\t\t\t\t\t\ttry {\r\n\t\t\t\t\t\t\tvar url = await uploadFile(bodyImage.files[0]);\r\n\t\t\t\t\t\t\tvar editor = document.getElementById('body_editor');\r\n\t\t\t\t\t\t\tif (editor) editor.focus();\r\n\t\t\t\t\t\t\texec('insertHTML', '<img src=\"' + url + '\" alt=\"\" style=\"max-width:100%;height:auto;margin:0.75rem 0;\">');\r\n\t\t\t\t\t\t} catch (err) {\r\n\t\t\t\t\t\t\talert(err.message || 'آپلود تصویر ناموفق بود.');\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\tbodyImage.value = '';\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar form = document.getElementById('news-form');\r\n\t\t\t\tif (form) {\r\n\t\t\t\t\tform.addEventListener('submit', function () {\r\n\t\t\t\t\t\tdocument.getElementById('title').value = document.getElementById('title_editor').innerHTML;\r\n\t\t\t\t\t\tdocument.getElementById('excerpt').value = document.getElementById('excerpt_editor').innerHTML;\r\n\t\t\t\t\t\tdocument.getElementById('body').value = document.getElementById('body_editor').innerHTML;\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t})();\r\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "منتشر شود</label> <button class=\"ui-btn ui-btn-primary\" type=\"submit\">ذخیره خبر</button></form></div><script>\r\n\t\t\t(function () {\r\n\t\t\t\tfunction exec(cmd, val) {\r\n\t\t\t\t\tdocument.execCommand(cmd, false, val || null);\r\n\t\t\t\t}\r\n\t\t\t\tfunction bindToolbar(prefix) {\r\n\t\t\t\t\tvar bar = document.getElementById('toolbar_' + prefix);\r\n\t\t\t\t\tif (!bar) return;\r\n\t\t\t\t\tbar.addEventListener('click', function (e) {\r\n\t\t\t\t\t\tvar btn = e.target.closest('[data-cmd]');\r\n\t\t\t\t\t\tif (!btn) return;\r\n\t\t\t\t\t\te.preventDefault();\r\n\t\t\t\t\t\tvar editor = document.getElementById(prefix + '_editor');\r\n\t\t\t\t\t\tif (editor) editor.focus();\r\n\t\t\t\t\t\tvar cmd = btn.getAttribute('data-cmd');\r\n\t\t\t\t\t\tif (cmd === 'foreColor') {\r\n\t\t\t\t\t\t\tvar color = bar.querySelector('[data-color]').value;\r\n\t\t\t\t\t\t\texec('foreColor', color);\r\n\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\tif (cmd === 'fontSize') {\r\n\t\t\t\t\t\t\texec('fontSize', '5');\r\n\t\t\t\t\t\t\treturn;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\texec(cmd);\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t\t['title', 'excerpt', 'body'].forEach(bindToolbar);\r\n\r\n\t\t\t\tfunction plainLen(html) {\r\n\t\t\t\t\tvar d = document.createElement('div');\r\n\t\t\t\t\td.innerHTML = html || '';\r\n\t\t\t\t\treturn (d.textContent || '').trim().length;\r\n\t\t\t\t}\r\n\t\t\t\tfunction updateExcerptLen() {\r\n\t\t\t\t\tvar el = document.getElementById('excerpt_editor');\r\n\t\t\t\t\tvar out = document.getElementById('excerpt_len');\r\n\t\t\t\t\tif (el && out) out.textContent = String(plainLen(el.innerHTML));\r\n\t\t\t\t}\r\n\t\t\t\tvar excerptEditor = document.getElementById('excerpt_editor');\r\n\t\t\t\tif (excerptEditor) {\r\n\t\t\t\t\texcerptEditor.addEventListener('input', updateExcerptLen);\r\n\t\t\t\t\tupdateExcerptLen();\r\n\t\t\t\t}\r\n\r\n\t\t\t\tasync function uploadFile(file) {\r\n\t\t\t\t\tvar fd = new FormData();\r\n\t\t\t\t\tfd.append('file', file);\r\n\t\t\t\t\tvar res = await fetch('/admin/news/upload', { method: 'POST', body: fd });\r\n\t\t\t\t\tvar data = await res.json();\r\n\t\t\t\t\tif (!res.ok) throw new Error(data.error || 'upload failed');\r\n\t\t\t\t\treturn data.url;\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar coverFile = document.getElementById('cover_file');\r\n\t\t\t\tvar coverURL = document.getElementById('cover_url');\r\n\t\t\t\tvar coverPreview = document.getElementById('cover_preview');\r\n\t\t\t\tif (coverFile) {\r\n\t\t\t\t\tcoverFile.addEventListener('change', async function () {\r\n\t\t\t\t\t\tif (!coverFile.files || !coverFile.files[0]) return;\r\n\t\t\t\t\t\ttry {\r\n\t\t\t\t\t\t\tvar url = await uploadFile(coverFile.files[0]);\r\n\t\t\t\t\t\t\tcoverURL.value = url;\r\n\t\t\t\t\t\t\tcoverPreview.src = url;\r\n\t\t\t\t\t\t\tcoverPreview.classList.remove('hidden');\r\n\t\t\t\t\t\t} catch (err) {\r\n\t\t\t\t\t\t\talert(err.message || 'آپلود تصویر ناموفق بود.');\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t\tvar coverClear = document.getElementById('cover_clear');\r\n\t\t\t\tif (coverClear) {\r\n\t\t\t\t\tcoverClear.addEventListener('click', function () {\r\n\t\t\t\t\t\tcoverURL.value = '';\r\n\t\t\t\t\t\tcoverPreview.src = '';\r\n\t\t\t\t\t\tcoverPreview.classList.add('hidden');\r\n\t\t\t\t\t\tif (coverFile) coverFile.value = '';\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar bodyImage = document.getElementById('body_image_file');\r\n\t\t\t\tif (bodyImage) {\r\n\t\t\t\t\tbodyImage.addEventListener('change', async function () {\r\n\t\t\t\t\t\tif (!bodyImage.files || !bodyImage.files[0]) return;\r\n\t\t\t\t\t\ttry {\r\n\t\t\t\t\t\t\tvar url = await uploadFile(bodyImage.files[0]);\r\n\t\t\t\t\t\t\tvar editor = document.getElementById('body_editor');\r\n\t\t\t\t\t\t\tif (editor) editor.focus();\r\n\t\t\t\t\t\t\texec('insertHTML', '<img src=\"' + url + '\" alt=\"\" style=\"max-width:100%;height:auto;margin:0.75rem 0;\">');\r\n\t\t\t\t\t\t} catch (err) {\r\n\t\t\t\t\t\t\talert(err.message || 'آپلود تصویر ناموفق بود.');\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\tbodyImage.value = '';\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\r\n\t\t\t\tvar form = document.getElementById('news-form');\r\n\t\t\t\tif (form) {\r\n\t\t\t\t\tform.addEventListener('submit', function () {\r\n\t\t\t\t\t\tdocument.getElementById('title').value = document.getElementById('title_editor').innerHTML;\r\n\t\t\t\t\t\tdocument.getElementById('excerpt').value = document.getElementById('excerpt_editor').innerHTML;\r\n\t\t\t\t\t\tdocument.getElementById('body').value = document.getElementById('body_editor').innerHTML;\r\n\t\t\t\t\t});\r\n\t\t\t\t}\r\n\t\t\t})();\r\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

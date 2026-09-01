@@ -1,0 +1,45 @@
+package components
+
+import "strconv"
+
+// BookingOTPPanelView دادهٔ پنل ورود کد OTP.
+type BookingOTPPanelView struct {
+	CodeLength int
+}
+
+// BookingOTPPanel پنل مینیمال ورود کد ۵ رقمی OTP.
+templ BookingOTPPanel(view BookingOTPPanelView) {
+	<div class="bk-otp bk-hidden" id="booking-otp-panel" aria-hidden="true">
+		<div class="bk-otp__card">
+			<h2 class="bk-otp__title">کد تایید موبایل</h2>
+			<p class="bk-otp__desc">کد ۵ رقمی به شماره <strong id="bk-otp-mobile-mask"></strong> ارسال شد.</p>
+
+			<div class="bk-otp__boxes" id="bk-otp-boxes" data-length="5">
+				for i := 0; i < 5; i++ {
+					<input
+						type="text"
+						inputmode="numeric"
+						maxlength="1"
+						class="bk-otp__box"
+						dir="ltr"
+						autocomplete="one-time-code"
+						aria-label={ "رقم " + strconv.Itoa(i+1) }
+					/>
+				}
+			</div>
+			<input type="hidden" id="otp_code" name="otp_code" value=""/>
+
+			<p class="bk-otp__timer" id="bk-otp-timer" aria-live="polite"></p>
+			<button type="button" id="booking-otp-resend" class="bk-link bk-hidden">ارسال مجدد کد</button>
+
+			<div class="bk-otp__actions">
+				<button type="button" id="booking-otp-back" class="bk-btn bk-btn--ghost">بازگشت</button>
+				<button type="button" id="booking-otp-verify" class="bk-btn bk-btn--primary" disabled>
+					<span class="bk-btn__text">تایید و ثبت نوبت</span>
+					<span class="bk-btn__spinner bk-hidden" aria-hidden="true"></span>
+				</button>
+			</div>
+			<p id="booking-otp-status" class="bk-otp__status" aria-live="polite"></p>
+		</div>
+	</div>
+}

@@ -121,7 +121,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"weekly-schedule mx-auto max-w-3xl lg:max-w-5xl\"><section class=\"mb-4\"><h1 class=\"mb-1 text-xl font-bold text-brand sm:text-2xl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"weekly-schedule ui-fade-in mx-auto max-w-3xl lg:max-w-5xl\"><section class=\"ui-hero\"><h1 class=\"ui-hero-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -141,12 +141,12 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</h1><p class=\"text-base leading-relaxed text-ink-muted\">ببینید هر پزشک چه روز و ساعتی در مرکز نوبت دارد.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</h1><p class=\"ui-hero-text\">ببینید هر پزشک چه روز و ساعتی در مرکز نوبت دارد.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if view.UpdatedAt != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"mt-1 text-sm text-ink-faint\">آخرین بروزرسانی ساعت ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"mt-2 text-sm text-ink-faint\">آخرین بروزرسانی ساعت ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -164,7 +164,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</section><form class=\"weekly-schedule-filters mb-4 rounded-xl border border-surface-border bg-white p-4 shadow-sm\" method=\"get\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</section><form class=\"weekly-schedule-filters ui-panel mb-5\" method=\"get\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -182,7 +182,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.ShowClinicFilter {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div><label class=\"mb-1.5 block text-base text-ink\" for=\"clinic_id\">مرکز درمانی</label> <select id=\"clinic_id\" name=\"clinic_id\" class=\"doctor-list-field\"><option value=\"\">انتخاب مرکز…</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div><label class=\"ui-label\" for=\"clinic_id\">مرکز درمانی</label> <select id=\"clinic_id\" name=\"clinic_id\" class=\"ui-field\"><option value=\"\">انتخاب مرکز…</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -256,7 +256,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div><label class=\"mb-1.5 block text-base text-ink\" for=\"q\">نام پزشک</label> <input id=\"q\" name=\"q\" type=\"search\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div><label class=\"ui-label\" for=\"q\">نام پزشک</label> <input id=\"q\" name=\"q\" type=\"search\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -269,7 +269,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" placeholder=\"مثال: رضایی\" autocomplete=\"off\" class=\"doctor-list-field\"></div><div><label class=\"mb-1.5 block text-base text-ink\" for=\"date\">روز</label> <select id=\"date\" name=\"date\" class=\"doctor-list-field\"><option value=\"\">همه روزها</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" placeholder=\"مثال: رضایی\" autocomplete=\"off\" class=\"ui-field\"></div><div><label class=\"ui-label\" for=\"date\">روز</label> <select id=\"date\" name=\"date\" class=\"ui-field\"><option value=\"\">همه روزها</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -338,7 +338,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</select></div><div><label class=\"mb-1.5 block text-base text-ink\" for=\"shift\">شیفت</label> <select id=\"shift\" name=\"shift\" class=\"doctor-list-field\"><option value=\"\">همه شیفت\u200cها</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</select></div><div><label class=\"ui-label\" for=\"shift\">شیفت</label> <select id=\"shift\" name=\"shift\" class=\"ui-field\"><option value=\"\">همه شیفت\u200cها</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -407,19 +407,19 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select></div></div><div class=\"mt-4 flex flex-col gap-2 sm:flex-row\"><button type=\"submit\" class=\"doctor-list-btn doctor-list-btn-primary sm:flex-1\">نمایش نتایج</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</select></div></div><div class=\"mt-4 flex flex-col gap-2 sm:flex-row\"><button type=\"submit\" class=\"ui-btn ui-btn-primary sm:flex-1\">نمایش نتایج</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if weeklyScheduleHasFilters(view) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<a class=\"doctor-list-btn doctor-list-btn-secondary sm:flex-1\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<a class=\"ui-btn ui-btn-ghost sm:flex-1\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 templ.SafeURL
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(weeklyScheduleQueryURL(view, "all")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 179, Col: 125}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 179, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -542,14 +542,14 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if view.Query != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<a class=\"doctor-list-chip\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<a class=\"ui-chip\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var24 templ.SafeURL
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(weeklyScheduleQueryURL(view, "q")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 209, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 209, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -562,7 +562,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					var templ_7745c5c3_Var25 string
 					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(view.Query)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 209, Col: 115}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 209, Col: 106}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
@@ -574,14 +574,14 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					}
 				}
 				if view.Date != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<a class=\"doctor-list-chip tabular-nums\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<a class=\"ui-chip tabular-nums\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 templ.SafeURL
 					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(weeklyScheduleQueryURL(view, "date")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 212, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 212, Col: 97}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
@@ -594,7 +594,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					var templ_7745c5c3_Var27 string
 					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(view.Date)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 212, Col: 120}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 212, Col: 111}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 					if templ_7745c5c3_Err != nil {
@@ -606,14 +606,14 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					}
 				}
 				if view.Shift != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<a class=\"doctor-list-chip\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<a class=\"ui-chip\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var28 templ.SafeURL
 					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(weeklyScheduleQueryURL(view, "shift")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 215, Col: 94}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 215, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 					if templ_7745c5c3_Err != nil {
@@ -626,7 +626,7 @@ func WeeklySchedule(view WeeklyScheduleView) templ.Component {
 					var templ_7745c5c3_Var29 string
 					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(view.Shift)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 215, Col: 109}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/pages/weekly_schedule.templ`, Line: 215, Col: 100}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 					if templ_7745c5c3_Err != nil {

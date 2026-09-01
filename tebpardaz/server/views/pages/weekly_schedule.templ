@@ -93,25 +93,25 @@ func weeklyScheduleQueryURL(view WeeklyScheduleView, clearKey string) string {
 
 // WeeklySchedule صفحه عمومی لیست نوبت‌دهی هفتگی پزشکان را رندر می‌کند (موبایل‌اول).
 templ WeeklySchedule(view WeeklyScheduleView) {
-	<div class="weekly-schedule mx-auto max-w-3xl lg:max-w-5xl">
-		<section class="mb-4">
-			<h1 class="mb-1 text-xl font-bold text-brand sm:text-2xl">
+	<div class="weekly-schedule ui-fade-in mx-auto max-w-3xl lg:max-w-5xl">
+		<section class="ui-hero">
+			<h1 class="ui-hero-title">
 				if view.Title != "" {
 					{ view.Title }
 				} else {
 					لیست نوبت دهی پزشکان هفتگی
 				}
 			</h1>
-			<p class="text-base leading-relaxed text-ink-muted">
+			<p class="ui-hero-text">
 				ببینید هر پزشک چه روز و ساعتی در مرکز نوبت دارد.
 			</p>
 			if view.UpdatedAt != "" {
-				<p class="mt-1 text-sm text-ink-faint">آخرین بروزرسانی ساعت { view.UpdatedAt }</p>
+				<p class="mt-2 text-sm text-ink-faint">آخرین بروزرسانی ساعت { view.UpdatedAt }</p>
 			}
 		</section>
 
 		<form
-			class="weekly-schedule-filters mb-4 rounded-xl border border-surface-border bg-white p-4 shadow-sm"
+			class="weekly-schedule-filters ui-panel mb-5"
 			method="get"
 			action={ templ.SafeURL(view.FormAction) }
 			role="search"
@@ -121,8 +121,8 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 			<div class="weekly-schedule-filters-grid">
 				if view.ShowClinicFilter {
 					<div>
-						<label class="mb-1.5 block text-base text-ink" for="clinic_id">مرکز درمانی</label>
-						<select id="clinic_id" name="clinic_id" class="doctor-list-field">
+						<label class="ui-label" for="clinic_id">مرکز درمانی</label>
+						<select id="clinic_id" name="clinic_id" class="ui-field">
 							<option value="">انتخاب مرکز…</option>
 							for _, cl := range view.Clinics {
 								if view.ClinicID == cl.ID {
@@ -135,7 +135,7 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 					</div>
 				}
 				<div>
-					<label class="mb-1.5 block text-base text-ink" for="q">نام پزشک</label>
+					<label class="ui-label" for="q">نام پزشک</label>
 					<input
 						id="q"
 						name="q"
@@ -143,12 +143,12 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 						value={ view.Query }
 						placeholder="مثال: رضایی"
 						autocomplete="off"
-						class="doctor-list-field"
+						class="ui-field"
 					/>
 				</div>
 				<div>
-					<label class="mb-1.5 block text-base text-ink" for="date">روز</label>
-					<select id="date" name="date" class="doctor-list-field">
+					<label class="ui-label" for="date">روز</label>
+					<select id="date" name="date" class="ui-field">
 						<option value="">همه روزها</option>
 						for _, opt := range view.DateOptions {
 							if view.Date == opt.Value {
@@ -160,8 +160,8 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 					</select>
 				</div>
 				<div>
-					<label class="mb-1.5 block text-base text-ink" for="shift">شیفت</label>
-					<select id="shift" name="shift" class="doctor-list-field">
+					<label class="ui-label" for="shift">شیفت</label>
+					<select id="shift" name="shift" class="ui-field">
 						<option value="">همه شیفت‌ها</option>
 						for _, opt := range view.ShiftOptions {
 							if view.Shift == opt.Value {
@@ -174,9 +174,9 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 				</div>
 			</div>
 			<div class="mt-4 flex flex-col gap-2 sm:flex-row">
-				<button type="submit" class="doctor-list-btn doctor-list-btn-primary sm:flex-1">نمایش نتایج</button>
+				<button type="submit" class="ui-btn ui-btn-primary sm:flex-1">نمایش نتایج</button>
 				if weeklyScheduleHasFilters(view) {
-					<a class="doctor-list-btn doctor-list-btn-secondary sm:flex-1" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "all")) }>پاک کردن جستجو</a>
+					<a class="ui-btn ui-btn-ghost sm:flex-1" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "all")) }>پاک کردن جستجو</a>
 				}
 			</div>
 		</form>
@@ -206,13 +206,13 @@ templ WeeklySchedule(view WeeklyScheduleView) {
 				if weeklyScheduleHasFilters(view) {
 					<div class="flex max-w-full flex-wrap gap-2">
 						if view.Query != "" {
-							<a class="doctor-list-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "q")) }>پزشک: { view.Query } ×</a>
+							<a class="ui-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "q")) }>پزشک: { view.Query } ×</a>
 						}
 						if view.Date != "" {
-							<a class="doctor-list-chip tabular-nums" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "date")) }>{ view.Date } ×</a>
+							<a class="ui-chip tabular-nums" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "date")) }>{ view.Date } ×</a>
 						}
 						if view.Shift != "" {
-							<a class="doctor-list-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "shift")) }>{ view.Shift } ×</a>
+							<a class="ui-chip" href={ templ.SafeURL(weeklyScheduleQueryURL(view, "shift")) }>{ view.Shift } ×</a>
 						}
 					</div>
 				}

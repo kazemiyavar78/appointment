@@ -1,0 +1,59 @@
+package pages
+
+import "tebpardaz/server/views/components"
+
+// Specialties صفحه فهرست کامل تخصص‌ها را رندر می‌کند (بدون گرید کارت صفحه اصلی).
+templ Specialties(view SpecialtiesView) {
+	<div class="ui-fade-in mx-auto max-w-6xl">
+		<section class="ui-hero">
+			<p class="ui-hero-brand">طب‌پرداز</p>
+			<h1 class="ui-hero-title">تخصص‌ها</h1>
+			<p class="ui-hero-text">
+				تخصص مورد نظر را انتخاب کنید تا پزشکان همان رشته را ببینید.
+			</p>
+		</section>
+		if len(view.Specialties) == 0 {
+			<p class="py-10 text-center text-sm text-ink-muted">تخصصی برای نمایش وجود ندارد.</p>
+		} else {
+			<section class="ui-section">
+				<div class="ui-section-head">
+					<h2 class="ui-section-title">همه تخصص‌ها</h2>
+					<p class="ui-section-desc">{ intToString(view.TotalCount) } تخصص تأییدشده</p>
+				</div>
+				<ul class="divide-y divide-surface-border overflow-hidden rounded-2xl border border-surface-border bg-white">
+					for _, sp := range view.Specialties {
+						<li>
+							<a
+								class="flex items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-surface-soft"
+								href={ templ.SafeURL(components.SpecialtyFilterURL(sp.ID)) }
+							>
+								<span
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-soft"
+									style={ "color: " + components.SpecialtyIconColor(sp.Color) }
+									aria-hidden="true"
+								>
+									if components.SpecialtyIconIsURL(sp.Icon) {
+										<img class="h-6 w-6 object-contain" src={ sp.Icon } alt="" loading="lazy"/>
+									} else {
+										<i class={ components.SpecialtyFAClass(sp.Icon) + " text-lg" }></i>
+									}
+								</span>
+								<span class="min-w-0 flex-1 text-right">
+									<span class="block text-sm font-bold text-ink">{ sp.Name }</span>
+									if sp.ShortDescription != "" {
+										<span class="mt-1 block text-sm text-ink-muted">{ sp.ShortDescription }</span>
+									}
+								</span>
+								<span class="ui-icon-btn !h-6 !w-6 !leading-6 shrink-0" aria-hidden="true">
+									<svg class="inline-block h-3 w-3 rotate-180 align-middle" viewBox="0 0 20 20" fill="currentColor">
+										<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
+									</svg>
+								</span>
+							</a>
+						</li>
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}

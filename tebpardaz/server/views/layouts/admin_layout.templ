@@ -1,39 +1,209 @@
 package layouts
 
-// AdminNavItem is one link in the admin sidebar.
+import (
+	"strings"
+)
+
+// AdminNavItem یک لینک در سایدبار ادمین است.
 type AdminNavItem struct {
-	Label  string
-	Href   string
-	Active bool
+	Label    string
+	Href     string
+	Active   bool
+	Children []AdminNavItem
 }
 
-// AdminLayoutView drives the admin shell (sidebar + main content).
+// AdminLayoutView دادهٔ پوسته ادمین (سایدبار + محتوا) را نگه می‌دارد.
 type AdminLayoutView struct {
 	NavItems []AdminNavItem
 }
 
-// AdminLayout renders the admin panel with a right-side sidebar (RTL).
+// getNavIcon آیکون فونت‌آوسام متناسب با عنوان آیتم منو را برمی‌گرداند.
+// ورودی: عنوان آیتم (string). خروجی: نام کلاس‌های آیکون FontAwesome (string).
+func getNavIcon(label string) string {
+	switch {
+	case strings.Contains(label, "پزشک"):
+		return "fa-solid fa-user-doctor"
+	case strings.Contains(label, "نوبت"):
+		return "fa-solid fa-calendar-check"
+	case strings.Contains(label, "خبر") || strings.Contains(label, "اخبار"):
+		return "fa-solid fa-newspaper"
+	case strings.Contains(label, "نظر") || strings.Contains(label, "نظرات"):
+		return "fa-solid fa-comments"
+	case strings.Contains(label, "بخش"):
+		return "fa-solid fa-hospital"
+	case strings.Contains(label, "تخصص"):
+		return "fa-solid fa-stethoscope"
+	case strings.Contains(label, "بیمه"):
+		return "fa-solid fa-shield-halved"
+	case strings.Contains(label, "خدمات") || strings.Contains(label, "خدمت"):
+		return "fa-solid fa-list-check"
+	case strings.Contains(label, "کاربر"):
+		return "fa-solid fa-users-gear"
+	case strings.Contains(label, "بنر"):
+		return "fa-regular fa-image"
+	case strings.Contains(label, "تجهیزات"):
+		return "fa-solid fa-microscope"
+	case strings.Contains(label, "پیام"):
+		return "fa-regular fa-message"
+	case strings.Contains(label, "حضور") || strings.Contains(label, "برنامه"):
+		return "fa-regular fa-clock"
+	default:
+		return "fa-solid fa-angle-left text-[0.7rem]"
+	}
+}
+
+// AdminLayout پنل ادمین را با طراحی مدرن Glassmorphism، هدر شیشه‌ای، سایدبار واکنش‌گرا و المان‌های شناور رندر می‌کند.
+// ورودی: view از نوع AdminLayoutView شامل آیتم‌های ناوبری. خروجی: کامپوننت templ.
 templ AdminLayout(view AdminLayoutView) {
 	@Document() {
-		<div class="flex min-h-screen">
-			<aside class="w-56 shrink-0 border-l border-gray-200 bg-white p-4">
-				<h2 class="mb-4 text-lg font-semibold text-brand">پنل ادمین</h2>
-				<nav class="space-y-1">
-					for _, item := range view.NavItems {
-						if item.Active {
-							<a class="block rounded bg-brand/10 px-3 py-2 text-brand" href={ templ.SafeURL(item.Href) }>{ item.Label }</a>
-						} else {
-							<a class="block rounded px-3 py-2 text-ink hover:bg-surface-soft" href={ templ.SafeURL(item.Href) }>{ item.Label }</a>
-						}
-					}
-				</nav>
-				<div class="mt-8 border-t border-gray-100 pt-4">
-					<a class="text-sm text-ink-muted underline" href="/admin/logout">خروج</a>
+		<div class="admin-shell">
+			<!-- المان‌های دایره‌ای شناور با محو شدگی عمیق در پس‌زمینه (Background Glowing Orbs) -->
+			<div class="glass-orbs-container" aria-hidden="true">
+				<div class="glass-orb glass-orb-1"></div>
+				<div class="glass-orb glass-orb-2"></div>
+				<div class="glass-orb glass-orb-3"></div>
+			</div>
+
+			<!-- پس‌زمینه تاریک موبایل برای بستن منو (Backdrop) -->
+			<div id="admin-mobile-backdrop" class="admin-mobile-backdrop" aria-hidden="true"></div>
+
+			<!-- هدر شیشه‌ای بالای صفحه (Glass Header) -->
+			<header class="admin-header">
+				<div class="flex items-center gap-3">
+					<button id="admin-menu-toggle" type="button" class="admin-menu-toggle md:hidden" aria-label="باز و بسته کردن منو">
+						<i class="fa-solid fa-bars text-lg"></i>
+					</button>
+					<div class="flex items-center gap-2.5">
+						<div class="admin-brand-icon">
+							<i class="fa-solid fa-shield-halved"></i>
+						</div>
+						<div class="flex flex-col">
+							<span class="admin-brand-title">طب‌پرداز</span>
+							<span class="admin-brand-subtitle">سامانه یکپارچه نوبت‌دهی</span>
+						</div>
+					</div>
 				</div>
-			</aside>
-			<div class="flex-1 overflow-x-auto p-4">
-				{ children... }
+
+				<div class="flex items-center gap-2 sm:gap-3">
+					<a href="/" target="_blank" class="admin-header-btn" title="مشاهده وب‌سایت عمومی">
+						<i class="fa-solid fa-arrow-up-right-from-square"></i>
+						<span class="hidden sm:inline">مشاهده سایت</span>
+					</a>
+
+					<div class="admin-user-pill">
+						<div class="admin-user-avatar">
+							<i class="fa-solid fa-user-gear"></i>
+						</div>
+						<div class="hidden sm:flex flex-col text-right leading-tight">
+							<span class="text-xs font-medium text-white">مدیریت سیستم</span>
+							<span class="text-[10px] text-purple-200/80">پنل ادمین</span>
+						</div>
+					</div>
+
+					<a href="/admin/logout" class="admin-logout-btn" title="خروج از حساب">
+						<i class="fa-solid fa-power-off"></i>
+						<span class="hidden sm:inline text-xs font-medium">خروج</span>
+					</a>
+				</div>
+			</header>
+
+			<!-- بدنه اصلی شامل سایدبار و ناحیه محتوا -->
+			<div class="admin-layout-body">
+				<!-- سایدبار شیشه‌ای (Glass Sidebar) -->
+				<aside id="admin-sidebar" class="admin-sidebar">
+					<div class="admin-sidebar-header hidden md:flex items-center justify-between p-4 border-b border-white/10">
+						<div class="flex items-center gap-2.5">
+							<i class="fa-solid fa-layer-group text-purple-400"></i>
+							<span class="text-sm font-semibold text-white">منوی دسترسی</span>
+						</div>
+						<span class="text-[10px] uppercase tracking-wider text-purple-300/60 bg-purple-500/10 border border-purple-400/20 px-2 py-0.5 rounded-full">ادمین</span>
+					</div>
+
+					<div class="admin-sidebar-content p-3 space-y-1 overflow-y-auto custom-glass-scrollbar flex-1">
+						@adminNavLinks(view.NavItems)
+					</div>
+
+					<div class="admin-sidebar-footer p-3 border-t border-white/10">
+						<a class="admin-sidebar-logout" href="/admin/logout">
+							<i class="fa-solid fa-arrow-right-from-bracket"></i>
+							<span>خروج از پنل مدیریت</span>
+						</a>
+					</div>
+				</aside>
+
+				<!-- محتوای صفحات ادمین (Admin Main Content) -->
+				<main class="admin-main">
+					{ children... }
+				</main>
 			</div>
 		</div>
+
+		<!-- جاوااسکریپت کنترل دراور شیشه‌ای موبایل -->
+		<script>
+		(function() {
+			var toggleBtn = document.getElementById('admin-menu-toggle');
+			var sidebar = document.getElementById('admin-sidebar');
+			var backdrop = document.getElementById('admin-mobile-backdrop');
+			if (toggleBtn && sidebar && backdrop) {
+				function toggleSidebar() {
+					sidebar.classList.toggle('is-open');
+					backdrop.classList.toggle('is-open');
+					document.body.classList.toggle('overflow-hidden');
+				}
+				toggleBtn.addEventListener('click', toggleSidebar);
+				backdrop.addEventListener('click', toggleSidebar);
+			}
+		})();
+		</script>
 	}
+}
+
+// adminNavLinks لینک‌های سایدبار ادمین را با آیکون‌های مدرن، استایل شیشه‌ای و حالت‌های هاور و فعال رندر می‌کند.
+// ورودی: لیستی از AdminNavItem. خروجی: کامپوننت templ.
+templ adminNavLinks(items []AdminNavItem) {
+	<nav class="admin-sidebar-nav space-y-1" aria-label="منوی ادمین">
+		for _, item := range items {
+			if len(item.Children) > 0 {
+				<div class="pt-2">
+					<div class="flex items-center justify-between px-3 py-1.5 text-xs font-medium text-purple-200/90 bg-white/5 rounded-lg border border-white/5 mb-1">
+						<div class="flex items-center gap-2">
+							<i class={ getNavIcon(item.Label), "text-purple-300 text-xs w-4 text-center" }></i>
+							if item.Href != "" {
+								<a href={ templ.SafeURL(item.Href) } class="hover:text-purple-300 transition-colors font-medium">{ item.Label }</a>
+							} else {
+								<span>{ item.Label }</span>
+							}
+						</div>
+					</div>
+					<div class="mr-3 space-y-1 border-r border-white/15 pr-2.5 my-1">
+						for _, child := range item.Children {
+							if child.Active {
+								<a class="ui-nav-item is-active !py-1.5 text-xs" href={ templ.SafeURL(child.Href) } aria-current="page">
+									<i class={ getNavIcon(child.Label), "text-[11px] opacity-90" }></i>
+									<span>{ child.Label }</span>
+								</a>
+							} else {
+								<a class="ui-nav-item !py-1.5 text-xs" href={ templ.SafeURL(child.Href) }>
+									<i class={ getNavIcon(child.Label), "text-[11px] opacity-70" }></i>
+									<span>{ child.Label }</span>
+								</a>
+							}
+						}
+					</div>
+				</div>
+			} else {
+				if item.Active {
+					<a class="ui-nav-item is-active" href={ templ.SafeURL(item.Href) } aria-current="page">
+						<i class={ getNavIcon(item.Label), "text-sm w-5 text-center" }></i>
+						<span>{ item.Label }</span>
+					</a>
+				} else {
+					<a class="ui-nav-item" href={ templ.SafeURL(item.Href) }>
+						<i class={ getNavIcon(item.Label), "text-sm w-5 text-center text-purple-200/70" }></i>
+						<span>{ item.Label }</span>
+					</a>
+				}
+			}
+		}
+	</nav>
 }

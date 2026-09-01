@@ -1,6 +1,8 @@
 package public
 
 import (
+	
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -71,7 +73,7 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 	page, totalPages, pageDoctors := paginateDoctorCards(result.Doctors, parsePageQuery(c.Query("page")), doctorListPageSize)
 
 	view := pages.DoctorListView{
-		Doctors:          toDoctorCards(pageDoctors),
+		Doctors:          nil,
 		Specialties:      toFilterOptions(result.Specialties),
 		Clinics:          toClinicFilterOptions(result.Clinics),
 		ShowClinicFilter: result.ShowClinicFilter,
@@ -86,6 +88,9 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		TotalCount:       len(result.Doctors),
 		PageSize:         doctorListPageSize,
 	}
+	returnURL := pages.DoctorListURL(view, page)
+	view.Doctors = toDoctorCards(pageDoctors, returnURL)
+	fmt.Println(result.Doctors)
 	renderPublicLayout(c, tc, pages.DoctorList(view), "doctors")
 }
 
@@ -117,7 +122,10 @@ func paginateDoctorCards(all []booking.DoctorCard, page, pageSize int) (int, int
 	return page, totalPages, all[start:end]
 }
 
-func toDoctorCards(items []booking.DoctorCard) []components.DoctorCardView {
+// toDoctorCards transforms booking.DoctorCard slice into components.DoctorCardView slice.
+// Inputs: items ([]booking.DoctorCard), returnURL (string).
+// Output: []components.DoctorCardView.
+func toDoctorCards(items []booking.DoctorCard, returnURL string) []components.DoctorCardView {
 	out := make([]components.DoctorCardView, 0, len(items))
 	for _, item := range items {
 		out = append(out, components.DoctorCardView{
@@ -125,11 +133,16 @@ func toDoctorCards(items []booking.DoctorCard) []components.DoctorCardView {
 			SpecialtyName:   item.SpecialtyName,
 			DoctorSystemID:  item.DoctorSystemID,
 			PhotoURL:        item.PhotoURL,
+			Photo300:        item.Photo300,
+			Photo600:        item.Photo600,
+			Photo900:        item.Photo900,
+			Photo1200:       item.Photo1200,
+			ShortDesc:       item.ShortDesc,
 			ClinicName:      item.ClinicName,
 			ShowClinicBadge: item.ShowClinicBadge,
 			HasSlot:         item.HasSlot,
 			NearestStartsAt: item.NearestStartsAt,
-			BookingURL:      item.BookingURL,
+			BookingURL:      booking.WithReturn(item.BookingURL, returnURL),
 		})
 	}
 	return out
@@ -138,7 +151,11 @@ func toDoctorCards(items []booking.DoctorCard) []components.DoctorCardView {
 func toFilterOptions(items []booking.SpecialtyOption) []pages.DoctorListFilterOption {
 	out := make([]pages.DoctorListFilterOption, 0, len(items))
 	for _, item := range items {
-		out = append(out, pages.DoctorListFilterOption{ID: item.ID, Name: item.Name})
+		out = append(out, pages.DoctorListFilterOption{
+			ID:          item.ID,
+			Name:        item.Name,
+			Description: item.Description,
+		})
 	}
 	return out
 }

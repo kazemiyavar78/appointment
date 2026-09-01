@@ -4,20 +4,21 @@ import (
 	"tebpardaz/server/views/components"
 )
 
-// DoctorListFilterOption is a select option for specialty or clinic filters.
+// DoctorListFilterOption گزینه فیلتر تخصص یا مرکز است.
 type DoctorListFilterOption struct {
-	ID   uint
-	Name string
+	ID          uint
+	Name        string
+	Description string
 }
 
-// DoctorListView drives the public booking doctor list page.
+// DoctorListView دادهٔ صفحه فهرست عمومی پزشکان را نگه می‌دارد.
 type DoctorListView struct {
 	Doctors          []components.DoctorCardView
 	Specialties      []DoctorListFilterOption
 	Clinics          []DoctorListFilterOption
 	ShowClinicFilter bool
 	Query            string
-	Date             string // Shamsi yyyy/MM/dd for the date filter input
+	Date             string
 	SpecialtyID      uint
 	ClinicID         uint
 	FormAction       string
@@ -28,82 +29,28 @@ type DoctorListView struct {
 	PageSize         int
 }
 
-// DoctorList renders a responsive filter sidebar and doctor booking cards.
-// Phone: filter block above cards (collapsed by default). Desktop: filter beside the grid.
+// DoctorList فهرست پزشکان با فیلتر موبایل/دسکتاپ جدا را رندر می‌کند.
 templ DoctorList(view DoctorListView) {
-	<div class="mx-auto max-w-6xl">
-		<section class="mb-5">
-			<h1 class="mb-1 text-2xl font-bold text-brand">پزشکان</h1>
-			<p class="text-base text-ink-muted">پزشک را پیدا کنید و نوبت بگیرید.</p>
+	<link rel="stylesheet" href="/static/css/specialty_cards.css"/>
+	<div class="ui-fade-in mx-auto max-w-6xl">
+		<section class="ui-section mb-5">
+			<h1 class="ui-page-title">پزشکان</h1>
+			<p class="ui-page-desc">پزشک را پیدا کنید و نوبت بگیرید.</p>
 		</section>
 
 		<div class="doctor-list-layout">
-			<aside class="doctor-list-filters rounded-xl border border-surface-border bg-white p-4 shadow-sm">
-				<details class="doctor-list-filters-panel">
-					<summary class="flex cursor-pointer items-center justify-between gap-3 text-base font-bold text-ink">
+			<aside class="doctor-list-filters">
+				<details class="doctor-list-filters-mobile doctor-list-filters-panel ui-panel">
+					<summary class="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 text-base font-bold text-ink">
 						<span>جستجو و فیلتر</span>
 						<span class="doctor-list-filters-toggle rounded-md bg-surface-soft px-2.5 py-1 text-sm font-normal text-ink-muted">باز کردن</span>
 					</summary>
-					<form class="mt-4 space-y-4" method="get" action={ templ.SafeURL(view.FormAction) }>
-						<div>
-							<label class="mb-1.5 block text-base text-ink" for="q">نام پزشک</label>
-							<input
-								id="q"
-								name="q"
-								type="search"
-								value={ view.Query }
-								placeholder="مثال: رضایی"
-								autocomplete="off"
-								class="doctor-list-field"
-							/>
-						</div>
-						<div>
-							@components.DatePicker(components.DatePickerProps{
-								ID:          "date",
-								Name:        "date",
-								Label:       "روز نوبت",
-								Value:       view.Date,
-								Help:        "فقط از امروز تا ۱۵ روز بعد. خالی = همه روزها.",
-								Placeholder: "انتخاب تاریخ",
-								HasDayRange: true,
-								MinDays:     0,
-								MaxDays:     15,
-							})
-						</div>
-						<div>
-							<label class="mb-1.5 block text-base text-ink" for="specialty_id">تخصص</label>
-							<select id="specialty_id" name="specialty_id" class="doctor-list-field">
-								<option value="">همه تخصص‌ها</option>
-								for _, sp := range view.Specialties {
-									if view.SpecialtyID == sp.ID {
-										<option value={ uintToString(sp.ID) } selected>{ sp.Name }</option>
-									} else {
-										<option value={ uintToString(sp.ID) }>{ sp.Name }</option>
-									}
-								}
-							</select>
-						</div>
-						if view.ShowClinicFilter {
-							<div>
-								<label class="mb-1.5 block text-base text-ink" for="clinic_id">مرکز درمانی</label>
-								<select id="clinic_id" name="clinic_id" class="doctor-list-field">
-									<option value="">همه مراکز</option>
-									for _, cl := range view.Clinics {
-										if view.ClinicID == cl.ID {
-											<option value={ uintToString(cl.ID) } selected>{ cl.Name }</option>
-										} else {
-											<option value={ uintToString(cl.ID) }>{ cl.Name }</option>
-										}
-									}
-								</select>
-							</div>
-						}
-						<div class="flex flex-col gap-2 pt-1">
-							<button type="submit" class="doctor-list-btn doctor-list-btn-primary">اعمال فیلتر</button>
-							<a class="doctor-list-btn doctor-list-btn-secondary" href={ templ.SafeURL(view.FormAction) }>پاک کردن فیلترها</a>
-						</div>
-					</form>
+					@doctorListFilterForm(view, "m")
 				</details>
+				<div class="doctor-list-filters-desktop ui-panel">
+					<p class="mb-3 text-base font-bold text-ink">جستجو و فیلتر</p>
+					@doctorListFilterForm(view, "d")
+				</div>
 			</aside>
 
 			<section class="doctor-list-results">
@@ -122,24 +69,16 @@ templ DoctorList(view DoctorListView) {
 					if doctorListHasFilters(view) {
 						<div class="flex max-w-full flex-wrap gap-2">
 							if view.Query != "" {
-								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "q")) } title="حذف نام">
-									نام: { view.Query } ×
-								</a>
+								<a class="ui-chip" href={ templ.SafeURL(doctorListClearURL(view, "q")) } title="حذف نام">نام: { view.Query } ×</a>
 							}
 							if view.Date != "" {
-								<a class="doctor-list-chip tabular-nums" href={ templ.SafeURL(doctorListClearURL(view, "date")) } title="حذف تاریخ" dir="ltr">
-									{ view.Date } ×
-								</a>
+								<a class="ui-chip tabular-nums" href={ templ.SafeURL(doctorListClearURL(view, "date")) } title="حذف تاریخ" dir="ltr">{ view.Date } ×</a>
 							}
 							if name := doctorListSpecialtyName(view); name != "" {
-								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "specialty_id")) } title="حذف تخصص">
-									{ name } ×
-								</a>
+								<a class="ui-chip" href={ templ.SafeURL(doctorListClearURL(view, "specialty_id")) } title="حذف تخصص">{ name } ×</a>
 							}
 							if name := doctorListClinicName(view); name != "" {
-								<a class="doctor-list-chip" href={ templ.SafeURL(doctorListClearURL(view, "clinic_id")) } title="حذف مرکز">
-									{ name } ×
-								</a>
+								<a class="ui-chip" href={ templ.SafeURL(doctorListClearURL(view, "clinic_id")) } title="حذف مرکز">{ name } ×</a>
 							}
 						</div>
 					}
@@ -149,10 +88,11 @@ templ DoctorList(view DoctorListView) {
 					<div class="rounded-xl border border-dashed border-surface-border bg-white px-5 py-10 text-center">
 						<p class="text-base text-ink-muted">{ view.EmptyMessage }</p>
 						if doctorListHasFilters(view) {
-							<a class="mt-4 inline-block text-base font-bold text-brand underline" href={ templ.SafeURL(view.FormAction) }>دیدن همه پزشکان</a>
+							<a class="ui-link mt-4 inline-block text-base font-bold" href={ templ.SafeURL(view.FormAction) }>دیدن همه پزشکان</a>
 						}
 					</div>
 				} else {
+					@components.DoctorCardAssets()
 					<div class="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
 						for _, item := range view.Doctors {
 							@components.DoctorCard(item)
@@ -187,12 +127,80 @@ templ DoctorList(view DoctorListView) {
 				if (!panel) return;
 				var toggle = panel.querySelector(".doctor-list-filters-toggle");
 				if (!toggle) return;
-				function sync() {
-					toggle.textContent = panel.open ? "بستن" : "باز کردن";
-				}
+				function sync() { toggle.textContent = panel.open ? "بستن" : "باز کردن"; }
 				panel.addEventListener("toggle", sync);
 				sync();
 			})();
 		</script>
 	</div>
+}
+
+// doctorListFilterForm فیلدهای جستجوی لیست پزشکان را رندر می‌کند.
+// ورودی: view و suffix یکتا برای id فیلدها (جلوگیری از تکرار در DOM).
+templ doctorListFilterForm(view DoctorListView, suffix string) {
+	<form class="mt-4 space-y-4 lg:mt-0" method="get" action={ templ.SafeURL(view.FormAction) }>
+		<div>
+			<label class="ui-label" for={ "q-" + suffix }>نام پزشک</label>
+			<input
+				id={ "q-" + suffix }
+				name="q"
+				type="search"
+				value={ view.Query }
+				placeholder="مثال: رضایی"
+				autocomplete="off"
+				class="ui-field"
+			/>
+		</div>
+		<div>
+			@components.DatePicker(components.DatePickerProps{
+				ID:          "date-" + suffix,
+				Name:        "date",
+				Label:       "روز نوبت",
+				Value:       view.Date,
+				Help:        "فقط از امروز تا ۱۵ روز بعد. خالی = همه روزها.",
+				Placeholder: "انتخاب تاریخ",
+				HasDayRange: true,
+				MinDays:     0,
+				MaxDays:     15,
+			})
+		</div>
+		<div>
+			<label class="ui-label" for={ "specialty_id-" + suffix }>تخصص</label>
+			<select id={ "specialty_id-" + suffix } name="specialty_id" class="ui-field">
+				<option value="">همه تخصص‌ها</option>
+				for _, sp := range view.Specialties {
+					if view.SpecialtyID == sp.ID {
+						<option value={ uintToString(sp.ID) } selected>{ sp.Name }</option>
+					} else {
+						<option value={ uintToString(sp.ID) }>{ sp.Name }</option>
+					}
+				}
+			</select>
+			if desc := doctorListSpecialtyDescription(view); desc != "" {
+				<div class="specialty-filter-desc">
+					<p class="specialty-filter-desc__title">{ doctorListSpecialtyName(view) }</p>
+					<p class="specialty-filter-desc__body">{ desc }</p>
+				</div>
+			}
+		</div>
+		if view.ShowClinicFilter {
+			<div>
+				<label class="ui-label" for={ "clinic_id-" + suffix }>مرکز درمانی</label>
+				<select id={ "clinic_id-" + suffix } name="clinic_id" class="ui-field">
+					<option value="">همه مراکز</option>
+					for _, cl := range view.Clinics {
+						if view.ClinicID == cl.ID {
+							<option value={ uintToString(cl.ID) } selected>{ cl.Name }</option>
+						} else {
+							<option value={ uintToString(cl.ID) }>{ cl.Name }</option>
+						}
+					}
+				</select>
+			</div>
+		}
+		<div class="flex flex-col gap-2 pt-1">
+			<button type="submit" class="ui-btn ui-btn-primary ui-btn-block">اعمال فیلتر</button>
+			<a class="ui-btn ui-btn-ghost ui-btn-block" href={ templ.SafeURL(view.FormAction) }>پاک کردن فیلترها</a>
+		</div>
+	</form>
 }

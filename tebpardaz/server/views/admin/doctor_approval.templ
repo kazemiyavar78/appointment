@@ -2,6 +2,7 @@ package admin
 
 import (
 	"strconv"
+	"strings"
 
 	"tebpardaz/server/views/layouts"
 )
@@ -20,7 +21,7 @@ type SpecialtyOption struct {
 	Name string
 }
 
-// ApprovalItem is one doctor row shown in the admin approval table.
+// ApprovalItem یک ردیف پزشک در جدول تأیید ادمین است.
 type ApprovalItem struct {
 	ID             uint
 	DoctorID       uint
@@ -33,9 +34,16 @@ type ApprovalItem struct {
 	Mobile         string
 	DoctorSystemID int
 	SpecialtyCode  string
+	SpecialtyID    uint
 	SpecialtyName  string
 	PhotoURL       string
+	Photo300       string
+	Photo600       string
+	Photo900       string
+	Photo1200      string
 	ExternalID     string
+	ShortDesc      string
+	LongDesc       string
 	IsActive       bool
 	Status         string
 	Source         string
@@ -67,25 +75,24 @@ func formatInt(v int) string {
 	return strconv.Itoa(v)
 }
 
-func activeLabel(active bool) string {
-	if active {
-		return "فعال"
+func statusLabel(status string) string {
+	switch status {
+	case "approved":
+		return "تأییدشده"
+	case "pending":
+		return "در انتظار"
+	case "rejected":
+		return "ردشده"
+	default:
+		return status
 	}
-	return "غیرفعال"
-}
-
-func sourceLabel(source string) string {
-	if source == "clinic" {
-		return "زنده از مرکز"
-	}
-	return "موجود در سرور"
 }
 
 func onlineBadge(online bool) string {
 	if online {
-		return " (آنلاین)"
+		return "آنلاین"
 	}
-	return " (آفلاین)"
+	return "آفلاین"
 }
 
 func tabQuery(tab string) string {
@@ -95,169 +102,343 @@ func tabQuery(tab string) string {
 	return "pending"
 }
 
+func displayName(item ApprovalItem) string {
+	if name := strings.TrimSpace(item.Name); name != "" {
+		return name
+	}
+	full := strings.TrimSpace(item.FirstName + " " + item.LastName)
+	if full != "" {
+		return full
+	}
+	return "—"
+}
+
+func specialtySelected(current, option uint) bool {
+	return current > 0 && current == option
+}
+
+func approvalItemHasPhoto(item ApprovalItem) bool {
+	return item.PhotoURL != "" || item.Photo1200 != "" || item.Photo900 != "" || item.Photo600 != "" || item.Photo300 != ""
+}
+
+func approvalItemAvatar(item ApprovalItem) string {
+	if item.Photo300 != "" {
+		return item.Photo300
+	}
+	if item.Photo600 != "" {
+		return item.Photo600
+	}
+	if item.Photo900 != "" {
+		return item.Photo900
+	}
+	if item.Photo1200 != "" {
+		return item.Photo1200
+	}
+	return item.PhotoURL
+}
+
 // DoctorApproval renders pending/approved doctor tabs with search, pagination, and approve actions.
 templ DoctorApproval(view DoctorApprovalView) {
 	@layouts.AdminLayout(view.Nav) {
 		<div id="loading-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
-			<div class="rounded-lg bg-white px-6 py-4 text-center shadow-lg">
-				<div class="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
+			<div class="rounded-xl bg-white px-8 py-6 text-center shadow-xl">
+				<div class="mx-auto mb-3 h-9 w-9 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
 				<p class="text-sm text-ink">در حال دریافت لیست پزشکان از مرکز...</p>
 			</div>
 		</div>
-		<div class="mx-auto max-w-[100rem]">
-			<div class="mb-4">
-				<h1 class="text-2xl text-brand">مدیریت پزشکان</h1>
+		<div class="mx-auto max-w-[96rem] space-y-4">
+			<div class="flex flex-wrap items-end justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">مدیریت پزشکان</h1>
+					<p class="ui-page-desc mt-1">تأیید، ویرایش، فعال‌سازی و حذف پزشکان مرکز</p>
+				</div>
+				if view.TotalItems > 0 {
+					<span class="rounded-full bg-surface-soft px-3 py-1 text-xs text-ink-muted">
+						{ formatInt(view.TotalItems) } مورد — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }
+					</span>
+				}
 			</div>
+
 			if len(view.Clinics) > 0 {
-				<form id="fetch-form" class="mb-4 flex flex-wrap items-end gap-2" method="get" action="/admin/approvals">
-					<input type="hidden" name="fetch" value="1"/>
-					<input type="hidden" name="tab" value={ tabQuery(view.Tab) }/>
-					<label class="block text-sm text-ink-muted">
-						مرکز
-						<select class="mt-1 block min-w-[12rem] rounded border border-gray-300 p-2" name="clinic_id">
-							for _, clinic := range view.Clinics {
-								if clinic.Selected {
-									<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
-								} else {
-									<option value={ formatUint(clinic.ID) }>{ clinic.Name }{ onlineBadge(clinic.IsOnline) }</option>
+				<section class="ui-panel">
+					<form id="fetch-form" class="flex flex-wrap items-end gap-3" method="get" action="/admin/approvals">
+						<input type="hidden" name="fetch" value="1"/>
+						<input type="hidden" name="tab" value={ tabQuery(view.Tab) }/>
+						<input type="hidden" name="page" value="1"/>
+						<label class="block min-w-[14rem] flex-1 text-sm text-ink-muted">
+							مرکز
+							<select class="ui-field mt-1" name="clinic_id">
+								for _, clinic := range view.Clinics {
+									<option value={ formatUint(clinic.ID) } selected?={ clinic.Selected }>
+										{ clinic.Name } — { onlineBadge(clinic.IsOnline) }
+									</option>
 								}
-							}
-						</select>
-					</label>
-					<label class="block text-sm text-ink-muted">
-						جستجو
-						<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="search" name="q" value={ view.SearchQuery } placeholder="نام، کد ملی، موبایل..."/>
-					</label>
-					<input type="hidden" name="page" value="1"/>
-					<button id="fetch-btn" class="rounded bg-brand px-4 py-2 text-white" type="submit">دریافت لیست زنده</button>
-				</form>
+							</select>
+						</label>
+						<label class="block min-w-[12rem] flex-1 text-sm text-ink-muted">
+							جستجو
+							<input
+								class="ui-field mt-1"
+								type="search"
+								name="q"
+								value={ view.SearchQuery }
+								placeholder="نام، کد ملی، موبایل..."
+							/>
+						</label>
+						<button
+							id="fetch-btn"
+							class="ui-btn ui-btn-primary"
+							type="submit"
+						>دریافت لیست زنده</button>
+					</form>
+				</section>
 			}
-			<div class="mb-4 flex gap-2 border-b border-gray-200">
+
+			<nav class="ui-panel flex gap-1 !p-1">
 				<a
-					class={ "px-4 py-2 text-sm", templ.KV("border-b-2 border-brand text-brand font-medium", view.Tab != "approved"), templ.KV("text-ink-muted", view.Tab == "approved") }
+					class={
+						"flex-1 rounded-lg px-4 py-2.5 text-center text-sm transition",
+						templ.KV("bg-brand text-white font-medium shadow-sm", view.Tab != "approved"),
+						templ.KV("text-ink-muted hover:bg-surface-soft", view.Tab == "approved"),
+					}
 					href={ templ.SafeURL("/admin/approvals?tab=pending&clinic_id=" + formatUint(view.ClinicID) + "&q=" + view.SearchQuery) }
 				>پزشکان تأییدنشده</a>
 				<a
-					class={ "px-4 py-2 text-sm", templ.KV("border-b-2 border-brand text-brand font-medium", view.Tab == "approved"), templ.KV("text-ink-muted", view.Tab != "approved") }
+					class={
+						"flex-1 rounded-lg px-4 py-2.5 text-center text-sm transition",
+						templ.KV("bg-brand text-white font-medium shadow-sm", view.Tab == "approved"),
+						templ.KV("text-ink-muted hover:bg-surface-soft", view.Tab != "approved"),
+					}
 					href={ templ.SafeURL("/admin/approvals?tab=approved&clinic_id=" + formatUint(view.ClinicID) + "&q=" + view.SearchQuery) }
 				>پزشکان تأییدشده</a>
-			</div>
+			</nav>
+
 			if view.Message != "" {
-				<p class="mb-3 text-sm text-ink-muted">{ view.Message }</p>
+				<p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{ view.Message }</p>
 			}
-			if view.TotalItems > 0 {
-				<p class="mb-2 text-sm text-ink-muted">تعداد: { formatInt(view.TotalItems) } — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }</p>
-			}
-			<div class="overflow-x-auto">
-				<table class="w-full min-w-[1200px] border border-gray-200 bg-white text-sm">
-					<thead>
-						<tr class="border-b border-gray-200 bg-surface-soft text-right">
-							<th class="p-2">ردیف</th>
-							<th class="p-2">عکس</th>
-							<th class="p-2">منبع</th>
-							<th class="p-2">کد</th>
-							<th class="p-2">نام</th>
-							<th class="p-2">نام خانوادگی</th>
-							<th class="p-2">نام کامل</th>
-							<th class="p-2">کد ملی</th>
-							<th class="p-2">موبایل</th>
-							<th class="p-2">نظام پزشکی</th>
-							<th class="p-2">کد تخصص HIS</th>
-							<th class="p-2">تخصص سرور</th>
-							<th class="p-2">External ID</th>
-							<th class="p-2">فعال</th>
-							<th class="p-2">وضعیت</th>
-							<th class="p-2">اقدام</th>
-						</tr>
-					</thead>
-					<tbody>
-						if len(view.Items) == 0 {
-							<tr>
-								<td class="p-3 text-ink-muted" colspan="16">موردی برای نمایش نیست.</td>
+
+			<section class="overflow-hidden rounded-xl border border-surface-border bg-white shadow-sm">
+				<div class="overflow-x-auto">
+					<table class="ui-table min-w-[880px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right text-ink-muted">
+								<th class="px-3 py-3 font-medium">ردیف</th>
+								<th class="px-3 py-3 font-medium">پزشک</th>
+								<th class="px-3 py-3 font-medium">کد ملی</th>
+								<th class="px-3 py-3 font-medium">موبایل</th>
+								<th class="px-3 py-3 font-medium">نظام پزشکی</th>
+								<th class="px-3 py-3 font-medium">وضعیت</th>
+								<th class="px-3 py-3 font-medium">اقدام</th>
 							</tr>
-						}
-						for index, item := range view.Items {
-							<tr class="border-b border-gray-100">
-								<td class="p-2">{ index + 1 }</td>
-								<td class="p-2">
-									if item.PhotoURL != "" {
-										<img class="h-10 w-10 rounded object-cover" src={ item.PhotoURL } alt=""/>
-									} else {
-										<span class="text-ink-muted">—</span>
-									}
-								</td>
-								<td class="p-2">{ sourceLabel(item.Source) }</td>
-								<td class="p-2">{ formatInt(item.LocalCode) }</td>
-								<td class="p-2">{ item.FirstName }</td>
-								<td class="p-2">{ item.LastName }</td>
-								<td class="p-2">{ item.Name }</td>
-								<td class="p-2">{ item.NationalID }</td>
-								<td class="p-2">{ item.Mobile }</td>
-								<td class="p-2">{ formatInt(item.DoctorSystemID) }</td>
-								<td class="p-2">{ item.SpecialtyCode }</td>
-								<td class="p-2">{ item.SpecialtyName }</td>
-								<td class="p-2">{ item.ExternalID }</td>
-								<td class="p-2">{ activeLabel(item.IsActive) }</td>
-								<td class="p-2">{ item.Status }</td>
-								<td class="p-2 whitespace-nowrap">
-									if item.CanDecide {
-										<form class="inline-flex flex-col gap-1" method="post" action="/admin/approvals/decide" enctype="multipart/form-data">
-											<input type="hidden" name="decision" value="approve"/>
-											<input type="hidden" name="national_id" value={ item.NationalID }/>
-											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
-											<input type="hidden" name="tab" value="pending"/>
-											<input type="hidden" name="q" value={ view.SearchQuery }/>
-											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
-											<select class="rounded border border-gray-300 p-1 text-xs" name="specialty_id" required>
-												<option value="">تخصص *</option>
-												for _, sp := range view.Specialties {
-													<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
+						</thead>
+						<tbody>
+							if len(view.Items) == 0 {
+								<tr>
+									<td class="px-3 py-10 text-center text-ink-muted" colspan="7">موردی برای نمایش نیست.</td>
+								</tr>
+							}
+							for index, item := range view.Items {
+								<tr class="border-b border-gray-100 align-top transition hover:bg-surface-soft/60">
+									<td class="px-3 py-3 text-ink-muted">{ index + 1 }</td>
+									<td class="px-3 py-3">
+										<div class="flex items-center gap-3">
+											if approvalItemHasPhoto(item) {
+												<img class="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-gray-200" src={ approvalItemAvatar(item) } alt=""/>
+											} else {
+												<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-soft text-xs text-ink-muted ring-1 ring-gray-200">بدون عکس</span>
+											}
+											<div class="min-w-0">
+												<p class="truncate font-medium text-ink">{ displayName(item) }</p>
+												<p class="mt-0.5 text-xs text-ink-muted">کد HIS: { formatInt(item.LocalCode) }</p>
+												if item.SpecialtyName != "" {
+													<p class="mt-0.5 text-xs text-brand">{ item.SpecialtyName }</p>
 												}
-											</select>
-											<input class="block w-40 text-xs" type="file" name="photo" accept="image/*" required/>
-											<button class="rounded bg-brand px-2 py-1 text-white text-xs" type="submit">تأیید</button>
-										</form>
-										<form class="inline mt-1" method="post" action="/admin/approvals/decide">
-											<input type="hidden" name="decision" value="reject"/>
-											<input type="hidden" name="national_id" value={ item.NationalID }/>
-											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
-											<input type="hidden" name="tab" value="pending"/>
-											<input type="hidden" name="q" value={ view.SearchQuery }/>
-											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
-											<button class="rounded border border-gray-300 px-2 py-1 text-xs" type="submit">رد</button>
-										</form>
-									} else if view.Tab == "approved" && item.DoctorID > 0 {
-										<form class="inline-flex flex-col gap-1" method="post" action="/admin/approvals/update" enctype="multipart/form-data">
-											<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
-											<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
-											<input type="hidden" name="q" value={ view.SearchQuery }/>
-											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
-											<select class="rounded border border-gray-300 p-1 text-xs" name="specialty_id">
-												<option value="">تغییر تخصص</option>
-												for _, sp := range view.Specialties {
-													<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
-												}
-											</select>
-											<input class="block w-40 text-xs" type="file" name="photo" accept="image/*"/>
-											<button class="rounded border border-gray-300 px-2 py-1 text-xs" type="submit">بروزرسانی</button>
-										</form>
-									} else {
-										<span class="text-ink-muted">—</span>
-									}
-								</td>
-							</tr>
-						}
-					</tbody>
-				</table>
-			</div>
+											</div>
+										</div>
+									</td>
+									<td class="px-3 py-3 whitespace-nowrap">{ item.NationalID }</td>
+									<td class="px-3 py-3 whitespace-nowrap">{ item.Mobile }</td>
+									<td class="px-3 py-3 whitespace-nowrap">{ formatInt(item.DoctorSystemID) }</td>
+									<td class="px-3 py-3">
+										<div class="flex flex-col gap-1">
+											if item.IsActive {
+												<span class="inline-flex w-fit rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">فعال</span>
+											} else {
+												<span class="inline-flex w-fit rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 ring-1 ring-rose-200">غیرفعال</span>
+											}
+											<span class="inline-flex w-fit rounded-full bg-slate-50 px-2.5 py-0.5 text-xs text-slate-600 ring-1 ring-slate-200">{ statusLabel(item.Status) }</span>
+										</div>
+									</td>
+									<td class="px-3 py-3">
+										if item.CanDecide {
+											<div class="flex min-w-[14rem] flex-col gap-2 rounded-lg border border-gray-100 bg-surface-soft/40 p-2.5">
+												<form class="flex flex-col gap-2" method="post" action="/admin/approvals/decide" enctype="multipart/form-data">
+													<input type="hidden" name="decision" value="approve"/>
+													<input type="hidden" name="national_id" value={ item.NationalID }/>
+													<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+													<input type="hidden" name="tab" value="pending"/>
+													<input type="hidden" name="q" value={ view.SearchQuery }/>
+													<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+													<select class="rounded-md border border-gray-300 bg-white p-1.5 text-xs" name="specialty_id" required>
+														<option value="">تخصص *</option>
+														for _, sp := range view.Specialties {
+															<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
+														}
+													</select>
+													<div class="rounded-lg border border-gray-200 bg-white p-2 text-xs space-y-1.5">
+														<div class="font-medium text-ink">تصاویر پزشک:</div>
+														<div>
+															<label class="block text-[11px] text-ink-muted mb-0.5">عکس اصلی / ۱۲۰۰ (الزامی) *</label>
+															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo" accept="image/*" required/>
+														</div>
+														<div>
+															<label class="block text-[11px] text-ink-muted mb-0.5">عکس ۳۰۰ (موبایل)</label>
+															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_300" accept="image/*"/>
+														</div>
+														<div>
+															<label class="block text-[11px] text-ink-muted mb-0.5">عکس ۶۰۰ (تبلت)</label>
+															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_600" accept="image/*"/>
+														</div>
+														<div>
+															<label class="block text-[11px] text-ink-muted mb-0.5">عکس ۹۰۰ (لپ‌تاپ)</label>
+															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_900" accept="image/*"/>
+														</div>
+													</div>
+													<button class="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-white hover:opacity-90" type="submit">تأیید پزشک</button>
+												</form>
+												<form method="post" action="/admin/approvals/decide" onsubmit="return confirm('این پزشک رد شود؟');">
+													<input type="hidden" name="decision" value="reject"/>
+													<input type="hidden" name="national_id" value={ item.NationalID }/>
+													<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+													<input type="hidden" name="tab" value="pending"/>
+													<input type="hidden" name="q" value={ view.SearchQuery }/>
+													<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+													<button class="w-full rounded-md border border-rose-200 bg-white px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50" type="submit">رد</button>
+												</form>
+											</div>
+										} else if view.Tab == "approved" && item.DoctorID > 0 {
+											<div class="flex min-w-[16rem] flex-col gap-2 rounded-lg border border-gray-100 bg-surface-soft/40 p-2.5">
+												<form class="flex flex-col gap-2" method="post" action="/admin/approvals/update" enctype="multipart/form-data">
+													<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
+													<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+													<input type="hidden" name="q" value={ view.SearchQuery }/>
+													<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+													<select class="rounded-md border border-gray-300 bg-white p-1.5 text-xs" name="specialty_id">
+														<option value="">تغییر تخصص</option>
+														for _, sp := range view.Specialties {
+															<option value={ formatUint(sp.ID) } selected?={ specialtySelected(item.SpecialtyID, sp.ID) }>{ sp.Name }</option>
+														}
+													</select>
+													<label class="block text-xs text-ink-muted">
+														توضیح کوتاه کارت
+														<textarea class="ui-field mt-1 min-h-[4rem] text-xs" name="short_desc" maxlength="280" rows="2">{ item.ShortDesc }</textarea>
+													</label>
+													<label class="block text-xs text-ink-muted">
+														توضیح صفحه نوبت‌دهی
+														<textarea class="ui-field mt-1 min-h-[5rem] text-xs" name="long_desc" rows="3">{ item.LongDesc }</textarea>
+													</label>
+
+													<div class="rounded-lg border border-gray-200 bg-white p-2.5 text-xs shadow-sm">
+														<div class="mb-2 font-medium text-ink">تصاویر پزشک (۴ سایز):</div>
+														<div class="space-y-2.5">
+															<div>
+																<label class="block font-medium text-ink-muted text-[11px] mb-1">عکس ۳۰۰ (موبایل - تا 480px)</label>
+																if item.Photo300 != "" {
+																	<div class="flex items-center gap-2 mb-1">
+																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.Photo300 } alt="300px"/>
+																		<a href={ templ.SafeURL(item.Photo300) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر فعلی</a>
+																	</div>
+																}
+																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_300" accept="image/*"/>
+															</div>
+															<div>
+																<label class="block font-medium text-ink-muted text-[11px] mb-1">عکس ۶۰۰ (تبلت - تا 768px)</label>
+																if item.Photo600 != "" {
+																	<div class="flex items-center gap-2 mb-1">
+																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.Photo600 } alt="600px"/>
+																		<a href={ templ.SafeURL(item.Photo600) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر فعلی</a>
+																	</div>
+																}
+																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_600" accept="image/*"/>
+															</div>
+															<div>
+																<label class="block font-medium text-ink-muted text-[11px] mb-1">عکس ۹۰۰ (نمایشگر متوسط - تا 1024px)</label>
+																if item.Photo900 != "" {
+																	<div class="flex items-center gap-2 mb-1">
+																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.Photo900 } alt="900px"/>
+																		<a href={ templ.SafeURL(item.Photo900) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر فعلی</a>
+																	</div>
+																}
+																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_900" accept="image/*"/>
+															</div>
+															<div>
+																<label class="block font-medium text-ink-muted text-[11px] mb-1">عکس ۱۲۰۰ (دسکتاپ/اصلی)</label>
+																if item.Photo1200 != "" {
+																	<div class="flex items-center gap-2 mb-1">
+																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.Photo1200 } alt="1200px"/>
+																		<a href={ templ.SafeURL(item.Photo1200) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر فعلی</a>
+																	</div>
+																} else if item.PhotoURL != "" {
+																	<div class="flex items-center gap-2 mb-1">
+																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.PhotoURL } alt="پیش‌فرض"/>
+																		<a href={ templ.SafeURL(item.PhotoURL) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر اصلی</a>
+																	</div>
+																}
+																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_1200" accept="image/*"/>
+															</div>
+														</div>
+													</div>
+
+													<button class="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs hover:bg-white" type="submit">بروزرسانی</button>
+												</form>
+												<div class="flex flex-wrap gap-1.5">
+													if item.IsActive {
+														<form method="post" action="/admin/approvals/set-active" onsubmit="return confirm('این پزشک در سایت غیرفعال شود؟');">
+															<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
+															<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+															<input type="hidden" name="active" value="0"/>
+															<input type="hidden" name="q" value={ view.SearchQuery }/>
+															<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+															<button class="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 hover:bg-amber-100" type="submit">غیرفعال</button>
+														</form>
+													} else {
+														<form method="post" action="/admin/approvals/set-active">
+															<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
+															<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+															<input type="hidden" name="active" value="1"/>
+															<input type="hidden" name="q" value={ view.SearchQuery }/>
+															<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+															<button class="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-800 hover:bg-emerald-100" type="submit">فعال‌سازی</button>
+														</form>
+													}
+													<form method="post" action="/admin/approvals/delete" onsubmit="return confirm('پزشک برای همیشه از سرور حذف شود؟ این عمل قابل بازگشت نیست.');">
+														<input type="hidden" name="doctor_id" value={ formatUint(item.DoctorID) }/>
+														<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
+														<input type="hidden" name="q" value={ view.SearchQuery }/>
+														<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+														<button class="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 hover:bg-rose-100" type="submit">حذف</button>
+													</form>
+												</div>
+											</div>
+										} else {
+											<span class="text-ink-muted">—</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+
 			if view.TotalPages > 1 {
-				<nav class="mt-4 flex flex-wrap gap-2">
+				<nav class="flex flex-wrap items-center justify-center gap-1.5">
 					for p := 1; p <= view.TotalPages; p++ {
 						if p == view.Page {
-							<span class="rounded bg-brand px-3 py-1 text-white">{ formatInt(p) }</span>
+							<span class="rounded-lg bg-brand px-3.5 py-1.5 text-sm text-white">{ formatInt(p) }</span>
 						} else {
 							<a
-								class="rounded border border-gray-300 px-3 py-1"
+								class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-brand hover:text-brand"
 								href={ templ.SafeURL("/admin/approvals?tab=" + tabQuery(view.Tab) + "&clinic_id=" + formatUint(view.ClinicID) + "&page=" + formatInt(p) + "&q=" + view.SearchQuery) }
 							>{ formatInt(p) }</a>
 						}

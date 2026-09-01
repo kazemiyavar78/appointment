@@ -3,28 +3,37 @@ package admin
 import (
 	"strconv"
 
+	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/layouts"
 )
 
 // SpecialtyRow is one specialty in the admin table.
 type SpecialtyRow struct {
-	ID         uint
-	Name       string
-	NameEN     string
-	IsApproved bool
+	ID               uint
+	Name             string
+	NameEN           string
+	ShortDescription string
+	Icon             string
+	IsApproved       bool
 }
 
 // SpecialtyPageView is the full page model for specialty CRUD.
 type SpecialtyPageView struct {
-	Nav          layouts.AdminLayoutView
-	Items        []SpecialtyRow
-	Message      string
-	EditID       uint
-	EditName     string
-	EditNameEN   string
-	EditApproved bool
+	Nav                  layouts.AdminLayoutView
+	Items                []SpecialtyRow
+	Message              string
+	EditID               uint
+	EditName             string
+	EditNameEN           string
+	EditShortDescription string
+	EditDescription      string
+	EditIcon             string
+	EditColor            string
+	EditApproved         bool
 }
 
+// approvedLabel برچسب متنی وضعیت تأیید تخصص را برمی‌گرداند.
+// ورودی: وضعیت تأیید بولین. خروجی: رشته متنی وضعیت.
 func approvedLabel(approved bool) string {
 	if approved {
 		return "تأیید شده"
@@ -32,65 +41,46 @@ func approvedLabel(approved bool) string {
 	return "در انتظار"
 }
 
-// Specialties renders list, create, update, and delete on one page.
+// Specialties صفحه مدیریت تخصص‌ها شامل فرم ایجاد/ویرایش و جدول لیست تخصص‌ها را رندر می‌کند.
+// ورودی: view مدل کامل صفحه تخصص. خروجی: کامپوننت templ صفحه ادمین.
 templ Specialties(view SpecialtyPageView) {
 	@layouts.AdminLayout(view.Nav) {
 		<div class="mx-auto max-w-4xl">
-			<h1 class="mb-4 text-2xl text-brand">مدیریت تخصص‌ها</h1>
+			<h1 class="ui-page-title mb-4">مدیریت تخصص‌ها</h1>
 			if view.Message != "" {
-				<p class="mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted">{ view.Message }</p>
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
 			}
-			<section class="mb-6 rounded border border-gray-200 bg-white p-4">
+			<section class="ui-panel mb-6">
 				if view.EditID > 0 {
 					<h2 class="mb-3 text-lg text-ink">بروزرسانی تخصص</h2>
-					<form class="flex flex-wrap items-end gap-3" method="post" action={ templ.SafeURL("/admin/specialties/" + formatUint(view.EditID) + "/update") }>
-						<label class="block text-sm text-ink-muted">
-							نام فارسی
-							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name" value={ view.EditName } required maxlength="100"/>
-						</label>
-						<label class="block text-sm text-ink-muted">
-							نام انگلیسی
-							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name_en" value={ view.EditNameEN } maxlength="100"/>
-						</label>
-						<label class="flex items-center gap-2 text-sm text-ink-muted">
-							if view.EditApproved {
-								<input type="checkbox" name="is_approved" value="1" checked/>
-							} else {
-								<input type="checkbox" name="is_approved" value="1"/>
-							}
-							تأیید شده
-						</label>
-						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ذخیره تغییرات</button>
-						<a class="rounded border border-gray-300 px-4 py-2 text-sm" href="/admin/specialties">انصراف</a>
+					<form class="grid gap-3 sm:grid-cols-2" method="post" action={ templ.SafeURL("/admin/specialties/" + formatUint(view.EditID) + "/update") }>
+						@specialtyFormFields(view)
+						<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+							<a class="ui-btn ui-btn-ghost" href="/admin/specialties">انصراف</a>
+						</div>
 					</form>
 				} else {
 					<h2 class="mb-3 text-lg text-ink">ایجاد تخصص</h2>
-					<form class="flex flex-wrap items-end gap-3" method="post" action="/admin/specialties">
-						<label class="block text-sm text-ink-muted">
-							نام فارسی
-							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name" required maxlength="100"/>
-						</label>
-						<label class="block text-sm text-ink-muted">
-							نام انگلیسی
-							<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="name_en" maxlength="100"/>
-						</label>
-						<label class="flex items-center gap-2 text-sm text-ink-muted">
-							<input type="checkbox" name="is_approved" value="1"/>
-							تأیید شده
-						</label>
-						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ایجاد</button>
+					<form class="grid gap-3 sm:grid-cols-2" method="post" action="/admin/specialties">
+						@specialtyFormFields(view)
+						<div class="sm:col-span-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ایجاد</button>
+						</div>
 					</form>
 				}
 			</section>
 			<section>
 				<h2 class="mb-3 text-lg text-ink">لیست تخصص‌ها</h2>
-				<div class="overflow-x-auto">
-					<table class="w-full min-w-[640px] border border-gray-200 bg-white text-sm">
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[720px] text-sm">
 						<thead>
 							<tr class="border-b border-gray-200 bg-surface-soft text-right">
 								<th class="p-2">ردیف</th>
+								<th class="p-2">آیکون</th>
 								<th class="p-2">نام فارسی</th>
 								<th class="p-2">نام انگلیسی</th>
+								<th class="p-2">توضیح کوتاه</th>
 								<th class="p-2">وضعیت</th>
 								<th class="p-2">اقدام</th>
 							</tr>
@@ -98,14 +88,27 @@ templ Specialties(view SpecialtyPageView) {
 						<tbody>
 							if len(view.Items) == 0 {
 								<tr>
-									<td class="p-3 text-ink-muted" colspan="5">تخصصی ثبت نشده است.</td>
+									<td class="p-3 text-ink-muted" colspan="7">تخصصی ثبت نشده است.</td>
 								</tr>
 							}
 							for index, item := range view.Items {
 								<tr class="border-b border-gray-100">
 									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2">
+										<div class="flex items-center gap-2">
+											<span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-soft text-brand">
+												<i class={ components.SpecialtyFAClass(item.Icon) }></i>
+											</span>
+											if item.Icon != "" {
+												<span class="font-mono text-xs text-ink-muted">{ item.Icon }</span>
+											} else {
+												<span class="text-xs text-ink-faint">(پیش‌فرض)</span>
+											}
+										</div>
+									</td>
 									<td class="p-2">{ item.Name }</td>
 									<td class="p-2">{ item.NameEN }</td>
+									<td class="p-2 max-w-[12rem] truncate" title={ item.ShortDescription }>{ item.ShortDescription }</td>
 									<td class="p-2">{ approvedLabel(item.IsApproved) }</td>
 									<td class="p-2 whitespace-nowrap">
 										<a
@@ -124,4 +127,99 @@ templ Specialties(view SpecialtyPageView) {
 			</section>
 		</div>
 	}
+}
+
+// specialtyFormFields فیلدهای مشترک ایجاد/ویرایش تخصص را رندر می‌کند.
+// ورودی: view مدل تخصص در حال ویرایش یا ایجاد. خروجی: بخش فرم templ.
+templ specialtyFormFields(view SpecialtyPageView) {
+	<label class="block text-sm text-ink-muted">
+		نام فارسی
+		<input class="ui-field mt-1 w-full" type="text" name="name" value={ view.EditName } required maxlength="100"/>
+	</label>
+	<label class="block text-sm text-ink-muted">
+		نام انگلیسی
+		<input class="ui-field mt-1 w-full" type="text" name="name_en" value={ view.EditNameEN } maxlength="100"/>
+	</label>
+	<label class="block text-sm text-ink-muted sm:col-span-2">
+		توضیح کوتاه (کارت تخصص)
+		<input class="ui-field mt-1 w-full" type="text" name="short_description" value={ view.EditShortDescription } maxlength="100" placeholder="حداکثر ۱۰۰ کاراکتر"/>
+	</label>
+	<label class="block text-sm text-ink-muted sm:col-span-2">
+		توضیح کامل (زیر فیلتر نوبت‌دهی)
+		<textarea class="ui-field mt-1 w-full min-h-[110px]" name="description" rows="4" placeholder="توضیحات کامل تخصص">{ view.EditDescription }</textarea>
+	</label>
+	<div class="space-y-1 sm:col-span-1">
+		<label class="block text-sm text-ink-muted">
+			آیکون Font Awesome
+			<div class="relative mt-1 flex items-center">
+				<input
+					class="ui-field w-full pl-9"
+					type="text"
+					name="icon"
+					id="specialty-icon-input"
+					value={ view.EditIcon }
+					maxlength="100"
+					placeholder="مثال: fa-heart-pulse یا user-doctor"
+					oninput="updateSpecialtyIconPreview(this.value)"
+				/>
+				<span class="pointer-events-none absolute left-2.5 flex h-6 w-6 items-center justify-center text-brand">
+					<i id="specialty-icon-preview" class={ components.SpecialtyFAClass(view.EditIcon) }></i>
+				</span>
+			</div>
+		</label>
+		<span class="block text-xs text-ink-faint">
+			نام یا کلاس Font Awesome (مانند <code class="rounded bg-surface-soft px-1 text-xs font-mono text-brand">fa-heart-pulse</code> یا <code class="rounded bg-surface-soft px-1 text-xs font-mono text-brand">fa-user-doctor</code>)
+		</span>
+		<div class="mt-2 flex flex-wrap gap-1 text-xs">
+			<span class="text-ink-faint">پیشنهادها:</span>
+			for _, sample := range []string{"fa-stethoscope", "fa-heart-pulse", "fa-brain", "fa-tooth", "fa-eye", "fa-bone", "fa-baby", "fa-user-doctor", "fa-lungs", "fa-syringe", "fa-dna", "fa-pills"} {
+				<button
+					type="button"
+					class="inline-flex items-center gap-1 rounded border border-surface-border bg-white px-2 py-0.5 text-xs text-ink-muted transition hover:border-brand hover:bg-surface-soft hover:text-brand"
+					data-icon={ sample }
+					onclick="selectSpecialtyIcon(this.dataset.icon)"
+				>
+					<i class={ "fa-solid " + sample }></i>
+					<span>{ sample }</span>
+				</button>
+			}
+		</div>
+		<script>
+			function selectSpecialtyIcon(icon) {
+				const input = document.getElementById('specialty-icon-input');
+				if (input) {
+					input.value = icon;
+					updateSpecialtyIconPreview(icon);
+				}
+			}
+			function updateSpecialtyIconPreview(val) {
+				const preview = document.getElementById('specialty-icon-preview');
+				if (!preview) return;
+				val = (val || '').trim();
+				if (!val) {
+					preview.className = 'fa-solid fa-stethoscope';
+					return;
+				}
+				if (val.startsWith('fa-solid ') || val.startsWith('fa-regular ') || val.startsWith('fa-brands ') || val.startsWith('fas ') || val.startsWith('far ') || val.startsWith('fab ') || val.startsWith('fa ')) {
+					preview.className = val;
+				} else if (val.startsWith('fa-')) {
+					preview.className = 'fa-solid ' + val;
+				} else {
+					preview.className = 'fa-solid fa-' + val;
+				}
+			}
+		</script>
+	</div>
+	<label class="block text-sm text-ink-muted">
+		رنگ آیکون
+		<input class="ui-field mt-1 w-full" type="text" name="color" value={ view.EditColor } maxlength="100" placeholder="#0d9488"/>
+	</label>
+	<label class="flex items-center gap-2 text-sm text-ink-muted sm:col-span-2">
+		if view.EditApproved {
+			<input type="checkbox" name="is_approved" value="1" checked/>
+		} else {
+			<input type="checkbox" name="is_approved" value="1"/>
+		}
+		تأیید شده
+	</label>
 }

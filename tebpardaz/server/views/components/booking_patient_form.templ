@@ -1,0 +1,96 @@
+package components
+
+// BookingPatientFormView دادهٔ فرم اطلاعات بیمار.
+type BookingPatientFormView struct{}
+
+// BookingPatientForm فرم دریافت اطلاعات بیمار با autofill کدملی.
+templ BookingPatientForm(view BookingPatientFormView) {
+	<div class="bk-form" id="booking-patient-panel">
+		<p class="bk-form__lead">اطلاعات بیمار را وارد کنید. با وارد کردن کد ملی، در صورت ثبت قبلی، فیلدها پر می‌شوند.</p>
+
+		<div class="bk-field">
+			<label class="bk-label" for="national_id">کد ملی</label>
+			<div class="bk-input-wrap">
+				<span class="bk-input-icon" aria-hidden="true">🪪</span>
+				<input
+					id="national_id"
+					name="national_id"
+					required
+					inputmode="numeric"
+					maxlength="10"
+					autocomplete="off"
+					class="bk-input"
+					placeholder="۱۰ رقم"
+					dir="ltr"
+				/>
+			</div>
+			<p class="bk-field-error bk-hidden" id="err-national_id" role="alert"></p>
+		</div>
+
+		<div class="bk-field-row">
+			<div class="bk-field">
+				<label class="bk-label" for="first_name">نام</label>
+				<input id="first_name" name="first_name" required autocomplete="given-name" class="bk-input" placeholder="مثال: علی"/>
+				<p class="bk-field-error bk-hidden" id="err-first_name" role="alert"></p>
+			</div>
+			<div class="bk-field">
+				<label class="bk-label" for="last_name">نام خانوادگی</label>
+				<input id="last_name" name="last_name" required autocomplete="family-name" class="bk-input" placeholder="مثال: رضایی"/>
+				<p class="bk-field-error bk-hidden" id="err-last_name" role="alert"></p>
+			</div>
+		</div>
+
+		<div class="bk-field">
+			<label class="bk-label" for="mobile">موبایل</label>
+			<div class="bk-input-wrap">
+				<span class="bk-input-icon" aria-hidden="true">📱</span>
+				<input
+					id="mobile"
+					name="mobile"
+					required
+					inputmode="tel"
+					maxlength="11"
+					autocomplete="tel"
+					class="bk-input"
+					placeholder="09xxxxxxxxx"
+					dir="ltr"
+				/>
+			</div>
+			<p class="bk-field-error bk-hidden" id="err-mobile" role="alert"></p>
+		</div>
+
+		<div class="bk-field">
+			@DatePicker(DatePickerProps{
+				ID:          "birth_date",
+				Name:        "birth_date",
+				Label:       "تاریخ تولد",
+				Required:    true,
+				Help:        "تقویم شمسی — حداقل سن ۱ سال",
+				Placeholder: "انتخاب تاریخ",
+				HasAgeRange: true,
+				MinAge:      1,
+				MaxAge:      120,
+			})
+			<p class="bk-field-error bk-hidden" id="err-birth_date" role="alert"></p>
+		</div>
+
+		<div class="bk-field">
+			<span class="bk-label">جنسیت</span>
+			<div class="bk-sex-toggle" role="radiogroup" aria-label="جنسیت">
+				<label class="bk-sex-btn">
+					<input type="radio" name="sex" value="مرد" required class="sr-only"/>
+					<span class="bk-sex-btn__inner">👨 آقا</span>
+				</label>
+				<label class="bk-sex-btn">
+					<input type="radio" name="sex" value="زن" required class="sr-only"/>
+					<span class="bk-sex-btn__inner">👩 خانم</span>
+				</label>
+			</div>
+			<p class="bk-field-error bk-hidden" id="err-sex" role="alert"></p>
+		</div>
+
+		<button type="button" id="booking-to-otp" class="bk-btn bk-btn--primary bk-btn--block">
+			ادامه و دریافت کد تایید
+		</button>
+	</div>
+}

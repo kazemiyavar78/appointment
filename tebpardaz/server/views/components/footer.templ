@@ -3,13 +3,13 @@ package components
 import "strconv"
 import "time"
 
-// FooterLink is a single footer navigation item.
+// FooterLink یک لینک ناوبری در فوتر است.
 type FooterLink struct {
 	Label string
 	Href  string
 }
 
-// FooterVariant selects the visual identity for a tenant layer footer.
+// FooterVariant هویت بصری فوتر هر لایه tenant را مشخص می‌کند.
 type FooterVariant string
 
 const (
@@ -18,7 +18,7 @@ const (
 	FooterPlatform FooterVariant = "platform"
 )
 
-// FooterProps drives the shared public footer across tenant layouts.
+// FooterProps دادهٔ فوتر عمومی مشترک لایوت‌ها را نگه می‌دارد.
 type FooterProps struct {
 	Variant        FooterVariant
 	BrandName      string
@@ -35,12 +35,12 @@ type FooterProps struct {
 	QuickLinks     []FooterLink
 }
 
-// footerYear returns the current Gregorian year as a string for the copyright line.
+// footerYear سال میلادی جاری را برای خط کپی‌رایت برمی‌گرداند.
 func footerYear() string {
 	return strconv.Itoa(time.Now().Year())
 }
 
-// footerBrandFallback returns a display name when BrandName is empty.
+// footerBrandFallback نام نمایشی را وقتی BrandName خالی است برمی‌گرداند.
 func footerBrandFallback(props FooterProps) string {
 	if props.BrandName != "" {
 		return props.BrandName
@@ -55,7 +55,7 @@ func footerBrandFallback(props FooterProps) string {
 	}
 }
 
-// footerBookingURL returns the booking CTA href, defaulting to /doctors.
+// footerBookingURL آدرس CTA رزرو را با پیش‌فرض /doctors برمی‌گرداند.
 func footerBookingURL(props FooterProps) string {
 	if props.BookingURL != "" {
 		return props.BookingURL
@@ -63,7 +63,7 @@ func footerBookingURL(props FooterProps) string {
 	return "/doctors"
 }
 
-// footerClinicsURL returns the clinics list href, defaulting to /clinics.
+// footerClinicsURL آدرس فهرست مراکز را با پیش‌فرض /clinics برمی‌گرداند.
 func footerClinicsURL(props FooterProps) string {
 	if props.ClinicsListURL != "" {
 		return props.ClinicsListURL
@@ -71,7 +71,7 @@ func footerClinicsURL(props FooterProps) string {
 	return "/clinics"
 }
 
-// footerShellClass returns the outer footer shell classes for each variant.
+// footerShellClass کلاس پوسته بیرونی فوتر را برای هر variant برمی‌گرداند.
 func footerShellClass(v FooterVariant) string {
 	switch v {
 	case FooterPlatform:
@@ -83,7 +83,7 @@ func footerShellClass(v FooterVariant) string {
 	}
 }
 
-// footerMutedClass returns muted text classes for each variant.
+// footerMutedClass کلاس متن کم‌رنگ فوتر را برای هر variant برمی‌گرداند.
 func footerMutedClass(v FooterVariant) string {
 	if v == FooterPlatform {
 		return "text-white/65"
@@ -91,15 +91,15 @@ func footerMutedClass(v FooterVariant) string {
 	return "text-ink-muted"
 }
 
-// footerLinkClass returns compact link classes for each variant.
+// footerLinkClass کلاس لینک فشرده فوتر را برای هر variant برمی‌گرداند.
 func footerLinkClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "block py-1.5 text-sm text-white/80 hover:text-white"
+		return "block min-h-[44px] py-2 text-sm text-white/80 transition hover:text-white"
 	}
-	return "block py-1.5 text-sm text-ink-muted hover:text-brand"
+	return "block min-h-[44px] py-2 text-sm text-ink-muted transition hover:text-brand"
 }
 
-// footerHeadingClass returns section heading classes for each variant.
+// footerHeadingClass کلاس عنوان بخش فوتر را برای هر variant برمی‌گرداند.
 func footerHeadingClass(v FooterVariant) string {
 	if v == FooterPlatform {
 		return "mb-3 text-sm font-bold text-white"
@@ -107,15 +107,15 @@ func footerHeadingClass(v FooterVariant) string {
 	return "mb-3 text-sm font-bold text-ink"
 }
 
-// footerBrandTextClass returns brand title classes for each variant.
+// footerBrandTextClass کلاس عنوان برند فوتر را برای هر variant برمی‌گرداند.
 func footerBrandTextClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "text-base font-bold text-white"
+		return "text-lg font-bold text-white"
 	}
-	return "text-base font-bold text-ink"
+	return "text-lg font-bold text-ink"
 }
 
-// footerGridClass returns the footer column grid modifier for each variant.
+// footerGridClass کلاس شبکه ستون‌های فوتر را برای هر variant برمی‌گرداند.
 func footerGridClass(v FooterVariant) string {
 	if v == FooterPrivate {
 		return "site-footer-grid site-footer-grid--private"
@@ -123,15 +123,15 @@ func footerGridClass(v FooterVariant) string {
 	return "site-footer-grid"
 }
 
-// footerCtaClass returns the booking button classes for each variant.
+// footerCtaClass کلاس دکمه رزرو فوتر را برای هر variant برمی‌گرداند.
 func footerCtaClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand-light px-5 text-sm font-medium text-white hover:bg-brand"
+		return "ui-btn ui-btn-primary !bg-brand-light hover:!bg-brand"
 	}
-	return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand px-5 text-sm font-medium text-white hover:bg-brand-dark"
+	return "ui-btn ui-btn-primary"
 }
 
-// defaultCorporateLinks returns platform company links.
+// defaultCorporateLinks لینک‌های شرکتی پیش‌فرض پلتفرم را برمی‌گرداند.
 func defaultCorporateLinks() []FooterLink {
 	return []FooterLink{
 		{Label: "درباره ما", Href: "/about"},
@@ -140,7 +140,7 @@ func defaultCorporateLinks() []FooterLink {
 	}
 }
 
-// corporateOrDefault returns provided corporate links or the platform defaults.
+// corporateOrDefault لینک‌های شرکتی داده‌شده یا پیش‌فرض پلتفرم را برمی‌گرداند.
 func corporateOrDefault(links []FooterLink) []FooterLink {
 	if len(links) > 0 {
 		return links
@@ -148,16 +148,23 @@ func corporateOrDefault(links []FooterLink) []FooterLink {
 	return defaultCorporateLinks()
 }
 
-// NavLinksToFooter converts navbar links into footer quick links.
+// NavLinksToFooter لینک‌های نوار را به لینک‌های سریع فوتر تبدیل می‌کند.
 func NavLinksToFooter(links []NavLink) []FooterLink {
 	out := make([]FooterLink, 0, len(links))
 	for _, link := range links {
-		out = append(out, FooterLink{Label: link.Label, Href: link.Href})
+		if link.Href != "" {
+			out = append(out, FooterLink{Label: link.Label, Href: link.Href})
+		}
+		for _, child := range link.Children {
+			if child.Href != "" {
+				out = append(out, FooterLink{Label: child.Label, Href: child.Href})
+			}
+		}
 	}
 	return out
 }
 
-// Footer renders a tenant-aware RTL public footer with a clean column layout.
+// Footer فوتر RTL عمومی با ستون‌های خوانا و CTA رزرو را رندر می‌کند.
 templ Footer(props FooterProps) {
 	<footer class={ footerShellClass(props.Variant) } dir="rtl">
 		<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -268,6 +275,11 @@ templ Footer(props FooterProps) {
 					© { footerYear() } { footerBrandFallback(props) }
 				</p>
 			}
+			
+				<p class="mt-8 border-t border-surface-border pt-5 text-xs text-ink-faint">
+					<a href="https://tebpardaz.ir" target="_blank">این سایت توسط شرکت طب پرداز طراحی شده است و با استفاده از پلتفرم طب پرداز ساخته شده است </a>
+				</p>
+			
 		</div>
 	</footer>
 }

@@ -1,0 +1,403 @@
+package pages
+
+import (
+	"fmt"
+)
+
+// SectionBannerDisplay holds data for rendering the banner on a section's public page.
+type SectionBannerDisplay struct {
+	Slogan          string
+	Description     string
+	Services        []string
+	BackgroundColor string
+	ImageURL        string
+}
+
+// SectionScheduleDisplay holds data for a single day in the public working hours section.
+type SectionScheduleDisplay struct {
+	DayOfWeek int
+	DayName   string
+	IsOpen    bool
+	HoursText string
+}
+
+// SectionMessageDisplay holds data for a patient message.
+type SectionMessageDisplay struct {
+	ID          uint
+	Title       string
+	Content     string
+	SenderTitle string
+}
+
+// SectionEquipmentDisplay holds data for an equipment item (Part 1 quote box + Part 2 two-column).
+type SectionEquipmentDisplay struct {
+	ID          uint
+	QuoteTitle  string
+	QuoteText   string
+	Badge       string
+	ImageURL    string
+	Title       string
+	Subtitle    string
+	Description string
+	Tags        []string
+	ButtonText  string
+	ButtonURL   string
+}
+
+// SectionDetailView holds all data needed to render a clinic's section page.
+type SectionDetailView struct {
+	Title      string
+	Slug       string
+	ClinicName string
+	Banner     SectionBannerDisplay
+	Schedules  []SectionScheduleDisplay
+	Messages   []SectionMessageDisplay
+	Equipment  []SectionEquipmentDisplay
+}
+
+// SectionDetail renders the full dedicated section page (Banner, Schedule, Messages, Equipment).
+templ SectionDetail(view SectionDetailView) {
+	<div class="min-h-full flex flex-col bg-white" dir="rtl">
+		<!-- ۱. بنر -->
+		@sectionBannerComponent(view.Banner, view.Title)
+
+		<!-- ۲. ساعات کاری -->
+		@sectionScheduleComponent(view.Schedules)
+
+		<!-- ۳. پیام به بیمار -->
+		if len(view.Messages) > 0 {
+			@sectionMessagesComponent(view.Messages)
+		}
+
+		<!-- ۴. معرفی تجهیزات -->
+		if len(view.Equipment) > 0 {
+			@sectionEquipmentListComponent(view.Equipment)
+		}
+	</div>
+}
+
+// sectionBannerComponent renders the banner at the top of the section page.
+templ sectionBannerComponent(banner SectionBannerDisplay, sectionTitle string) {
+	<section
+		class="relative w-full overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[480px] md:min-h-[560px]"
+		style={ "background-color: " + bannerBgColor(banner.BackgroundColor) + ";" }
+	>
+		<!-- متن و اطلاعات بنر -->
+		<div class="flex flex-col justify-center px-6 py-12 sm:px-10 md:px-14 lg:px-20 relative z-10">
+			<div class="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-teal-200 backdrop-blur-sm border border-white/10">
+				<span class="h-2 w-2 rounded-full bg-teal-400"></span>
+				<span>{ sectionTitle }</span>
+			</div>
+
+			<h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight text-white mb-5">
+				{ banner.Slogan }
+			</h1>
+
+			if banner.Description != "" {
+				<p class="text-base sm:text-lg leading-relaxed mb-8 max-w-lg text-white/80">
+					{ banner.Description }
+				</p>
+			}
+
+			<!-- خدمات و نکات برجسته -->
+			if len(banner.Services) > 0 {
+				<div class="flex flex-wrap gap-2.5 border-t border-white/15 pt-6 mt-2">
+					for _, s := range banner.Services {
+						<div class="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+							<svg class="h-4 w-4 text-teal-300 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+							</svg>
+							<span>{ s }</span>
+						</div>
+					}
+				</div>
+			}
+		</div>
+
+		<!-- تصویر بنر -->
+		<div class="relative min-h-[280px] md:min-h-full bg-teal-900/40">
+			if banner.ImageURL != "" {
+				<img
+					src={ banner.ImageURL }
+					alt={ sectionTitle }
+					class="absolute inset-0 w-full h-full object-cover"
+				/>
+			} else {
+				<div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-teal-900 to-teal-950 p-8">
+					<div class="text-center text-white/30">
+						<svg class="mx-auto h-24 w-24 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+						</svg>
+						<span class="text-sm font-semibold">{ sectionTitle }</span>
+					</div>
+				</div>
+			}
+			<div
+				class="absolute inset-0 pointer-events-none"
+				style="background: linear-gradient(to left, rgba(10,46,46,0.85) 0%, transparent 40%), linear-gradient(to top, rgba(10,46,46,0.6) 0%, transparent 50%);"
+			></div>
+		</div>
+	</section>
+}
+
+// sectionScheduleComponent renders the 7-day working hours card grid.
+templ sectionScheduleComponent(schedules []SectionScheduleDisplay) {
+	<section class="w-full bg-teal-50/60 border-b border-teal-100/80 py-12 sm:py-16">
+		<div class="max-w-6xl mx-auto px-4 sm:px-6">
+			<div class="flex flex-col md:flex-row md:items-start gap-8 lg:gap-12 mb-8">
+				<div class="md:w-64 shrink-0">
+					<div class="inline-flex items-center gap-2 text-xs font-bold text-teal-700 bg-teal-100/70 px-3 py-1 rounded-full mb-2">
+						<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+						</svg>
+						نوبت‌ها و حضور
+					</div>
+					<h2 class="text-2xl sm:text-3xl font-extrabold text-teal-950">ساعات کاری</h2>
+					<p class="text-sm text-teal-700/80 mt-2 leading-relaxed">
+						برنامه شیفت‌های کاری این بخش در تمامی ایام هفته جهت هماهنگی و مراجعه حضوری
+					</p>
+				</div>
+
+				<div class="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+					for _, s := range schedules {
+						<div
+							class="rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-between text-center border transition-all duration-200 min-h-[130px]"
+							style={ scheduleCardStyle(s.IsOpen) }
+						>
+							<div class="w-full">
+								<span class={ "text-xs font-bold block mb-2", templ.KV("text-teal-950", s.IsOpen), templ.KV("text-gray-400", !s.IsOpen) }>
+									{ s.DayName }
+								</span>
+								if s.IsOpen {
+									<div class="text-xs font-medium text-teal-800 bg-teal-100/80 rounded-lg py-1.5 px-2 leading-tight">
+										{ s.HoursText }
+									</div>
+								} else {
+									<span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+										تعطیل
+									</span>
+								}
+							</div>
+							<span
+								class="h-2 w-2 rounded-full mt-2"
+								style={ dotStyle(s.IsOpen) }
+							></span>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+// sectionMessagesComponent renders patient messages with initial 4 view and load-more toggle.
+templ sectionMessagesComponent(messages []SectionMessageDisplay) {
+	<section class="w-full bg-white border-b border-teal-100/70 py-16">
+		<div class="max-w-4xl mx-auto px-4 sm:px-6">
+			<div class="text-center mb-10">
+				<div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600 mb-3 border border-teal-100">
+					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+					</svg>
+				</div>
+				<h2 class="text-2xl sm:text-3xl font-extrabold text-teal-950">پیام به بیماران و مراجعین</h2>
+				<p class="text-sm text-gray-500 mt-1">توصیه‌ها، راهنمایی‌ها و نکات مهم مراقبتی</p>
+			</div>
+
+			<div class="space-y-6">
+				<!-- نمایش ۴ پیام اول -->
+				for index, msg := range messages {
+					if index < 4 {
+						@messageCard(msg)
+					}
+				}
+
+				<!-- پیام‌های بیشتر (اگر بیش از ۴ پیام باشد) -->
+				if len(messages) > 4 {
+					<div id="extra-section-messages" class="hidden space-y-6">
+						for index, msg := range messages {
+							if index >= 4 {
+								@messageCard(msg)
+							}
+						}
+					</div>
+
+					<div class="text-center pt-4" id="load-more-messages-container">
+						<button
+							type="button"
+							class="ui-btn ui-btn-ghost inline-flex items-center gap-2 border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 px-6 py-2.5 rounded-full text-sm font-semibold transition-all"
+							onclick="document.getElementById('extra-section-messages').classList.remove('hidden'); document.getElementById('load-more-messages-container').classList.add('hidden');"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+							</svg>
+							<span>مشاهده پیام‌های بیشتر ({ fmt.Sprintf("%d", len(messages)-4) } پیام دیگر)</span>
+						</button>
+					</div>
+				}
+			</div>
+		</div>
+	</section>
+}
+
+// messageCard renders a single patient message in a quote style.
+templ messageCard(msg SectionMessageDisplay) {
+	<div class="rounded-3xl border border-teal-100/90 bg-teal-50/40 p-6 sm:p-8 relative overflow-hidden transition-all hover:shadow-sm">
+		if msg.Title != "" {
+			<h3 class="text-lg font-bold text-teal-950 mb-3 flex items-center gap-2">
+				<span class="h-2 w-2 rounded-full bg-teal-500"></span>
+				{ msg.Title }
+			</h3>
+		}
+		<p class="text-base text-gray-700 leading-8 text-right whitespace-pre-line">
+			{ msg.Content }
+		</p>
+		if msg.SenderTitle != "" {
+			<div class="mt-4 pt-3 border-t border-teal-100/60 flex justify-end">
+				<span class="text-xs font-semibold text-teal-700">— { msg.SenderTitle }</span>
+			</div>
+		}
+	</div>
+}
+
+// sectionEquipmentListComponent renders each equipment introduction item (Part 1 quote + Part 2 two-column).
+templ sectionEquipmentListComponent(equipment []SectionEquipmentDisplay) {
+	<div class="w-full">
+		for _, item := range equipment {
+			@singleEquipmentItem(item)
+		}
+	</div>
+}
+
+// singleEquipmentItem renders Part 1 and Part 2 of an equipment introduction.
+templ singleEquipmentItem(item SectionEquipmentDisplay) {
+	<section class="w-full border-b border-teal-100/80 bg-teal-50/30 py-16">
+		<div class="max-w-6xl mx-auto px-4 sm:px-6">
+			<!-- بخش اول: باکس متنی / نقل‌قول طولانی در وسط صفحه -->
+			if item.QuoteText != "" || item.QuoteTitle != "" {
+				<div class="max-w-3xl mx-auto text-center mb-16">
+					if item.QuoteTitle != "" {
+						<span class="inline-block text-xs font-bold text-teal-700 bg-teal-100/80 px-3 py-1 rounded-full mb-3">
+							{ item.QuoteTitle }
+						</span>
+					}
+					<div class="rounded-3xl border border-teal-100 bg-white p-6 sm:p-8 shadow-sm text-right">
+						<p class="text-base leading-8 text-gray-700 whitespace-pre-line">
+							{ item.QuoteText }
+						</p>
+					</div>
+				</div>
+			}
+
+			<!-- بخش دوم: قالب دو ستونی (تصویر + توضیحات، برچسب‌ها و دکمه اقدام) -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
+				<!-- ستون اول: تصویر دستگاه -->
+				<div class="relative rounded-3xl overflow-hidden bg-teal-100 aspect-[4/3] shadow-sm border border-teal-200/50">
+					if item.ImageURL != "" {
+						<img
+							src={ item.ImageURL }
+							alt={ item.Title }
+							class="w-full h-full object-cover"
+						/>
+					} else {
+						<div class="w-full h-full flex items-center justify-center bg-teal-800 text-white/40">
+							<svg class="h-20 w-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+							</svg>
+						</div>
+					}
+					<div
+						class="absolute inset-0 pointer-events-none"
+						style="background: linear-gradient(to top, rgba(10,46,46,0.4) 0%, transparent 55%);"
+					></div>
+					if item.Badge != "" {
+						<span class="absolute bottom-4 right-4 text-xs font-semibold px-3 py-1.5 rounded-full bg-teal-500 text-white shadow">
+							{ item.Badge }
+						</span>
+					}
+				</div>
+
+				<!-- ستون دوم: محتوای متنی -->
+				<div class="flex flex-col gap-4">
+					<span class="inline-flex items-center gap-2 self-start text-xs font-semibold px-3 py-1.5 rounded-full bg-teal-100 text-teal-800">
+						<span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+						معرفی تجهیزات
+					</span>
+
+					<div>
+						<h2 class="text-2xl sm:text-3xl font-extrabold text-teal-950 leading-snug">
+							{ item.Title }
+						</h2>
+						if item.Subtitle != "" {
+							<div class="text-lg font-bold text-teal-600 mt-1">
+								{ item.Subtitle }
+							</div>
+						}
+					</div>
+
+					<p class="text-sm sm:text-base leading-8 text-gray-600 whitespace-pre-line">
+						{ item.Description }
+					</p>
+
+					<!-- برچسب‌های کلیدی -->
+					if len(item.Tags) > 0 {
+						<div class="flex flex-wrap gap-2 pt-2">
+							for _, tag := range item.Tags {
+								<span class="text-xs font-semibold px-3 py-1 rounded-full border border-teal-200 bg-white text-teal-800 shadow-2xs">
+									{ tag }
+								</span>
+							}
+						</div>
+					}
+
+					<!-- دکمه اقدام CTA -->
+					if item.ButtonText != "" {
+						<div class="pt-3">
+							<a
+								href={ templ.SafeURL(equipmentButtonHref(item.ButtonURL)) }
+								class="inline-flex items-center gap-2 rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 hover:shadow"
+							>
+								<span>{ item.ButtonText }</span>
+								<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+								</svg>
+							</a>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+// bannerBgColor ensures a valid background color style is returned.
+func bannerBgColor(c string) string {
+	if c == "" {
+		return "#0a2e2e"
+	}
+	return c
+}
+
+// scheduleCardStyle returns inline CSS for schedule day cards.
+func scheduleCardStyle(isOpen bool) string {
+	if isOpen {
+		return "background: #ffffff; border-color: #a7d9d4; box-shadow: 0 1px 6px rgba(23,112,112,0.08);"
+	}
+	return "background: rgba(0,0,0,0.02); border-color: transparent;"
+}
+
+// dotStyle returns inline CSS for the day status dot.
+func dotStyle(isOpen bool) string {
+	if isOpen {
+		return "background: #2ab3a3;"
+	}
+	return "#d1d5db;"
+}
+
+// equipmentButtonHref returns a safe URL for the equipment CTA button.
+func equipmentButtonHref(url string) string {
+	if url == "" {
+		return "/doctors"
+	}
+	return url
+}

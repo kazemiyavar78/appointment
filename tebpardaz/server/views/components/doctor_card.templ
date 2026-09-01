@@ -4,12 +4,17 @@ import "strconv"
 import "time"
 import ptime "github.com/yaa110/go-persian-calendar"
 
-// DoctorCardView is the display model for a public doctor booking card.
+// DoctorCardView مدل نمایش کارت رزرو پزشک عمومی است.
 type DoctorCardView struct {
 	Name            string
 	SpecialtyName   string
 	DoctorSystemID  int
 	PhotoURL        string
+	Photo300        string
+	Photo600        string
+	Photo900        string
+	Photo1200       string
+	ShortDesc       string
 	ClinicName      string
 	ShowClinicBadge bool
 	HasSlot         bool
@@ -17,8 +22,13 @@ type DoctorCardView struct {
 	BookingURL      string
 }
 
-// formatShamsiDateTime formats t as a Jalali date-time string for card display.
-// Input: wall-clock time. Output: yyyy/MM/dd HH:mm, or "—" when zero.
+// DoctorCardAssets استایل کارت پزشک را بارگذاری می‌کند.
+templ DoctorCardAssets() {
+	<link rel="stylesheet" href="/static/css/CardCss.css"/>
+}
+
+// formatShamsiDateTime زمان را به رشته تاریخ-ساعت جلالی تبدیل می‌کند.
+// ورودی: زمان دیواری. خروجی: yyyy/MM/dd HH:mm یا «—» اگر صفر باشد.
 func formatShamsiDateTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -26,8 +36,8 @@ func formatShamsiDateTime(t time.Time) string {
 	return ptime.New(t).Format("yyyy/MM/dd HH:mm")
 }
 
-// doctorCardSlotDate returns only the Jalali date-time for an available slot.
-// Input: nearest slot time. Output: formatted string, empty when zero.
+// doctorCardSlotDate فقط تاریخ-ساعت جلالی نوبت آزاد را برمی‌گرداند.
+// ورودی: نزدیک‌ترین نوبت. خروجی: رشته قالب‌بندی‌شده یا خالی.
 func doctorCardSlotDate(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -35,8 +45,8 @@ func doctorCardSlotDate(t time.Time) string {
 	return formatShamsiDateTime(t)
 }
 
-// formatDoctorSystemID returns the medical council number as a string.
-// Input: DoctorSystemID. Output: decimal digits, or empty when unset.
+// formatDoctorSystemID شماره نظام پزشکی را به رشته تبدیل می‌کند.
+// ورودی: DoctorSystemID. خروجی: ارقام اعشاری یا خالی.
 func formatDoctorSystemID(id int) string {
 	if id <= 0 {
 		return ""
@@ -44,8 +54,8 @@ func formatDoctorSystemID(id int) string {
 	return strconv.Itoa(id)
 }
 
-// doctorCardCTALabel picks the primary action label from slot availability.
-// Input: hasSlot. Output: Persian CTA text.
+// doctorCardCTALabel برچسب دکمه اقدام را از وضعیت نوبت برمی‌گزیند.
+// ورودی: hasSlot. خروجی: متن فارسی CTA.
 func doctorCardCTALabel(hasSlot bool) string {
 	if hasSlot {
 		return "رزرو نوبت"
@@ -53,72 +63,174 @@ func doctorCardCTALabel(hasSlot bool) string {
 	return "مشاهده جزئیات"
 }
 
-// DoctorCard renders a clickable doctor summary linking to the booking page.
-// Long names wrap fully; layout stays stable via min-w-0 and break-words.
+// doctorCardBadgeLabel متن نشان روی تصویر را از تخصص یا مرکز برمی‌گزیند.
+// ورودی: view. خروجی: نام تخصص/مرکز یا رشته خالی.
+func doctorCardBadgeLabel(view DoctorCardView) string {
+	if view.SpecialtyName != "" {
+		return view.SpecialtyName
+	}
+	if view.ShowClinicBadge && view.ClinicName != "" {
+		return view.ClinicName
+	}
+	return ""
+}
+
+// doctorCardMetaPrimary متن اصلی ردیف متا را از نوبت یا توضیح کوتاه می‌سازد.
+// ورودی: view. خروجی: متن فارسی برای نمایش.
+func doctorCardMetaPrimary(view DoctorCardView) string {
+	if view.HasSlot {
+		if slot := doctorCardSlotDate(view.NearestStartsAt); slot != "" {
+			return "نزدیک‌ترین نوبت: " + slot
+		}
+	}
+	if view.ShortDesc != "" {
+		return view.ShortDesc
+	}
+	if !view.HasSlot {
+		return "بدون نوبت باز"
+	}
+	return ""
+}
+
+// doctorCardMetaSecondary متن ثانویه ردیف متا (نظام پزشکی) را برمی‌گرداند.
+// ورودی: view. خروجی: برچسب نظام یا رشته خالی.
+func doctorCardMetaSecondary(view DoctorCardView) string {
+
+	if id := formatDoctorSystemID(view.DoctorSystemID); id != "" ||  view.SpecialtyName != "کارشناس پرستاری" {
+		return "نظام " + id
+	}
+	return ""
+}
+
+// doctorCardImgAlt متن جایگزین تصویر پزشک را به صورت توصیفی و بهینه برای سئو می‌سازد.
+// ورودی: view حاوی نام پزشک، تخصص و نام مرکز. خروجی: متن فارسی توصیفی برای تگ alt.
+func doctorCardImgAlt(view DoctorCardView) string {
+	res := "تصویر و نوبت‌دهی " + view.Name
+	if view.SpecialtyName != "" {
+		res += " - " + view.SpecialtyName
+	}
+	if view.ClinicName != "" {
+		res += " در " + view.ClinicName
+	}
+	return res
+}
+
+// doctorCardAriaLabel برچسب دسترسی‌پذیری پیوند کارت پزشک را تولید می‌کند.
+// ورودی: view حاوی مشخصات پزشک. خروجی: متن فارسی توصیفی برای aria-label.
+func doctorCardAriaLabel(view DoctorCardView) string {
+	label := "رزرو اینترنتی نوبت " + view.Name
+	if view.SpecialtyName != "" {
+		label += " (" + view.SpecialtyName + ")"
+	}
+	return label
+}
+
+// doctorCardMainPhoto آدرس تصویر اصلی یا سایز ۱۲۰۰ پزشک را برمی‌گرداند.
+// ورودی: view حاوی آدرس تصاویر در ابعاد مختلف. خروجی: آدرس تصویر با بالاترین کیفیت یا پیش‌فرض.
+func doctorCardMainPhoto(view DoctorCardView) string {
+	if view.Photo1200 != "" {
+		return view.Photo1200
+	}
+	if view.Photo900 != "" {
+		return view.Photo900
+	}
+	if view.Photo600 != "" {
+		return view.Photo600
+	}
+	if view.Photo300 != "" {
+		return view.Photo300
+	}
+	return view.PhotoURL
+}
+
+// doctorCardHasPhoto وجود داشتن حداقل یکی از تصاویر پزشک را بررسی می‌کند.
+// ورودی: view حاوی آدرس تصاویر. خروجی: true در صورت وجود تصویر.
+func doctorCardHasPhoto(view DoctorCardView) bool {
+	return view.PhotoURL != "" || view.Photo1200 != "" || view.Photo900 != "" || view.Photo600 != "" || view.Photo300 != ""
+}
+
+// DoctorCard خلاصه پزشک قابل کلیک به صفحه رزرو را رندر می‌کند.
 templ DoctorCard(view DoctorCardView) {
 	<a
-		class="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-surface-border bg-white shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+		class="doctor-card group"
 		href={ templ.SafeURL(view.BookingURL) }
+		aria-label={ doctorCardAriaLabel(view) }
 	>
-		<div class="flex min-w-0 flex-1 gap-3.5 p-4">
-			if view.PhotoURL != "" {
-				<img
-					class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-brand/10"
-					src={ view.PhotoURL }
-					alt=""
-					loading="lazy"
-					decoding="async"
-					width="64"
-					height="64"
-				/>
+		<div class="doctor-card-photo">
+			if doctorCardHasPhoto(view) {
+
+				<picture>
+					if view.Photo300 != "" {
+						<source 
+							media="(max-width: 480px)" 
+							srcset={ view.Photo300 }
+						/>
+					}
+					if view.Photo600 != "" {
+						<source 
+							media="(max-width: 768px)" 
+							srcset={ view.Photo600 }
+						/>
+					}
+					if view.Photo900 != "" {
+						<source 
+							media="(max-width: 1024px)" 
+							srcset={ view.Photo900 }
+						/>
+					}
+					<img
+						src={ doctorCardMainPhoto(view) }
+						alt={ doctorCardImgAlt(view) }
+						class="doctor-image doctor-card-photo-img"
+						loading="lazy"
+						decoding="async"
+						width="96"
+						height="96"
+					/>
+				</picture>
 			} else {
-				<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-muted text-sm font-medium text-brand ring-2 ring-brand/10" aria-hidden="true">
-					دکتر
+				<svg class="doctor-card-photo-placeholder" viewBox="0 0 190 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<ellipse cx="95" cy="205" rx="95" ry="30" fill="#5b8bd9"></ellipse>
+					<path d="M40 210 C40 150 55 120 95 120 C135 120 150 150 150 210 Z" fill="#5b8bd9"></path>
+					<circle cx="95" cy="80" r="52" fill="#e7b18a"></circle>
+					<path d="M45 75 C45 35 145 35 145 75 C145 55 130 40 95 40 C60 40 45 55 45 75 Z" fill="#7a4a2b"></path>
+					<circle cx="95" cy="120" r="14" fill="#f1f1f1" stroke="#9ab" stroke-width="2"></circle>
+				</svg>
+			}
+			if badge := doctorCardBadgeLabel(view); badge != "" {
+				<span class="doctor-card-badge">
+					<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
+					{ badge }
+				</span>
+			}
+		</div>
+
+		<div class="doctor-card-info">
+			<h2 class="doctor-card-name">{ view.Name }</h2>
+			if primary := doctorCardMetaPrimary(view); primary != "" || doctorCardMetaSecondary(view) != "" {
+				<div class="doctor-card-meta">
+					if primary != "" {
+						<span class="doctor-card-meta-primary">{ primary }</span>
+					}
+					if secondary := doctorCardMetaSecondary(view); secondary != "" {
+						<span class="doctor-card-meta-secondary">{ secondary }</span>
+					}
 				</div>
 			}
-			<div class="min-w-0 flex-1">
-				if view.ShowClinicBadge && view.ClinicName != "" {
-					<span class="mb-1.5 inline-block max-w-full break-words rounded-md bg-brand-muted px-2 py-0.5 text-xs text-brand">
-						{ view.ClinicName }
-					</span>
-				}
-				<h2 class="break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">
-					{ view.Name }
-				</h2>
-				if view.SpecialtyName != "" {
-					<p class="mt-1 break-words text-sm leading-relaxed text-ink-muted [overflow-wrap:anywhere]">
-						{ view.SpecialtyName }
-					</p>
-				}
-				if id := formatDoctorSystemID(view.DoctorSystemID); id != "" {
-					<p class="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
-						<span class="shrink-0">نظام پزشکی</span>
-						<span class="font-medium tabular-nums tracking-wide text-ink-muted" dir="ltr">{ id }</span>
-					</p>
-				}
+			<div class="doctor-card-actions">
+				<span class="doctor-card-book-btn">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+						<rect x="3" y="5" width="18" height="16" rx="2"></rect>
+						<path d="M8 3v4M16 3v4M3 10h18"></path>
+					</svg>
+					{ doctorCardCTALabel(view.HasSlot) }
+				</span>
+				<span class="doctor-card-icon-btn" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none" stroke="#5b6bd9" stroke-width="2">
+						<path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-5.5A8.5 8.5 0 1 1 21 11.5z"></path>
+					</svg>
+				</span>
 			</div>
-		</div>
-
-		<div class="mx-4 mb-3 min-w-0 rounded-lg bg-surface-soft px-3 py-2.5">
-			if view.HasSlot {
-				<p class="text-xs text-ink-muted">نزدیک‌ترین نوبت</p>
-				<p class="mt-0.5 break-words text-sm font-medium tabular-nums text-brand [overflow-wrap:anywhere]" dir="ltr">
-					{ doctorCardSlotDate(view.NearestStartsAt) }
-				</p>
-			} else {
-				<p class="text-sm text-ink-muted">هنوز رزروی باز نشده</p>
-			}
-		</div>
-
-		<div class="mt-auto flex items-center justify-between gap-2 border-t border-surface-border bg-surface-soft/60 px-4 py-3">
-			<span class="text-sm font-medium text-brand transition group-hover:text-brand-dark">
-				{ doctorCardCTALabel(view.HasSlot) }
-			</span>
-			<span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white" aria-hidden="true">
-				<svg class="h-3.5 w-3.5 rotate-180" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
-				</svg>
-			</span>
 		</div>
 	</a>
 }

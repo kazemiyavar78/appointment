@@ -80,19 +80,19 @@ func NewsList(view NewsListView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><div class=\"mb-4 flex flex-wrap items-center justify-between gap-3\"><h1 class=\"text-2xl text-brand\">مدیریت اخبار</h1><a class=\"rounded bg-brand px-4 py-2 text-white\" href=\"/admin/news/new\">ایجاد خبر جدید</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><div class=\"mb-4 flex flex-wrap items-center justify-between gap-3\"><h1 class=\"ui-page-title\">مدیریت اخبار</h1><a class=\"ui-btn ui-btn-primary\" href=\"/admin/news/new\">ایجاد خبر جدید</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.Message != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"ui-panel mb-3 text-sm text-ink-muted\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_list.templ`, Line: 50, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/news_list.templ`, Line: 50, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -103,7 +103,7 @@ func NewsList(view NewsListView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<section><div class=\"overflow-x-auto\"><table class=\"w-full min-w-[720px] border border-gray-200 bg-white text-sm\"><thead><tr class=\"border-b border-gray-200 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">تصویر</th><th class=\"p-2\">عنوان</th><th class=\"p-2\">مرکز</th><th class=\"p-2\">وضعیت</th><th class=\"p-2\">تاریخ</th><th class=\"p-2\">اقدام</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<section><div class=\"ui-table-wrap\"><table class=\"ui-table min-w-[720px] text-sm\"><thead><tr class=\"border-b border-gray-200 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">تصویر</th><th class=\"p-2\">عنوان</th><th class=\"p-2\">مرکز</th><th class=\"p-2\">وضعیت</th><th class=\"p-2\">تاریخ</th><th class=\"p-2\">اقدام</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

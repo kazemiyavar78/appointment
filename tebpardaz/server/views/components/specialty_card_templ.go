@@ -8,21 +8,78 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
-// SpecialtyCardView is a text-only specialty shortcut to the doctor list filter.
+// SpecialtyCardView دادهٔ کارت تخصص برای صفحه اصلی و فهرست تخصص‌ها است.
 type SpecialtyCardView struct {
-	ID   uint
-	Name string
+	ID               uint
+	Name             string
+	ShortDescription string
+	Description      string
+	Icon             string
+	Color            string
 }
 
-// specialtyFilterURL builds /doctors?specialty_id={id} for quick booking filter.
-// Input: specialty ID. Output: relative filter URL.
+// SpecialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
+// ورودی: شناسه تخصص. خروجی: URL نسبی فیلتر.
+func SpecialtyFilterURL(id uint) string {
+	return specialtyFilterURL(id)
+}
+
+// specialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
+// ورودی: شناسه تخصص. خروجی: URL نسبی فیلتر.
 func specialtyFilterURL(id uint) string {
 	return "/doctors?specialty_id=" + strconv.FormatUint(uint64(id), 10)
 }
 
-// SpecialtyCard renders a clickable specialty name card without a logo.
+// SpecialtyIconIsURL مشخص می‌کند Icon مسیر/آدرس تصویر است یا متن/ایموجی.
+// ورودی: مقدار فیلد Icon. خروجی: true اگر URL یا مسیر نسبی باشد.
+func SpecialtyIconIsURL(icon string) bool {
+	icon = strings.TrimSpace(icon)
+	return strings.HasPrefix(icon, "/") ||
+		strings.HasPrefix(icon, "http://") ||
+		strings.HasPrefix(icon, "https://")
+}
+
+// SpecialtyIconColor رنگ آیکون را با پیش‌فرض teal برمی‌گرداند.
+// ورودی: Color تخصص. خروجی: رنگ CSS معتبر برای fill/stroke.
+func SpecialtyIconColor(color string) string {
+	color = strings.TrimSpace(color)
+	if color == "" {
+		return "#0d9488"
+	}
+	return color
+}
+
+// SpecialtyFAClass کلاس مناسب Font Awesome را از نام یا کلاس ورودی می‌سازد.
+// ورودی: نام یا کلاس آیکون (مانند "fa-heart", "user-doctor", "fa-solid fa-stethoscope"). خروجی: کلاس‌های کامل CSS برای تگ i در Font Awesome.
+func SpecialtyFAClass(icon string) string {
+	icon = strings.TrimSpace(icon)
+	if icon == "" {
+		return "fa-solid fa-stethoscope"
+	}
+	if strings.HasPrefix(icon, "fa-solid ") ||
+		strings.HasPrefix(icon, "fa-regular ") ||
+		strings.HasPrefix(icon, "fa-brands ") ||
+		strings.HasPrefix(icon, "fa-light ") ||
+		strings.HasPrefix(icon, "fa-thin ") ||
+		strings.HasPrefix(icon, "fa-duotone ") ||
+		strings.HasPrefix(icon, "fas ") ||
+		strings.HasPrefix(icon, "far ") ||
+		strings.HasPrefix(icon, "fab ") ||
+		strings.HasPrefix(icon, "fa ") {
+		return icon
+	}
+	if strings.HasPrefix(icon, "fa-") {
+		return "fa-solid " + icon
+	}
+	return "fa-solid fa-" + icon
+}
+
+// SpecialtyCard کارت تخصص با نام، آیکون و توضیح کوتاه را رندر می‌کند.
 func SpecialtyCard(view SpecialtyCardView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -44,33 +101,156 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"group flex min-h-[72px] items-center justify-between gap-3 rounded-xl border border-surface-border bg-white px-4 py-3 shadow-sm transition hover:border-brand/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<a class=\"specialty-cat-card\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(specialtyFilterURL(view.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 21, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 78, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><span class=\"min-w-0 break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" style=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Name)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("--sp-icon-color: " + SpecialtyIconColor(view.Color))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 24, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 79, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> <span class=\"inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white\" aria-hidden=\"true\"><svg class=\"h-3.5 w-3.5 rotate-180\" viewBox=\"0 0 20 20\" fill=\"currentColor\"><path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"></path></svg></span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"specialty-cat-card__icon\" aria-hidden=\"true\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if SpecialtyIconIsURL(view.Icon) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<img src=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var4 string
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.Icon)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 83, Col: 24}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" alt=\"\" loading=\"lazy\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			var templ_7745c5c3_Var5 = []any{SpecialtyFAClass(view.Icon)}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var5...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<i class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var5).String())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></i>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><h3 class=\"specialty-cat-card__title\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(view.Name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 88, Col: 51}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</h3>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if strings.TrimSpace(view.ShortDescription) != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"specialty-cat-card__desc\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var8 string
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(view.ShortDescription)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 90, Col: 62}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</a>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// SpecialtyCardGrid گرید کارت‌های تخصص و استایل مرتبط را رندر می‌کند.
+// ورودی: لیست تخصص‌ها. خروجی: HTML گرید ریسپانسیو.
+func SpecialtyCardGrid(specialties []SpecialtyCardView) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<link rel=\"stylesheet\" href=\"/static/css/specialty_cards.css\"><div class=\"specialty-cat-cards\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, sp := range specialties {
+			templ_7745c5c3_Err = SpecialtyCard(sp).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

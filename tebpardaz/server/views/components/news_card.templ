@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// NewsCardView is the display model for a public news card.
+// NewsCardView مدل نمایش کارت خبر عمومی است.
 type NewsCardView struct {
 	TitleHTML       string
 	ExcerptHTML     string
@@ -13,9 +13,10 @@ type NewsCardView struct {
 	DetailURL       string
 	ClinicName      string
 	ShowClinicBadge bool
-	Featured        bool
 }
 
+// newsCardDate تاریخ انتشار را برای کارت فشرده قالب‌بندی می‌کند.
+// ورودی: زمان انتشار. خروجی: yyyy/MM/dd یا خالی.
 func newsCardDate(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -23,20 +24,11 @@ func newsCardDate(t time.Time) string {
 	return t.Format("2006/01/02")
 }
 
-// newsCardRootClass returns root article classes for standard or featured cards.
-func newsCardRootClass(featured bool) string {
-	base := "news-card group h-full overflow-hidden rounded-lg border border-surface-border bg-white transition hover:border-brand"
-	if featured {
-		return base + " news-card--featured"
-	}
-	return base
-}
-
-// NewsCard renders a clickable news summary card with clear visual hierarchy.
+// NewsCard کارت اطلاعیه فشرده موبایل‌اول را رندر می‌کند.
 templ NewsCard(view NewsCardView) {
-	<article class={ newsCardRootClass(view.Featured) }>
+	<article class="ui-card news-card group">
 		<a
-			class="flex h-full flex-col outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+			class="flex h-full min-h-[72px] items-start gap-3 p-3 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:p-3.5"
 			href={ templ.SafeURL(view.DetailURL) }
 		>
 			<span class="news-card-media">
@@ -46,37 +38,39 @@ templ NewsCard(view NewsCardView) {
 						alt=""
 						loading="lazy"
 						decoding="async"
-						width="640"
-						height="427"
+						width="64"
+						height="64"
 					/>
 				} else {
-					<span class="news-card-media-fallback flex items-center justify-center text-sm text-brand">بدون تصویر</span>
+					<span class="news-card-media-fallback" aria-hidden="true">
+						<svg class="h-5 w-5 text-brand" viewBox="0 0 20 20" fill="currentColor">
+							<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+						</svg>
+					</span>
 				}
 			</span>
-			<span class="flex flex-1 flex-col p-4">
-				<span class="mb-2 flex flex-wrap items-center gap-2">
+			<span class="flex min-w-0 flex-1 flex-col">
+				<span class="mb-1 flex flex-wrap items-center gap-1.5">
 					if d := newsCardDate(view.PublishedAt); d != "" {
-						<time class="text-xs text-ink-muted" datetime={ view.PublishedAt.Format("2006-01-02") }>{ d }</time>
+						<time class="text-xs text-ink-faint" datetime={ view.PublishedAt.Format("2006-01-02") }>{ d }</time>
 					}
 					if view.ShowClinicBadge && view.ClinicName != "" {
-						<span class="rounded bg-brand-muted px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+						<span class="ui-chip">{ view.ClinicName }</span>
 					}
 				</span>
-				if view.Featured {
-					<span class="text-xl font-bold leading-snug text-ink">
-						@templ.Raw(view.TitleHTML)
-					</span>
-				} else {
-					<span class="text-base font-bold leading-snug text-ink">
-						@templ.Raw(view.TitleHTML)
-					</span>
-				}
+				<span class="news-title text-sm font-bold leading-snug text-ink">
+					@templ.Raw(view.TitleHTML)
+				</span>
 				if view.ExcerptHTML != "" {
-					<span class="news-excerpt mt-2 text-sm text-ink-muted">
+					<span class="news-excerpt mt-1 text-xs leading-relaxed text-ink-muted">
 						@templ.Raw(view.ExcerptHTML)
 					</span>
 				}
-				<span class="mt-auto pt-3 text-sm text-brand group-hover:underline">ادامه مطلب</span>
+			</span>
+			<span class="ui-icon-btn mt-0.5 shrink-0" aria-hidden="true">
+				<svg class="inline-block h-3.5 w-3.5 rotate-180 align-middle" viewBox="0 0 20 20" fill="currentColor">
+					<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
+				</svg>
 			</span>
 		</a>
 	</article>

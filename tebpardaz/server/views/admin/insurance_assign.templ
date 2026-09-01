@@ -1,0 +1,257 @@
+package admin
+
+import (
+	"strings"
+	"tebpardaz/server/views/layouts"
+)
+
+// InsuranceAssignOption is one catalog insurance checkbox on the assignment page.
+type InsuranceAssignOption struct {
+	ID          uint
+	Name        string
+	LogoURL     string
+	Description string
+	Selected    bool
+}
+
+// InsuranceAssignView drives clinic-scoped insurance display selection.
+type InsuranceAssignView struct {
+	Nav            layouts.AdminLayoutView
+	Message        string
+	Clinics        []ClinicOption
+	ShowClinicPick bool
+	ClinicID       uint
+	Insurances     []InsuranceAssignOption
+}
+
+// InsuranceAssign renders clinic picker and insurance checkboxes for display assignment.
+templ InsuranceAssign(view InsuranceAssignView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">انتصاب بیمه به مراکز درمانی</h1>
+					<p class="mt-1 text-xs text-ink-muted">
+						بیمه‌های طرف قرارداد و تحت پوشش مرکز را جهت نمایش در صفحه اصلی و فرآیند نوبت‌دهی انتخاب نمایید.
+					</p>
+				</div>
+				<a class="ui-btn ui-btn-ghost text-xs" href="/admin/insurances">
+					<i class="fa-solid fa-arrow-right ml-1"></i>
+					مدیریت کاتالوگ بیمه‌ها
+				</a>
+			</div>
+			if view.Message != "" {
+				<div class="ui-panel mb-4 text-sm font-medium text-brand-dark bg-brand/5 border border-brand/20">
+					{ view.Message }
+				</div>
+			}
+
+			if view.ShowClinicPick {
+				<div class="mb-6 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+					<form class="flex flex-wrap items-end gap-3" method="get" action="/admin/insurances/assign">
+						<label class="block text-xs font-semibold text-ink-muted">
+							مرکز درمانی
+							<select class="ui-field mt-1.5 min-w-[14rem] text-sm" name="clinic_id" onchange="this.form.submit()" required>
+								<option value="">-- انتخاب مرکز درمانی --</option>
+								for _, clinic := range view.Clinics {
+									<option value={ formatUint(clinic.ID) } selected?={ clinic.Selected }>{ clinic.Name }</option>
+								}
+							</select>
+						</label>
+						<noscript>
+							<button class="ui-btn ui-btn-ghost text-xs" type="submit">نمایش</button>
+						</noscript>
+					</form>
+				</div>
+			} else if len(view.Clinics) == 1 {
+				<div class="mb-4 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 border border-surface-border text-xs text-ink font-medium">
+					<i class="fa-solid fa-hospital text-brand"></i>
+					مرکز درمانی: { view.Clinics[0].Name }
+				</div>
+			}
+
+			if view.ClinicID == 0 {
+				<div class="ui-panel text-center py-10 text-sm text-ink-muted">
+					<i class="fa-solid fa-hospital text-3xl mb-2 text-gray-300 block"></i>
+					لطفاً برای مدیریت انتصاب بیمه‌ها، ابتدا یک مرکز درمانی را انتخاب نمایید.
+				</div>
+			} else if len(view.Insurances) == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-shield-halved text-3xl mb-2 text-gray-300 block"></i>
+					هنوز هیچ بیمه‌ای در کاتالوگ بیمه‌های سامانه تعریف نشده است.
+				</div>
+			} else {
+				<form method="post" action="/admin/insurances/assign" id="insurance-assign-form">
+					<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+
+					<div class="rounded-xl border border-surface-border bg-white p-5 shadow-sm">
+						<!-- هدر و وضعیت انتخاب -->
+						<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
+							<div class="flex items-center gap-2">
+								<i class="fa-solid fa-shield-halved text-brand text-base"></i>
+								<h2 class="text-sm font-bold text-ink">لیست بیمه‌های قابل انتصاب</h2>
+							</div>
+							<span id="ins-selected-badge" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+								۰ بیمه انتخاب شده
+							</span>
+						</div>
+
+						<!-- نوار جستجو و دکمه‌های کنترل -->
+						<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+							<div class="relative min-w-[16rem] flex-1 max-w-md">
+								<input
+									type="search"
+									id="ins-search-input"
+									placeholder="جستجوی نام یا شرح بیمه..."
+									oninput="filterInsItems()"
+									class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+								/>
+								<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+							</div>
+
+							<div class="flex flex-wrap items-center gap-3 text-xs">
+								<button type="button" onclick="toggleAllInsurances(true)" class="text-brand hover:underline font-medium">
+									انتخاب همه
+								</button>
+								<span class="text-gray-300">|</span>
+								<button type="button" onclick="toggleAllInsurances(false)" class="text-ink-muted hover:underline">
+									لغو انتخاب همه
+								</button>
+								<span class="text-gray-300">|</span>
+								<button
+									type="button"
+									id="ins-only-selected-btn"
+									onclick="toggleOnlySelectedInsurances()"
+									class="rounded border border-gray-200 px-2.5 py-1 text-ink-muted hover:bg-gray-50 transition-colors"
+								>
+									فقط انتخاب‌شده‌ها
+								</button>
+							</div>
+						</div>
+
+						<!-- شبکه کارت‌های بیمه -->
+						<div id="ins-list-container" class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto p-1">
+							for _, item := range view.Insurances {
+								<label
+									class="ins-item group flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-brand/40 hover:bg-brand/[0.02] cursor-pointer transition-all"
+									data-search={ strings.ToLower(item.Name + " " + item.Description) }
+								>
+									<input
+										type="checkbox"
+										name="insurance_ids"
+										value={ formatUint(item.ID) }
+										onchange="updateInsCount()"
+										class="ins-checkbox mt-1 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand shrink-0"
+										checked?={ item.Selected }
+									/>
+									if item.LogoURL != "" {
+										<img
+											class="h-10 w-10 shrink-0 rounded-lg object-contain bg-gray-50 p-1 border border-gray-100"
+											src={ item.LogoURL }
+											alt={ item.Name }
+										/>
+									}
+									<div class="min-w-0 flex-1">
+										<p class="text-xs font-bold text-ink group-hover:text-brand transition-colors">{ item.Name }</p>
+										if item.Description != "" {
+											<p class="text-[11px] text-ink-muted mt-1 line-clamp-2 leading-relaxed">{ item.Description }</p>
+										}
+									</div>
+								</label>
+							}
+						</div>
+
+						<p id="ins-empty-msg" class="hidden text-center text-xs text-ink-muted py-10">
+							هیچ بیمه‌ای مطابق با عبارت جستجو یافت نشد.
+						</p>
+
+						<!-- نوار دکمه ذخیره پایین فرم -->
+						<div class="mt-6 flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100">
+							<p class="text-xs text-ink-muted">
+								<i class="fa-solid fa-circle-check text-emerald-600 ml-1"></i>
+								بیمه‌های انتخاب‌شده بلافاصله در صفحه مرکز قابل مشاهده و انتخاب خواهند بود.
+							</p>
+							<button class="ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold" type="submit">
+								<i class="fa-solid fa-floppy-disk ml-1.5"></i>
+								ذخیره انتصاب بیمه‌ها
+							</button>
+						</div>
+					</div>
+				</form>
+
+				<script>
+					var isOnlySelectedActive = false;
+
+					function toPersianDigits(n) {
+						var id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+						return String(n).replace(/[0-9]/g, function(w){ return id[+w]; });
+					}
+
+					function updateInsCount() {
+						var checked = document.querySelectorAll('.ins-checkbox:checked').length;
+						var badge = document.getElementById('ins-selected-badge');
+						if (badge) {
+							badge.textContent = toPersianDigits(checked) + ' بیمه انتخاب شده';
+						}
+					}
+
+					function filterInsItems() {
+						var q = (document.getElementById('ins-search-input').value || '').trim().toLowerCase();
+						var items = document.querySelectorAll('.ins-item');
+						var visibleCount = 0;
+
+						items.forEach(function(item) {
+							var text = item.getAttribute('data-search') || '';
+							var cb = item.querySelector('.ins-checkbox');
+							var matchSearch = !q || text.indexOf(q) !== -1;
+							var matchSelected = !isOnlySelectedActive || (cb && cb.checked);
+
+							if (matchSearch && matchSelected) {
+								item.style.display = '';
+								visibleCount++;
+							} else {
+								item.style.display = 'none';
+							}
+						});
+
+						var emptyMsg = document.getElementById('ins-empty-msg');
+						if (emptyMsg) {
+							emptyMsg.classList.toggle('hidden', visibleCount > 0);
+						}
+					}
+
+					function toggleAllInsurances(checked) {
+						var items = document.querySelectorAll('.ins-item');
+						items.forEach(function(item) {
+							if (item.style.display !== 'none') {
+								var cb = item.querySelector('.ins-checkbox');
+								if (cb) cb.checked = checked;
+							}
+						});
+						updateInsCount();
+					}
+
+					function toggleOnlySelectedInsurances() {
+						isOnlySelectedActive = !isOnlySelectedActive;
+						var btn = document.getElementById('ins-only-selected-btn');
+						if (btn) {
+							if (isOnlySelectedActive) {
+								btn.classList.add('bg-brand', 'text-white', 'border-brand');
+								btn.classList.remove('text-ink-muted', 'border-gray-200');
+							} else {
+								btn.classList.remove('bg-brand', 'text-white', 'border-brand');
+								btn.classList.add('text-ink-muted', 'border-gray-200');
+							}
+						}
+						filterInsItems();
+					}
+
+					document.addEventListener('DOMContentLoaded', function() {
+						updateInsCount();
+					});
+					updateInsCount();
+				</script>
+			}
+		</div>
+	}
+}

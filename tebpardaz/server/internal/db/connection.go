@@ -15,7 +15,7 @@ import (
 // Management (tp_managment) owns Clinic/Organization/City and is never AutoMigrated.
 // Appointment (appointment_tapesh) owns the rest and is migrated at startup.
 type Connections struct {
-	Management *gorm.DB
+	Management  *gorm.DB
 	Appointment *gorm.DB
 }
 
@@ -60,6 +60,32 @@ func (c *Connections) MigrateAppointment() error {
 	if c == nil || c.Appointment == nil {
 		return fmt.Errorf("appointment db is not open")
 	}
+
+	// اطمینان از وجود ستون‌های عکس در جدول پزشکان (برای سازگاری با SQL Server)
+	photoCols := []string{"photo_300", "photo_600", "photo_900", "photo_1200"}
+	for _, col := range photoCols {
+		query := fmt.Sprintf(`
+			IF NOT EXISTS (
+				SELECT 1 FROM sys.columns 
+				WHERE Name = N'%s' AND Object_ID = Object_ID(N'doctors')
+			)
+			BEGIN
+				ALTER TABLE doctors ADD %s NVARCHAR(255) NOT NULL DEFAULT '';
+			END`, col, col)
+		_ = c.Appointment.Exec(query).Error
+	}
+
+	// همگام‌سازی ستون‌های بدون خط تیره به ستون‌های استاندارد در صورت وجود
+	syncQuery := `
+		IF EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'photo300' AND Object_ID = Object_ID(N'doctors'))
+		BEGIN
+			UPDATE doctors SET photo_300 = photo300 WHERE (photo_300 IS NULL OR photo_300 = '') AND photo300 IS NOT NULL AND photo300 <> '';
+			UPDATE doctors SET photo_600 = photo600 WHERE (photo_600 IS NULL OR photo_600 = '') AND photo600 IS NOT NULL AND photo600 <> '';
+			UPDATE doctors SET photo_900 = photo900 WHERE (photo_900 IS NULL OR photo_900 = '') AND photo900 IS NOT NULL AND photo900 <> '';
+			UPDATE doctors SET photo_1200 = photo1200 WHERE (photo_1200 IS NULL OR photo_1200 = '') AND photo1200 IS NOT NULL AND photo1200 <> '';
+		END`
+	_ = c.Appointment.Exec(syncQuery).Error
+
 	return c.Appointment.AutoMigrate(
 		&models.Specialty{},
 		&models.Doctor{},
@@ -70,6 +96,19 @@ func (c *Connections) MigrateAppointment() error {
 		&models.AppointmentUser{},
 		&models.News{},
 		&models.TestResultCache{},
+		&models.Insurance{},
+		&models.ClinicInsurance{},
+		&models.Service{},
+		&models.ClinicInsuranceService{},
+		&models.DoctorService{},
+		&models.Review{},
+		&models.ClinicBehaviorLog{},
+		&models.AppointmentClinicSection{},
+		&models.ClinicSectionQuota{},
+		&models.SectionBanner{},
+		&models.SectionSchedule{},
+		&models.SectionMessage{},
+		&models.SectionEquipment{},
 	)
 }
 

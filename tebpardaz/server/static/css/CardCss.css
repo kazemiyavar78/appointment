@@ -1,0 +1,781 @@
+/* --------------------------------------------------------------------------
+   Specialty banner cards — front (light) / back (gradient) flip on hover or tap
+   -------------------------------------------------------------------------- */
+
+.specialty-banner-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .specialty-banner-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .specialty-banner-list {
+        gap: clamp(1.25rem, 2vw, 2rem);
+    }
+}
+
+.specialty-banner-card {
+    --sp-index: 0;
+    --sp-gradient-variant: 0;
+    min-width: 0;
+    animation: sp-card-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--sp-index) * 90ms);
+}
+
+.specialty-banner-card .sp-card {
+    position: relative;
+    min-height: 380px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition:
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.specialty-banner-card .sp-card:hover,
+.specialty-banner-card .sp-card.is-flipped {
+    transform: translateY(-6px);
+}
+
+.specialty-banner-card .sp-card:focus-visible {
+    outline: 2px solid #3b5bdb;
+    outline-offset: 3px;
+}
+
+/* Faces */
+.specialty-banner-card .sp-card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    transition:
+        opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Front — light card */
+.specialty-banner-card .sp-card-front {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(30, 40, 90, 0.08);
+    opacity: 1;
+    visibility: visible;
+}
+
+.specialty-banner-card .sp-card:hover .sp-card-front,
+.specialty-banner-card .sp-card.is-flipped .sp-card-front {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.specialty-banner-card .sp-card-photo {
+    position: relative;
+    height: 190px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #4b5fb0 0%, #7d6fc4 45%, #b98fae 100%);
+}
+
+.specialty-banner-card .sp-card-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.specialty-banner-card .sp-card-photo-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    opacity: 0.9;
+}
+
+.specialty-banner-card .sp-card-photo i.sp-card-photo-icon {
+    font-size: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+}
+
+.specialty-banner-card .sp-card-front .sp-card-body {
+    padding: 20px 22px 24px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.specialty-banner-card .sp-card-front .sp-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #16162b;
+    margin: 0 0 10px;
+    line-height: 1.35;
+}
+
+.specialty-banner-card .sp-card-text--short {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #6b6b7c;
+    margin: 0 0 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.specialty-banner-card .sp-card-learn-more--hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    font-size: 14px;
+    font-weight: 700;
+    color: #3b5bdb;
+}
+
+/* Back — gradient card */
+.specialty-banner-card .sp-card-back {
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 22px;
+    background: linear-gradient(
+        135deg,
+        #3f6fd6 0%,
+        #8d6fc4 40%,
+        #c96f8a 70%,
+        #e08a6e 100%
+    );
+    box-shadow: 0 12px 30px rgba(63, 111, 214, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.specialty-banner-card[style*="--sp-gradient-variant: 1"] .sp-card-back {
+    background: linear-gradient(135deg, #4b5fb0 0%, #7d6fc4 45%, #b98fae 100%);
+    box-shadow: 0 12px 30px rgba(75, 95, 176, 0.2);
+}
+
+.specialty-banner-card[style*="--sp-gradient-variant: 2"] .sp-card-back {
+    background: linear-gradient(135deg, #2d8f6f 0%, #4a9fd4 50%, #7d6fc4 100%);
+    box-shadow: 0 12px 30px rgba(45, 143, 111, 0.2);
+}
+
+.specialty-banner-card .sp-card:hover .sp-card-back,
+.specialty-banner-card .sp-card.is-flipped .sp-card-back {
+    z-index: 3;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.specialty-banner-card .sp-card:hover,
+.specialty-banner-card .sp-card.is-flipped {
+    box-shadow: 0 18px 40px rgba(63, 111, 214, 0.22);
+}
+
+.specialty-banner-card .sp-card-badge {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+}
+
+.specialty-banner-card .sp-card-icon-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    flex-shrink: 0;
+}
+
+.specialty-banner-card .sp-card-icon-circle svg {
+    width: 20px;
+    height: 20px;
+}
+
+.specialty-banner-card .sp-card-icon-circle i {
+    font-size: 20px;
+    color: #ffffff;
+}
+
+.specialty-banner-card .sp-card-back .sp-card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 10px;
+    line-height: 1.35;
+}
+
+.specialty-banner-card .sp-card-back-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.specialty-banner-card .sp-card-back .sp-card-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+}
+
+.specialty-banner-card .sp-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.specialty-banner-card .sp-card-back .sp-card-tag {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.specialty-banner-card .sp-card-features {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+@media (min-width: 480px) {
+    .specialty-banner-card .sp-card-features {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.specialty-banner-card .sp-card-back .sp-card-feature-block {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.specialty-banner-card .sp-card-back .sp-card-feature-title {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.specialty-banner-card .sp-card-feature-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.specialty-banner-card .sp-card-back .sp-card-feature-list li {
+    position: relative;
+    padding-inline-start: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 3px;
+}
+
+.specialty-banner-card .sp-card-back .sp-card-feature-list li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.55em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.specialty-banner-card .sp-card-back .sp-card-learn-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #ffffff;
+}
+
+.specialty-banner-card .sp-card-learn-more svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.specialty-banner-card .sp-card:hover .sp-card-learn-more svg,
+.specialty-banner-card .sp-card.is-flipped .sp-card-learn-more svg {
+    transform: translate(2px, -2px);
+}
+
+@keyframes sp-card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .specialty-banner-card {
+        animation: none;
+    }
+
+    .specialty-banner-card .sp-card,
+    .specialty-banner-card .sp-card-face,
+    .specialty-banner-card .sp-card-learn-more svg {
+        transition: none;
+    }
+
+    .specialty-banner-card .sp-card:hover,
+    .specialty-banner-card .sp-card.is-flipped {
+        transform: none;
+    }
+}
+
+@media (max-width: 479px) {
+    .specialty-banner-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.specialty-banner-list--home-preview {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+    .specialty-banner-list--home-preview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .specialty-banner-list--home-preview {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Doctor card — portrait layout with photo header + booking CTA
+   -------------------------------------------------------------------------- */
+
+.doctor-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(90, 90, 160, 0.12);
+    text-decoration: none;
+    color: inherit;
+    transition:
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.doctor-card:hover,
+.doctor-card:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(90, 90, 160, 0.18);
+    outline: none;
+}
+
+.doctor-card:focus-visible {
+    outline: 2px solid #3b5bdb;
+    outline-offset: 3px;
+}
+
+.doctor-card-photo {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(155deg, #cfe0f7 0%, #e9d7ee 55%, #f6dbe4 100%);
+}
+
+.doctor-card-photo picture {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.doctor-card-photo-img,
+.doctor-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.doctor-card-photo-placeholder {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 190px;
+    max-width: 90%;
+}
+
+.doctor-card-badge {
+    position: absolute;
+    inset-inline-start: 12px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 24px);
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #3b5bdb;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.doctor-card-badge-icon {
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.doctor-card-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 14px 4px 4px;
+}
+
+.doctor-card-name {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #1a1a2e;
+    overflow-wrap: anywhere;
+}
+
+.doctor-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #8b8b9e;
+}
+
+.doctor-card-meta-primary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doctor-card-meta-secondary {
+    flex-shrink: 0;
+    color: #b5b5c3;
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+}
+
+.doctor-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.doctor-card-book-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #cfe0f7, #e6d6f2);
+    color: #3b3b6b;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.doctor-card-book-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.doctor-card-icon-btn {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1.5px solid #e4e4ee;
+    background: #fff;
+}
+
+.doctor-card-icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .doctor-card {
+        transition: none;
+    }
+
+    .doctor-card:hover,
+    .doctor-card:focus-visible {
+        transform: none;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Insurance cards — image focus front / fade to description on hover or click
+   -------------------------------------------------------------------------- */
+
+.insurance-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(140px, 180px);
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 6px 4px 14px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.insurance-grid.grid-rows-1 {
+    grid-template-rows: repeat(1, minmax(0, 1fr));
+}
+
+.insurance-grid.grid-rows-2 {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+    .insurance-grid {
+        grid-auto-columns: minmax(160px, 200px);
+        gap: 1.25rem;
+    }
+}
+
+.insurance-card {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 2px 8px rgba(26, 32, 44, 0.04);
+    cursor: pointer;
+    overflow: hidden;
+    user-select: none;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.3s ease;
+}
+
+.insurance-card:hover,
+.insurance-card.is-active,
+.insurance-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(11, 110, 79, 0.12);
+    border-color: rgba(11, 110, 79, 0.35);
+    outline: none;
+}
+
+.insurance-card:focus-visible {
+    outline: 2px solid #0B6E4F;
+    outline-offset: 2px;
+}
+
+/* Front face (Image Focus) */
+.insurance-card__front {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    background: #ffffff;
+    border-radius: 16px;
+    transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity: 1;
+    transform: scale(1);
+    z-index: 2;
+}
+
+.insurance-card:hover .insurance-card__front,
+.insurance-card.is-active .insurance-card__front {
+    opacity: 0;
+    transform: scale(0.92);
+    pointer-events: none;
+}
+
+.insurance-card__img-wrap {
+    width: 100%;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.insurance-card__img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.insurance-card:hover .insurance-card__img {
+    transform: scale(1.05);
+}
+
+.insurance-card__icon-fallback {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background: #E8F5F0;
+    color: #0B6E4F;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.insurance-card__name {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1A202C;
+    text-align: center;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Back face (Description view) */
+.insurance-card__back {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 12px;
+    background: linear-gradient(145deg, #F0FDF4 0%, #E8F5F0 100%);
+    border-radius: 16px;
+    transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity: 0;
+    transform: scale(0.92);
+    pointer-events: none;
+    z-index: 3;
+    text-align: center;
+}
+
+.insurance-card:hover .insurance-card__back,
+.insurance-card.is-active .insurance-card__back {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.insurance-card__back-title {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0B6E4F;
+    line-height: 1.3;
+}
+
+.insurance-card__desc {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #2D3748;
+    max-height: 85px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 0 2px;
+}
+
+.insurance-card__badge {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #084C3A;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .insurance-card,
+    .insurance-card__front,
+    .insurance-card__back,
+    .insurance-card__img {
+        transition: none !important;
+    }
+}
+

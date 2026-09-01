@@ -1,13 +1,15 @@
 package pages
 
-// TODO: props مورد نیاز -> Clinics ([]ClinicCard), Cities, SelectedCityID
+// ClinicList صفحه فهرست مراکز (جایگاه فیلتر شهر و کارت‌ها) را رندر می‌کند.
 templ ClinicList() {
-	<div class="mx-auto max-w-5xl p-4">
-		<h1 class="mb-4 text-2xl text-brand">لیست مراکز</h1>
-		<!-- TODO: فیلتر شهر و لیست کلینیک‌ها -->
-		<ul class="space-y-2">
-			<li class="rounded border border-gray-200 bg-white p-3">
-				<!-- TODO: آیتم کلینیک -->
+	<div class="ui-fade-in mx-auto max-w-5xl">
+		<section class="ui-section">
+			<h1 class="ui-page-title">لیست مراکز</h1>
+			<p class="ui-page-desc">مرکز درمانی مورد نظر را انتخاب کنید.</p>
+		</section>
+		<ul class="space-y-3">
+			<li class="ui-panel text-sm text-ink-muted">
+				هنوز مرکزی برای نمایش ثبت نشده است.
 			</li>
 		</ul>
 	</div>

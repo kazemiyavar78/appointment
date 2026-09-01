@@ -45,6 +45,10 @@ func (h *SpecialtyHandler) List(c *gin.Context) {
 			view.EditID = row.ID
 			view.EditName = row.Name
 			view.EditNameEN = row.NameEN
+			view.EditShortDescription = row.ShortDescription
+			view.EditDescription = row.Description
+			view.EditIcon = row.Icon
+			view.EditColor = row.Color
 			view.EditApproved = row.IsApproved
 		}
 	}
@@ -72,11 +76,8 @@ func (h *SpecialtyHandler) Create(c *gin.Context) {
 		return
 	}
 
-	row := &models.Specialty{
-		Name:       name,
-		NameEN:     strings.TrimSpace(c.PostForm("name_en")),
-		IsApproved: c.PostForm("is_approved") == "1",
-	}
+	row := specialtyFromForm(c)
+	row.Name = name
 	if err := h.Specialties.Create(row); err != nil {
 		h.renderWithMessage(c, user, "خطا در ایجاد تخصص.")
 		return
@@ -110,9 +111,8 @@ func (h *SpecialtyHandler) Update(c *gin.Context) {
 		return
 	}
 
+	applySpecialtyForm(row, c)
 	row.Name = name
-	row.NameEN = strings.TrimSpace(c.PostForm("name_en"))
-	row.IsApproved = c.PostForm("is_approved") == "1"
 	if err := h.Specialties.Update(row); err != nil {
 		c.Redirect(http.StatusFound, "/admin/specialties?edit="+strconv.FormatUint(uint64(id), 10)+"&msg=update_failed")
 		return
@@ -139,6 +139,25 @@ func (h *SpecialtyHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/admin/specialties?msg=deleted")
+}
+
+// specialtyFromForm مدل تخصص جدید را از فیلدهای فرم می‌سازد.
+// ورودی: context درخواست. خروجی: اشاره‌گر Specialty بدون Name (توسط Create ست می‌شود).
+func specialtyFromForm(c *gin.Context) *models.Specialty {
+	row := &models.Specialty{}
+	applySpecialtyForm(row, c)
+	return row
+}
+
+// applySpecialtyForm فیلدهای اختیاری تخصص را از فرم روی مدل می‌نویسد.
+// ورودی: مدل تخصص و context. خروجی: ندارد (مدل به‌روز می‌شود).
+func applySpecialtyForm(row *models.Specialty, c *gin.Context) {
+	row.NameEN = strings.TrimSpace(c.PostForm("name_en"))
+	row.ShortDescription = strings.TrimSpace(c.PostForm("short_description"))
+	row.Description = strings.TrimSpace(c.PostForm("description"))
+	row.Icon = strings.TrimSpace(c.PostForm("icon"))
+	row.Color = strings.TrimSpace(c.PostForm("color"))
+	row.IsApproved = c.PostForm("is_approved") == "1"
 }
 
 func (h *SpecialtyHandler) baseView(user *models.AppointmentUser) adminviews.SpecialtyPageView {
@@ -168,10 +187,12 @@ func toSpecialtyRows(rows []models.Specialty) []adminviews.SpecialtyRow {
 	out := make([]adminviews.SpecialtyRow, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, adminviews.SpecialtyRow{
-			ID:         row.ID,
-			Name:       row.Name,
-			NameEN:     row.NameEN,
-			IsApproved: row.IsApproved,
+			ID:               row.ID,
+			Name:             row.Name,
+			NameEN:           row.NameEN,
+			ShortDescription: row.ShortDescription,
+			Icon:             row.Icon,
+			IsApproved:       row.IsApproved,
 		})
 	}
 	return out

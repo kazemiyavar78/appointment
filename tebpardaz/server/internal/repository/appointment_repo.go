@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"tebpardaz/server/internal/models"
@@ -24,6 +25,27 @@ type AppointmentRepo struct {
 // Output: pointer to AppointmentRepo.
 func NewAppointmentRepo(db *gorm.DB) *AppointmentRepo {
 	return &AppointmentRepo{DB: db}
+}
+
+// GetByNationalID بیمار ثبت‌شده را با کد ملی برمی‌گرداند.
+// ورودی: کد ملی ۱۰ رقمی. خروجی: Patient یا ErrAppointmentNotFound.
+func (r *AppointmentRepo) GetByNationalID(nationalID string) (*models.Patient, error) {
+	if r == nil || r.DB == nil {
+		return nil, gorm.ErrInvalidData
+	}
+	nationalID = strings.TrimSpace(nationalID)
+	if nationalID == "" {
+		return nil, ErrAppointmentNotFound
+	}
+	var p models.Patient
+	err := r.DB.Where("national_id = ?", nationalID).First(&p).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrAppointmentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 // UpsertPatient creates or updates a patient by national ID.

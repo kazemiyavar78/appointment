@@ -1,0 +1,171 @@
+package admin
+
+import (
+	"strconv"
+	"tebpardaz/server/views/layouts"
+)
+
+// MessageRow represents a message in the admin list.
+type MessageRow struct {
+	ID          uint
+	Title       string
+	Content     string
+	SenderTitle string
+	SortOrder   int
+	IsActive    bool
+}
+
+// SectionMessagesView holds view model for managing messages to patients.
+type SectionMessagesView struct {
+	Nav             layouts.AdminLayoutView
+	SectionID       uint
+	SectionTitle    string
+	ClinicID        uint
+	Messages        []MessageRow
+	Message         string
+	EditID          uint
+	EditTitle       string
+	EditContent     string
+	EditSenderTitle string
+	EditSortOrder   int
+	EditIsActive    bool
+}
+
+// SectionMessages renders the list and creation/edit form of patient messages.
+templ SectionMessages(view SectionMessagesView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<div class="flex items-center gap-2 text-sm text-ink-muted mb-1">
+						<a class="hover:text-brand" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بخش‌های مرکز</a>
+						<span>/</span>
+						<span>{ view.SectionTitle }</span>
+					</div>
+					<h1 class="ui-page-title">پیام‌های بخش: { view.SectionTitle }</h1>
+					<p class="text-xs text-ink-muted mt-1">ثبت پیام‌ها و راهنمایی‌های متنی برای بیماران و مراجعین (حداکثر ۸۰۰ کاراکتر برای هر پیام)</p>
+				</div>
+				<div class="flex items-center gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") }>بنر</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule") }>ساعات کاری</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment") }>تجهیزات</a>
+				</div>
+			</div>
+
+			if view.Message != "" {
+				<p class="ui-panel mb-4 text-sm text-brand">{ view.Message }</p>
+			}
+
+			<section class="ui-panel mb-6">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg font-bold text-ink">ویرایش پیام</h2>
+					<form class="space-y-4" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages/" + formatUint(view.EditID) + "/update") }>
+						@messageFormFields(view.EditTitle, view.EditContent, view.EditSenderTitle, view.EditSortOrder, view.EditIsActive)
+						<div class="flex items-center gap-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+							<a class="ui-btn ui-btn-ghost" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>انصراف</a>
+						</div>
+					</form>
+				} else {
+					<h2 class="mb-3 text-lg font-bold text-ink">افزودن پیام جدید به بیماران</h2>
+					<form class="space-y-4" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>
+						@messageFormFields("", "", "تیم " + view.SectionTitle, 0, true)
+						<div>
+							<button class="ui-btn ui-btn-primary" type="submit">ثبت پیام</button>
+						</div>
+					</form>
+				}
+			</section>
+
+			<section class="ui-panel">
+				<h2 class="mb-3 text-lg font-bold text-ink">لیست پیام‌ها ({ strconv.Itoa(len(view.Messages)) })</h2>
+				<div class="ui-table-wrap overflow-x-auto">
+					<table class="ui-table min-w-[700px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-3">ردیف</th>
+								<th class="p-3">عنوان</th>
+								<th class="p-3">متن پیام</th>
+								<th class="p-3">فرستنده</th>
+								<th class="p-3">ترتیب</th>
+								<th class="p-3">وضعیت</th>
+								<th class="p-3">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Messages) == 0 {
+								<tr>
+									<td class="p-4 text-center text-ink-muted" colspan="7">هیچ پیامی برای این بخش ثبت نشده است.</td>
+								</tr>
+							}
+							for index, msg := range view.Messages {
+								<tr class="border-b border-gray-100 hover:bg-surface-soft/50">
+									<td class="p-3">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-3 font-semibold text-ink">{ msg.Title }</td>
+									<td class="p-3 text-xs text-ink-muted max-w-xs truncate">{ msg.Content }</td>
+									<td class="p-3 text-xs">{ msg.SenderTitle }</td>
+									<td class="p-3">{ strconv.Itoa(msg.SortOrder) }</td>
+									<td class="p-3">
+										if msg.IsActive {
+											<span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">فعال</span>
+										} else {
+											<span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">غیرفعال</span>
+										}
+									</td>
+									<td class="p-3 whitespace-nowrap">
+										<div class="flex items-center gap-2">
+											<a class="rounded border border-gray-300 px-2.5 py-1 text-xs hover:bg-gray-50" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages?edit=" + formatUint(msg.ID)) }>ویرایش</a>
+											<form class="inline" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages/" + formatUint(msg.ID) + "/delete") } onsubmit="return confirm('این پیام حذف شود؟');">
+												<button class="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700 hover:bg-red-50" type="submit">حذف</button>
+											</form>
+										</div>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// messageFormFields renders the inputs for title, message content (max 800 chars), sender, sort order, and active toggle.
+templ messageFormFields(title, content, senderTitle string, sortOrder int, isActive bool) {
+	<div class="space-y-4">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<label class="block text-sm text-ink-muted">
+				عنوان پیام (اختیاری)
+				<input class="ui-field mt-1 w-full" type="text" name="title" value={ title } maxlength="100" placeholder="پیامی به شما، عزیزان"/>
+			</label>
+			<label class="block text-sm text-ink-muted">
+				امضا یا عنوان فرستنده
+				<input class="ui-field mt-1 w-full" type="text" name="sender_title" value={ senderTitle } maxlength="100" placeholder="تیم کلینیک"/>
+			</label>
+		</div>
+
+		<div>
+			<label class="block text-sm text-ink-muted mb-1">
+				متن پیام به بیمار (حداکثر ۸۰۰ کاراکتر)
+			</label>
+			<textarea class="ui-field w-full leading-relaxed" name="content" rows="5" maxlength="800" required placeholder="متن پیام و راهنمایی به بیماران...">{ content }</textarea>
+		</div>
+
+		<div class="flex flex-wrap items-center gap-6">
+			<label class="block text-sm text-ink-muted">
+				ترتیب نمایش
+				<input class="ui-field mt-1 w-24" type="number" name="sort_order" value={ strconv.Itoa(sortOrder) } min="0" max="999"/>
+			</label>
+			<div class="flex items-center pt-5">
+				<label class="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer">
+					if isActive {
+						<input type="checkbox" name="is_active" value="1" checked class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+					} else {
+						<input type="checkbox" name="is_active" value="1" class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+					}
+					نمایش در سایت
+				</label>
+			</div>
+		</div>
+	</div>
+}

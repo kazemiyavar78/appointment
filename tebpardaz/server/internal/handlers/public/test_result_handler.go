@@ -34,45 +34,56 @@ const (
 
 // TestResultHandler serves lab result lookup form and PDF download links.
 type TestResultHandler struct {
-	Clinics *repository.ClinicRepo
-	Service *testresult.Service
-	Limiter *testresult.RateLimiter
-	CSRF    *csrf.Manager
-	Hub     *websocket.Hub
+	Clinics  *repository.ClinicRepo
+	Sections *repository.SectionRepo
+	Service  *testresult.Service
+	Limiter  *testresult.RateLimiter
+	CSRF     *csrf.Manager
+	Hub      *websocket.Hub
 }
 
 // NewTestResultHandler constructs a TestResultHandler.
-// Inputs: clinic repo, PDF store service, rate limiter, CSRF manager, clinic WebSocket hub.
+// Inputs: clinic repo, section repo, PDF store service, rate limiter, CSRF manager, clinic WebSocket hub.
 // Output: pointer to TestResultHandler.
 func NewTestResultHandler(
 	clinics *repository.ClinicRepo,
+	sections *repository.SectionRepo,
 	svc *testresult.Service,
 	limiter *testresult.RateLimiter,
 	csrfMgr *csrf.Manager,
 	hub *websocket.Hub,
 ) *TestResultHandler {
 	return &TestResultHandler{
-		Clinics: clinics,
-		Service: svc,
-		Limiter: limiter,
-		CSRF:    csrfMgr,
-		Hub:     hub,
+		Clinics:  clinics,
+		Sections: sections,
+		Service:  svc,
+		Limiter:  limiter,
+		CSRF:     csrfMgr,
+		Hub:      hub,
 	}
 }
 
 // GetForm renders the test result lookup form for the current tenant layout.
+// Input: gin.Context containing tenant request.
+// Output: HTML form rendering for test result lookup.
 func (h *TestResultHandler) GetForm(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
-	h.renderForm(c, tc, pages.TestResultFormView{
+	view := pages.TestResultFormView{
 		FormAction: "/test-results",
-	})
+	}
+	if tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil && h.Sections != nil && !h.Sections.HasLabSection(*tc.ClinicID) {
+		view.ErrorMessage = "امکان دریافت جواب آزمایش آنلاین برای این مرکز فعال نمی‌باشد (بخش آزمایشگاه تعریف نشده است)."
+	}
+	h.renderForm(c, tc, view)
 }
 
 // PostLookup validates CSRF + rate limit, resolves clinic, and asks the clinic client for the PDF via WebSocket.
+// Input: gin.Context containing form data.
+// Output: HTML response with test result download URL or error message.
 func (h *TestResultHandler) PostLookup(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
@@ -85,6 +96,12 @@ func (h *TestResultHandler) PostLookup(c *gin.Context) {
 		SelectedClinicID: parseUintForm(c.PostForm("clinic_id")),
 		AdmissionNo:      strings.TrimSpace(c.PostForm("admission_no")),
 		Password:         strings.TrimSpace(c.PostForm("password")),
+	}
+
+	if tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil && h.Sections != nil && !h.Sections.HasLabSection(*tc.ClinicID) {
+		view.ErrorMessage = "امکان دریافت جواب آزمایش آنلاین برای این مرکز فعال نمی‌باشد (بخش آزمایشگاه تعریف نشده است)."
+		h.renderForm(c, tc, view)
+		return
 	}
 
 	if h.CSRF == nil || !h.CSRF.Verify(c.Request, c.PostForm("csrf_token")) {
@@ -170,15 +187,20 @@ func (h *TestResultHandler) PostLookup(c *gin.Context) {
 func (h *TestResultHandler) resolveClinic(tc *tenant.Context, selectedID uint) (*models.Clinic, string) {
 	switch tc.Layout {
 	case constants.LayoutPrivate:
+		var clinic *models.Clinic
 		if tc.Clinic != nil {
-			return tc.Clinic, ""
-		}
-		if tc.ClinicID == nil || h.Clinics == nil {
+			clinic = tc.Clinic
+		} else if tc.ClinicID != nil && h.Clinics != nil {
+			var err error
+			clinic, err = h.Clinics.GetByID(*tc.ClinicID)
+			if err != nil || clinic == nil {
+				return nil, msgClinicInvalid
+			}
+		} else {
 			return nil, msgClinicInvalid
 		}
-		clinic, err := h.Clinics.GetByID(*tc.ClinicID)
-		if err != nil || clinic == nil {
-			return nil, msgClinicInvalid
+		if h.Sections != nil && !h.Sections.HasLabSection(clinic.ID) {
+			return nil, "امکان دریافت جواب آزمایش آنلاین برای این مرکز فعال نمی‌باشد (بخش آزمایشگاه تعریف نشده است)."
 		}
 		return clinic, ""
 
@@ -189,6 +211,9 @@ func (h *TestResultHandler) resolveClinic(tc *tenant.Context, selectedID uint) (
 		clinic, err := h.loadScopedClinic(tc, selectedID)
 		if err != nil || clinic == nil {
 			return nil, msgClinicInvalid
+		}
+		if h.Sections != nil && !h.Sections.HasLabSection(clinic.ID) {
+			return nil, "مرکز انتخاب‌شده دارای بخش آزمایشگاه نمی‌باشد."
 		}
 		return clinic, ""
 
@@ -236,7 +261,9 @@ func (h *TestResultHandler) renderForm(c *gin.Context, tc *tenant.Context, view 
 	renderPublicLayout(c, tc, pages.TestResultForm(view), "test-results")
 }
 
-// clinicOptions lists clinics available in the current organ/platform tenant.
+// clinicOptions lists clinics available in the current organ/platform tenant that have an active lab section.
+// Input: tenant context.
+// Output: slice of TestResultClinicOption.
 func (h *TestResultHandler) clinicOptions(tc *tenant.Context) []pages.TestResultClinicOption {
 	if h.Clinics == nil {
 		return nil
@@ -254,12 +281,33 @@ func (h *TestResultHandler) clinicOptions(tc *tenant.Context) []pages.TestResult
 	default:
 		return nil
 	}
-	if err != nil {
+	if err != nil || len(rows) == 0 {
 		return nil
 	}
+
+	candidateIDs := make([]uint, 0, len(rows))
+	for _, c := range rows {
+		candidateIDs = append(candidateIDs, c.ID)
+	}
+
+	validMap := make(map[uint]bool)
+	if h.Sections != nil {
+		if validIDs, err := h.Sections.ListClinicIDsWithLab(candidateIDs); err == nil {
+			for _, id := range validIDs {
+				validMap[id] = true
+			}
+		}
+	} else {
+		for _, id := range candidateIDs {
+			validMap[id] = true
+		}
+	}
+
 	out := make([]pages.TestResultClinicOption, 0, len(rows))
 	for _, clinic := range rows {
-		out = append(out, pages.TestResultClinicOption{ID: clinic.ID, Name: clinic.Name})
+		if validMap[clinic.ID] {
+			out = append(out, pages.TestResultClinicOption{ID: clinic.ID, Name: clinic.Name})
+		}
 	}
 	return out
 }

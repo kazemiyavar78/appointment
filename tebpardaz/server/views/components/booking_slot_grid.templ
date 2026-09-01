@@ -1,0 +1,55 @@
+package components
+
+import "strconv"
+
+// BookingSlotCardView دادهٔ کارت نوبت افقی.
+type BookingSlotCardView struct {
+	InputName  string
+	Options    []SlotOption
+	EmptyText  string
+	DoctorName string
+}
+
+// BookingSlotGrid نوبت‌ها را به‌صورت کارت شبکه‌ای (استوری‌مانند) نمایش می‌دهد.
+templ BookingSlotGrid(view BookingSlotCardView) {
+	<div class="bk-slots" id="booking-slot-picker">
+		if len(view.Options) == 0 {
+			<p class="bk-slots__empty">{ view.EmptyText }</p>
+		} else {
+			<div class="bk-slots__grid">
+				for index, opt := range view.Options {
+					<label
+						class={ "bk-slot-card", templ.KV("is-selected", opt.Selected) }
+						data-slot-label={ opt.Label }
+					>
+						<input
+							type="radio"
+							class="slot-radio sr-only"
+							name={ view.InputName }
+							id={ view.InputName + "-" + strconv.Itoa(index) }
+							value={ opt.Value }
+							data-slot-label={ opt.Label }
+							data-slot-date={ opt.Date }
+							data-slot-time={ opt.Time }
+							if opt.Selected {
+								checked
+							}
+						/>
+						<span class="bk-slot-card__date" dir="ltr">
+							<span class="bk-slot-card__day">{ opt.DayNum }</span>
+							<span class="bk-slot-card__month">{ opt.MonthAbbr }</span>
+							<span class="bk-slot-card__time">{ opt.Time }</span>
+						</span>
+						<span class="bk-slot-card__body">
+							if view.DoctorName != "" {
+								<span class="bk-slot-card__doctor">{ view.DoctorName }</span>
+							}
+							<span class="bk-slot-card__meta">{ opt.Date }</span>
+						</span>
+						<span class="bk-slot-card__bar" aria-hidden="true"></span>
+					</label>
+				}
+			</div>
+		}
+	</div>
+}

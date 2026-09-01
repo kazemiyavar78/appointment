@@ -2,8 +2,9 @@ package layouts
 
 import "tebpardaz/server/views/components"
 
-// OrganLayoutView drives the multi-clinic organization public shell.
+// OrganLayoutView دادهٔ پوسته عمومی سازمان چندکلینیکی را نگه می‌دارد.
 type OrganLayoutView struct {
+	Head             PageHead
 	OrganizationName string
 	LogoURL          string
 	HomeURL          string
@@ -12,12 +13,12 @@ type OrganLayoutView struct {
 	ClinicsListURL   string
 }
 
-// OrganLayout renders an organization tenant page with navbar + main content.
+// OrganLayout صفحه tenant سازمان را با نوار، محتوا و فوتر رندر می‌کند.
 templ OrganLayout(view OrganLayoutView) {
-	@Document() {
+	@Document(view.Head) {
 		<div class="flex min-h-screen flex-col">
 			@components.Navbar(organNavbar(view))
-			<main class="flex-1 p-4">
+			<main class="ui-shell-main flex-1">
 				{ children... }
 			</main>
 			@components.Footer(organFooter(view))
@@ -25,7 +26,7 @@ templ OrganLayout(view OrganLayoutView) {
 	}
 }
 
-// organNavbar maps OrganLayoutView to NavbarProps.
+// organNavbar نمای سازمان را به NavbarProps نگاشت می‌کند.
 func organNavbar(view OrganLayoutView) components.NavbarProps {
 	name := view.OrganizationName
 	if name == "" {
@@ -43,7 +44,7 @@ func organNavbar(view OrganLayoutView) components.NavbarProps {
 	}
 }
 
-// organFooter maps OrganLayoutView to a multi-clinic organization FooterProps.
+// organFooter نمای سازمان چندکلینیکی را به FooterProps نگاشت می‌کند.
 func organFooter(view OrganLayoutView) components.FooterProps {
 	nav := organNavbar(view)
 	clinicsURL := view.ClinicsListURL

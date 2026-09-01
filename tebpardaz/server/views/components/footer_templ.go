@@ -11,13 +11,13 @@ import templruntime "github.com/a-h/templ/runtime"
 import "strconv"
 import "time"
 
-// FooterLink is a single footer navigation item.
+// FooterLink یک لینک ناوبری در فوتر است.
 type FooterLink struct {
 	Label string
 	Href  string
 }
 
-// FooterVariant selects the visual identity for a tenant layer footer.
+// FooterVariant هویت بصری فوتر هر لایه tenant را مشخص می‌کند.
 type FooterVariant string
 
 const (
@@ -26,7 +26,7 @@ const (
 	FooterPlatform FooterVariant = "platform"
 )
 
-// FooterProps drives the shared public footer across tenant layouts.
+// FooterProps دادهٔ فوتر عمومی مشترک لایوت‌ها را نگه می‌دارد.
 type FooterProps struct {
 	Variant        FooterVariant
 	BrandName      string
@@ -43,12 +43,12 @@ type FooterProps struct {
 	QuickLinks     []FooterLink
 }
 
-// footerYear returns the current Gregorian year as a string for the copyright line.
+// footerYear سال میلادی جاری را برای خط کپی‌رایت برمی‌گرداند.
 func footerYear() string {
 	return strconv.Itoa(time.Now().Year())
 }
 
-// footerBrandFallback returns a display name when BrandName is empty.
+// footerBrandFallback نام نمایشی را وقتی BrandName خالی است برمی‌گرداند.
 func footerBrandFallback(props FooterProps) string {
 	if props.BrandName != "" {
 		return props.BrandName
@@ -63,7 +63,7 @@ func footerBrandFallback(props FooterProps) string {
 	}
 }
 
-// footerBookingURL returns the booking CTA href, defaulting to /doctors.
+// footerBookingURL آدرس CTA رزرو را با پیش‌فرض /doctors برمی‌گرداند.
 func footerBookingURL(props FooterProps) string {
 	if props.BookingURL != "" {
 		return props.BookingURL
@@ -71,7 +71,7 @@ func footerBookingURL(props FooterProps) string {
 	return "/doctors"
 }
 
-// footerClinicsURL returns the clinics list href, defaulting to /clinics.
+// footerClinicsURL آدرس فهرست مراکز را با پیش‌فرض /clinics برمی‌گرداند.
 func footerClinicsURL(props FooterProps) string {
 	if props.ClinicsListURL != "" {
 		return props.ClinicsListURL
@@ -79,7 +79,7 @@ func footerClinicsURL(props FooterProps) string {
 	return "/clinics"
 }
 
-// footerShellClass returns the outer footer shell classes for each variant.
+// footerShellClass کلاس پوسته بیرونی فوتر را برای هر variant برمی‌گرداند.
 func footerShellClass(v FooterVariant) string {
 	switch v {
 	case FooterPlatform:
@@ -91,7 +91,7 @@ func footerShellClass(v FooterVariant) string {
 	}
 }
 
-// footerMutedClass returns muted text classes for each variant.
+// footerMutedClass کلاس متن کم‌رنگ فوتر را برای هر variant برمی‌گرداند.
 func footerMutedClass(v FooterVariant) string {
 	if v == FooterPlatform {
 		return "text-white/65"
@@ -99,15 +99,15 @@ func footerMutedClass(v FooterVariant) string {
 	return "text-ink-muted"
 }
 
-// footerLinkClass returns compact link classes for each variant.
+// footerLinkClass کلاس لینک فشرده فوتر را برای هر variant برمی‌گرداند.
 func footerLinkClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "block py-1.5 text-sm text-white/80 hover:text-white"
+		return "block min-h-[44px] py-2 text-sm text-white/80 transition hover:text-white"
 	}
-	return "block py-1.5 text-sm text-ink-muted hover:text-brand"
+	return "block min-h-[44px] py-2 text-sm text-ink-muted transition hover:text-brand"
 }
 
-// footerHeadingClass returns section heading classes for each variant.
+// footerHeadingClass کلاس عنوان بخش فوتر را برای هر variant برمی‌گرداند.
 func footerHeadingClass(v FooterVariant) string {
 	if v == FooterPlatform {
 		return "mb-3 text-sm font-bold text-white"
@@ -115,15 +115,15 @@ func footerHeadingClass(v FooterVariant) string {
 	return "mb-3 text-sm font-bold text-ink"
 }
 
-// footerBrandTextClass returns brand title classes for each variant.
+// footerBrandTextClass کلاس عنوان برند فوتر را برای هر variant برمی‌گرداند.
 func footerBrandTextClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "text-base font-bold text-white"
+		return "text-lg font-bold text-white"
 	}
-	return "text-base font-bold text-ink"
+	return "text-lg font-bold text-ink"
 }
 
-// footerGridClass returns the footer column grid modifier for each variant.
+// footerGridClass کلاس شبکه ستون‌های فوتر را برای هر variant برمی‌گرداند.
 func footerGridClass(v FooterVariant) string {
 	if v == FooterPrivate {
 		return "site-footer-grid site-footer-grid--private"
@@ -131,15 +131,15 @@ func footerGridClass(v FooterVariant) string {
 	return "site-footer-grid"
 }
 
-// footerCtaClass returns the booking button classes for each variant.
+// footerCtaClass کلاس دکمه رزرو فوتر را برای هر variant برمی‌گرداند.
 func footerCtaClass(v FooterVariant) string {
 	if v == FooterPlatform {
-		return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand-light px-5 text-sm font-medium text-white hover:bg-brand"
+		return "ui-btn ui-btn-primary !bg-brand-light hover:!bg-brand"
 	}
-	return "inline-flex min-h-[44px] items-center justify-center rounded-md bg-brand px-5 text-sm font-medium text-white hover:bg-brand-dark"
+	return "ui-btn ui-btn-primary"
 }
 
-// defaultCorporateLinks returns platform company links.
+// defaultCorporateLinks لینک‌های شرکتی پیش‌فرض پلتفرم را برمی‌گرداند.
 func defaultCorporateLinks() []FooterLink {
 	return []FooterLink{
 		{Label: "درباره ما", Href: "/about"},
@@ -148,7 +148,7 @@ func defaultCorporateLinks() []FooterLink {
 	}
 }
 
-// corporateOrDefault returns provided corporate links or the platform defaults.
+// corporateOrDefault لینک‌های شرکتی داده‌شده یا پیش‌فرض پلتفرم را برمی‌گرداند.
 func corporateOrDefault(links []FooterLink) []FooterLink {
 	if len(links) > 0 {
 		return links
@@ -156,16 +156,23 @@ func corporateOrDefault(links []FooterLink) []FooterLink {
 	return defaultCorporateLinks()
 }
 
-// NavLinksToFooter converts navbar links into footer quick links.
+// NavLinksToFooter لینک‌های نوار را به لینک‌های سریع فوتر تبدیل می‌کند.
 func NavLinksToFooter(links []NavLink) []FooterLink {
 	out := make([]FooterLink, 0, len(links))
 	for _, link := range links {
-		out = append(out, FooterLink{Label: link.Label, Href: link.Href})
+		if link.Href != "" {
+			out = append(out, FooterLink{Label: link.Label, Href: link.Href})
+		}
+		for _, child := range link.Children {
+			if child.Href != "" {
+				out = append(out, FooterLink{Label: child.Label, Href: child.Href})
+			}
+		}
 	}
 	return out
 }
 
-// Footer renders a tenant-aware RTL public footer with a clean column layout.
+// Footer فوتر RTL عمومی با ستون‌های خوانا و CTA رزرو را رندر می‌کند.
 func Footer(props FooterProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -234,7 +241,7 @@ func Footer(props FooterProps) templ.Component {
 		var templ_7745c5c3_Var6 templ.SafeURL
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(homeHref(props.HomeURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 167, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 174, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -252,7 +259,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(props.LogoURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 171, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 178, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -288,7 +295,7 @@ func Footer(props FooterProps) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(footerBrandFallback(props))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 178, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 185, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -325,7 +332,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(props.Phone)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 182, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 189, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -366,7 +373,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(props.Address)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 185, Col: 109}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 192, Col: 109}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -408,7 +415,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(props.Province)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 190, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 197, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 					if templ_7745c5c3_Err != nil {
@@ -421,7 +428,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(props.City)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 190, Col: 44}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 197, Col: 44}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -431,7 +438,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var21 string
 					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(props.Province)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 192, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 199, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 					if templ_7745c5c3_Err != nil {
@@ -441,7 +448,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var22 string
 					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(props.City)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 194, Col: 21}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 201, Col: 21}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 					if templ_7745c5c3_Err != nil {
@@ -557,7 +564,7 @@ func Footer(props FooterProps) templ.Component {
 		var templ_7745c5c3_Var31 templ.SafeURL
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(footerBookingURL(props)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 213, Col: 94}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 220, Col: 94}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -624,7 +631,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var36 templ.SafeURL
 				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(link.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 225, Col: 84}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 232, Col: 84}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 				if templ_7745c5c3_Err != nil {
@@ -637,7 +644,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var37 string
 				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(link.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 225, Col: 99}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 232, Col: 99}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 				if templ_7745c5c3_Err != nil {
@@ -719,7 +726,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var42 templ.SafeURL
 					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(link.Href))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 239, Col: 85}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 246, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 					if templ_7745c5c3_Err != nil {
@@ -732,7 +739,7 @@ func Footer(props FooterProps) templ.Component {
 					var templ_7745c5c3_Var43 string
 					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(link.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 239, Col: 100}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 246, Col: 100}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
@@ -773,7 +780,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var46 templ.SafeURL
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(footerClinicsURL(props)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 244, Col: 115}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 251, Col: 115}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -841,7 +848,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var51 templ.SafeURL
 				templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(link.Href))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 255, Col: 84}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 262, Col: 84}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 				if templ_7745c5c3_Err != nil {
@@ -854,7 +861,7 @@ func Footer(props FooterProps) templ.Component {
 				var templ_7745c5c3_Var52 string
 				templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(link.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 255, Col: 99}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 262, Col: 99}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 				if templ_7745c5c3_Err != nil {
@@ -882,7 +889,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(footerYear())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 264, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 271, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -895,7 +902,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(footerBrandFallback(props))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 264, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 271, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -913,7 +920,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(footerYear())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 268, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 275, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
@@ -926,7 +933,7 @@ func Footer(props FooterProps) templ.Component {
 			var templ_7745c5c3_Var56 string
 			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(footerBrandFallback(props))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 268, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/footer.templ`, Line: 275, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
@@ -937,7 +944,7 @@ func Footer(props FooterProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<p class=\"mt-8 border-t border-surface-border pt-5 text-xs text-ink-faint\"><a href=\"https://tebpardaz.ir\" target=\"_blank\">این سایت توسط شرکت طب پرداز طراحی شده است و با استفاده از پلتفرم طب پرداز ساخته شده است </a></p></div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

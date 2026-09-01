@@ -41,6 +41,16 @@ const (
 	TypeTestResultRequest  MessageType = "test_result.request"
 	TypeTestResultResponse MessageType = "test_result.response"
 
+	// لیست نوبت‌دهی هفتگی پزشکان مرکز (بروزرسانی دوره‌ای از HIS).
+	TypeWeeklyReserveListRequest MessageType = "weekly_reserve.list.request"
+	TypeWeeklyReserveListPush    MessageType = "weekly_reserve.list.push"
+	TypeWeeklyReserveListAck     MessageType = "weekly_reserve.list.ack"
+
+	// صف انتظار بیماران در حال پذیرش (مانیتورینگ لابی).
+	TypeWaitingQueueListRequest MessageType = "waiting_queue.list.request"
+	TypeWaitingQueueListPush    MessageType = "waiting_queue.list.push"
+	TypeWaitingQueueListAck     MessageType = "waiting_queue.list.ack"
+
 	// Generic error frame when a request cannot be fulfilled.
 	TypeError MessageType = "error"
 )

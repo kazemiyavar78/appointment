@@ -1,0 +1,117 @@
+package components
+
+import "strconv"
+
+type SpecialtyCardProps struct {
+	ID              uint
+	NameSpecialty   string
+	Description     string
+	MedicalServices []string
+	TopServices     []string
+	WhyChooseUs     []string
+	ContactItem     struct {
+		Phone string
+		Email string
+	}
+	TopImage     string
+	BottomImage  string
+	StaggerIndex int
+}
+
+// specialtyCardBadgeText برچسب پشت کارت را از اولین سرویس یا نام تخصص برمی‌گرداند.
+func specialtyCardBadgeText(props SpecialtyCardProps) string {
+	if len(props.MedicalServices) > 0 {
+		return props.MedicalServices[0]
+	}
+	return props.NameSpecialty
+}
+
+templ SpecialtyCardBanner(props SpecialtyCardProps) {
+	<article
+		class="specialty-banner-card"
+		style={
+			"--sp-index: " + strconv.Itoa(props.StaggerIndex) + "; --sp-gradient-variant: " + strconv.Itoa(props.StaggerIndex%3),
+		}
+	>
+		<div class="sp-card" tabindex="0">
+			<div class="sp-card-face sp-card-front">
+				<div class="sp-card-photo">
+					if SpecialtyIconIsURL(props.TopImage) {
+						<img
+							class="sp-card-photo-img"
+							src={ props.TopImage }
+							alt={ "تصویر " + props.NameSpecialty }
+							loading="lazy"
+						/>
+					} else {
+						<i class={ SpecialtyFAClass(props.TopImage) + " sp-card-photo-icon" } aria-hidden="true"></i>
+					}
+				</div>
+				<div class="sp-card-body">
+					<h3 class="sp-card-title">{ props.NameSpecialty }</h3>
+					<p class="sp-card-text sp-card-text--short">{ props.Description }</p>
+					<span class="sp-card-learn-more sp-card-learn-more--hint">
+						اطلاعات بیشتر
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+							<path d="M7 17L17 7M9 7h8v8"></path>
+						</svg>
+					</span>
+				</div>
+			</div>
+			<div class="sp-card-face sp-card-back">
+				<span class="sp-card-badge">{ specialtyCardBadgeText(props) }</span>
+				<div class="sp-card-icon-circle" aria-hidden="true">
+					if SpecialtyIconIsURL(props.TopImage) {
+						<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6">
+							<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8 3 3 0 0 0 2 5.2h2V4Z"></path>
+							<path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5.8 3 3 0 0 1-2 5.2h-2V4Z"></path>
+						</svg>
+					} else {
+						<i class={ SpecialtyFAClass(props.TopImage) }></i>
+					}
+				</div>
+				<h3 class="sp-card-title">{ props.NameSpecialty }</h3>
+				<div class="sp-card-back-content">
+					<p class="sp-card-text">{ props.Description }</p>
+					if len(props.MedicalServices) > 0 {
+						<div class="sp-card-tags">
+							for _, service := range props.MedicalServices {
+								<span class="sp-card-tag">{ service }</span>
+							}
+						</div>
+					}
+					if len(props.TopServices) > 0 || len(props.WhyChooseUs) > 0 {
+						<div class="sp-card-features">
+							if len(props.TopServices) > 0 {
+								<div class="sp-card-feature-block">
+									<p class="sp-card-feature-title">خدمات</p>
+									<ul class="sp-card-feature-list">
+										for _, item := range props.TopServices {
+											<li>{ item }</li>
+										}
+									</ul>
+								</div>
+							}
+							if len(props.WhyChooseUs) > 0 {
+								<div class="sp-card-feature-block">
+									<p class="sp-card-feature-title">مزایا</p>
+									<ul class="sp-card-feature-list">
+										for _, item := range props.WhyChooseUs {
+											<li>{ item }</li>
+										}
+									</ul>
+								</div>
+							}
+						</div>
+					}
+				</div>
+				<a class="sp-card-learn-more" href={ templ.SafeURL(specialtyFilterURL(props.ID)) }>
+					مشاهده پزشکان
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+						<path d="M7 17L17 7M9 7h8v8"></path>
+					</svg>
+				</a>
+			</div>
+		</div>
+	</article>
+}

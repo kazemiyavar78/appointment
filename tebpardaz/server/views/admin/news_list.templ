@@ -43,15 +43,15 @@ templ NewsList(view NewsListView) {
 	@layouts.AdminLayout(view.Nav) {
 		<div class="mx-auto max-w-5xl">
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="text-2xl text-brand">مدیریت اخبار</h1>
-				<a class="rounded bg-brand px-4 py-2 text-white" href="/admin/news/new">ایجاد خبر جدید</a>
+				<h1 class="ui-page-title">مدیریت اخبار</h1>
+				<a class="ui-btn ui-btn-primary" href="/admin/news/new">ایجاد خبر جدید</a>
 			</div>
 			if view.Message != "" {
-				<p class="mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted">{ view.Message }</p>
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
 			}
 			<section>
-				<div class="overflow-x-auto">
-					<table class="w-full min-w-[720px] border border-gray-200 bg-white text-sm">
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[720px] text-sm">
 						<thead>
 							<tr class="border-b border-gray-200 bg-surface-soft text-right">
 								<th class="p-2">ردیف</th>

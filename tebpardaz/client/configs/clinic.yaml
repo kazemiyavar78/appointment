@@ -5,8 +5,8 @@ clinic_id: "CLINIC_001"
 clinic_name: "نمونه مرکز درمانی"
 
 # Central tebpardaz server WebSocket endpoint
-# Example: ws://127.0.0.1:8080/ws/clinic
-server_ws_url: "ws://127.0.0.1:8080/ws/clinic"
+server_ws_url : ws://127.0.0.1:8080/ws/clinic
+# server_ws_url: "wss://tebpardaz.ir/ws/clinic"
 
 # Auth token = Clinic.WSClientKey on the central server (sent as clinic_key)
 auth_token: "REPLACE_ME"
@@ -14,12 +14,25 @@ auth_token: "REPLACE_ME"
 # Local SQL Server DSN (microsoft/go-mssqldb)
 # Example: sqlserver://user:pass@127.0.0.1:1433?database=ClinicHIS
 local_db_dsn: "sqlserver://sa:AAAaaa.@192.168.1.5:1433?database=tpcmsx1"
+# local_db_dsn: "sqlserver://sa:AAAaaa.@windows-vph1d12?database=tpcms1402"
+# local_db_dsn: "sqlserver://sa:AAAaaa.@192.163.64.2/mssqlserver2016?database=tpcms1"
+# with instance name
 
 # Optional LIS HTTP base URL for lab results
-lis_base_url: "http://127.0.0.1:8081"
+lis_base_url: "http://192.168.1.60:8081"
 
-# فاصله‌های سینک (ثانیه)
+# پوشه محلی PDF جواب آزمایش — نام فایل: {شماره_پذیرش}-{رمز}.pdf (بدون کد کلینیک)
+# مثال: 117957-WD5.pdf
+pdf_dir: "\\192.163.64.2\\ws1\\pdfs\\lab"
+
+# فاصله‌های سینک
+# پزشکان: ۳ بار در روز در ساعت‌های محلی زیر (به‌علاوه پوش اولیه هنگام اتصال و پاسخ به درخواست سرور)
+doctor_sync_times:
+  - "08:00"
+  - "14:00"
+  - "20:00"
 # نوبت‌ها هر ۱ دقیقه به سرور پوش می‌شوند و آنجا فقط در کش (۴ ساعت) نگه داشته می‌شوند
-doctor_sync_interval_sec: 300
 appointment_sync_interval_sec: 60
+# لیست نوبت‌دهی هفتگی پزشکان هر ۱۵ دقیقه به سرور پوش می‌شود (کش سمت سرور)
+weekly_reserve_sync_interval_sec: 900
 heartbeat_interval_sec: 30

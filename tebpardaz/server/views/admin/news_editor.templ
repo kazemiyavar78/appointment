@@ -26,20 +26,20 @@ templ NewsEditor(view NewsEditorView) {
 		<div class="mx-auto max-w-3xl">
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 				if view.EditID > 0 {
-					<h1 class="text-2xl text-brand">ویرایش خبر</h1>
+					<h1 class="ui-page-title">ویرایش خبر</h1>
 				} else {
-					<h1 class="text-2xl text-brand">ایجاد خبر</h1>
+					<h1 class="ui-page-title">ایجاد خبر</h1>
 				}
-				<a class="rounded border border-gray-300 px-4 py-2 text-sm" href="/admin/news">بازگشت به لیست</a>
+				<a class="ui-btn ui-btn-ghost" href="/admin/news">بازگشت به لیست</a>
 			</div>
 			if view.Message != "" {
-				<p class="mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted">{ view.Message }</p>
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
 			}
-			<form id="news-form" class="space-y-4 rounded border border-gray-200 bg-white p-4" method="post" action={ templ.SafeURL(view.FormAction) }>
+			<form id="news-form" class="ui-panel space-y-4" method="post" action={ templ.SafeURL(view.FormAction) }>
 				if view.ShowClinicPick {
 					<label class="block text-sm text-ink-muted">
 						مرکز
-						<select class="mt-1 block w-full rounded border border-gray-300 p-2" name="clinic_id" required>
+						<select class="ui-field mt-1" name="clinic_id" required>
 							<option value="">انتخاب مرکز...</option>
 							for _, clinic := range view.Clinics {
 								if clinic.Selected {
@@ -62,7 +62,7 @@ templ NewsEditor(view NewsEditorView) {
 					<div class="flex flex-wrap items-center gap-3">
 						<input type="hidden" id="cover_url" name="cover_url" value={ view.CoverURL }/>
 						<input id="cover_file" class="block text-sm" type="file" accept="image/*"/>
-						<button class="rounded border border-gray-300 px-3 py-1 text-sm" type="button" id="cover_clear">حذف تصویر</button>
+						<button class="ui-btn ui-btn-ghost" type="button" id="cover_clear">حذف تصویر</button>
 					</div>
 					<img
 						id="cover_preview"
@@ -130,7 +130,7 @@ templ NewsEditor(view NewsEditorView) {
 					منتشر شود
 				</label>
 
-				<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ذخیره خبر</button>
+				<button class="ui-btn ui-btn-primary" type="submit">ذخیره خبر</button>
 			</form>
 		</div>
 		<script>

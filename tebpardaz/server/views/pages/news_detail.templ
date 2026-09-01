@@ -6,7 +6,7 @@ import (
 	"tebpardaz/server/views/components"
 )
 
-// NewsDetailView drives the public news detail page.
+// NewsDetailView دادهٔ صفحه جزئیات خبر عمومی را نگه می‌دارد.
 type NewsDetailView struct {
 	TitleHTML       string
 	BodyHTML        string
@@ -17,6 +17,8 @@ type NewsDetailView struct {
 	BackURL         string
 }
 
+// newsDetailDate تاریخ انتشار جزئیات خبر را قالب‌بندی می‌کند.
+// ورودی: زمان انتشار. خروجی: رشته تاریخ-ساعت یا خالی.
 func newsDetailDate(t time.Time) string {
 	if t.IsZero() {
 		return ""
@@ -24,21 +26,21 @@ func newsDetailDate(t time.Time) string {
 	return t.Format("2006/01/02 15:04")
 }
 
-// NewsDetail renders a single news article with rich HTML body.
+// NewsDetail یک مقاله خبر با بدنه HTML غنی را رندر می‌کند.
 templ NewsDetail(view NewsDetailView) {
-	<article class="mx-auto max-w-3xl">
-		<a class="mb-4 inline-block text-sm text-brand underline" href={ templ.SafeURL(view.BackURL) }>بازگشت به اخبار</a>
+	<article class="ui-fade-in mx-auto max-w-3xl">
+		<a class="ui-link mb-5 inline-flex min-h-[44px] items-center text-sm font-bold" href={ templ.SafeURL(view.BackURL) }>بازگشت به اخبار</a>
 		if view.ShowClinicBadge && view.ClinicName != "" {
-			<span class="mb-3 inline-block rounded bg-brand/10 px-2 py-0.5 text-xs text-brand">{ view.ClinicName }</span>
+			<span class="ui-chip mb-3">{ view.ClinicName }</span>
 		}
-		<h1 class="mb-2 text-2xl text-brand">
+		<h1 class="ui-page-title mb-2">
 			@templ.Raw(view.TitleHTML)
 		</h1>
 		if d := newsDetailDate(view.PublishedAt); d != "" {
-			<p class="mb-4 text-sm text-ink-muted">{ d }</p>
+			<p class="mb-5 text-sm text-ink-muted">{ d }</p>
 		}
 		if view.CoverURL != "" {
-			<img class="mb-6 max-h-[28rem] w-full rounded object-cover" src={ view.CoverURL } alt=""/>
+			<img class="mb-6 max-h-[28rem] w-full rounded-xl object-cover" src={ view.CoverURL } alt="" loading="lazy" decoding="async"/>
 		}
 		<div class="prose max-w-none text-ink [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded">
 			@templ.Raw(view.BodyHTML)
@@ -46,17 +48,20 @@ templ NewsDetail(view NewsDetailView) {
 	</article>
 }
 
-// NewsListView drives the public news listing page.
+// NewsListView دادهٔ فهرست اخبار عمومی را نگه می‌دارد.
 type NewsListView struct {
 	Items           []components.NewsCardView
 	ShowClinicBadge bool
 	EmptyMessage    string
 }
 
-// NewsList renders all published news cards for the tenant.
+// NewsList همه کارت‌های خبر منتشرشده tenant را رندر می‌کند.
 templ NewsList(view NewsListView) {
-	<div class="mx-auto max-w-5xl">
-		<h1 class="mb-4 text-2xl text-brand">اخبار</h1>
+	<div class="ui-fade-in mx-auto max-w-4xl">
+		<section class="ui-section">
+			<h1 class="ui-page-title">اخبار</h1>
+			<p class="ui-page-desc">اطلاعیه‌ها و توضیح تجهیزات مراکز.</p>
+		</section>
 		if len(view.Items) == 0 {
 			<p class="text-ink-muted">{ view.EmptyMessage }</p>
 		} else {

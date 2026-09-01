@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"tebpardaz/server/internal/booking"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/news"
 	"tebpardaz/server/internal/repository"
@@ -15,21 +16,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HomeHandler serves the tenant home page.
+// HomeHandler صفحه اصلی مستأجر را سرو می‌کند.
 type HomeHandler struct {
 	News        *news.Service
 	Clinics     *repository.ClinicRepo
 	Specialties *repository.SpecialtyRepo
+	Insurances  *repository.InsuranceRepo
+	Listing     *booking.ListingService
 }
 
-// NewHomeHandler constructs a HomeHandler.
-// Inputs: news service, clinic repo, specialty repo.
-// Output: pointer to HomeHandler.
-func NewHomeHandler(svc *news.Service, clinics *repository.ClinicRepo, specialties *repository.SpecialtyRepo) *HomeHandler {
-	return &HomeHandler{News: svc, Clinics: clinics, Specialties: specialties}
+// NewHomeHandler سازنده HomeHandler است.
+func NewHomeHandler(
+	svc *news.Service,
+	clinics *repository.ClinicRepo,
+	specialties *repository.SpecialtyRepo,
+	insurances *repository.InsuranceRepo,
+	listing *booking.ListingService,
+) *HomeHandler {
+	return &HomeHandler{
+		News:        svc,
+		Clinics:     clinics,
+		Specialties: specialties,
+		Insurances:  insurances,
+		Listing:     listing,
+	}
 }
 
-// Get renders the home page with specialties, clinics (organ/platform), and latest news.
+// Get صفحه اصلی را با پزشکان، تمام تخصص‌ها، بیمه، مراکز و اخبار رندر می‌کند.
+// ورودی: context درخواست gin حاوی اطلاعات tenant. خروجی: ندارد (صفحه اصلی HTML رندر می‌شود).
 func (h *HomeHandler) Get(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
@@ -68,38 +82,92 @@ func (h *HomeHandler) Get(c *gin.Context) {
 		return
 	}
 
+	allSpecialties := loadApprovedSpecialties(h.Specialties)
+
 	homeView := pages.HomeView{
-		LatestNews:      latest,
-		Specialties:     loadHomeSpecialties(h.Specialties),
-		Clinics:         toHomeClinicCards(clinicRows),
-		ShowClinicCards: showClinic,
-		ShowClinicBadge: showClinic,
-		NewsListURL:     "/news",
+		LatestNews:          latest,
+		Specialties:         allSpecialties,
+		SpecialtiesListURL:  "",
+		ShowSpecialtiesLink: false,
+		Insurances:          loadHomeInsurances(tc, h.Clinics, h.Insurances),
+		Clinics:             toHomeClinicCards(clinicRows),
+		Doctors:             loadHomeDoctors(h.Listing, tc, h.Clinics, showClinic),
+		ShowClinicCards:     showClinic,
+		ShowClinicBadge:     showClinic,
+		NewsListURL:         "/news",
 	}
 	renderPublicLayout(c, tc, pages.Home(homeView), "home")
 }
 
-// loadHomeSpecialties returns approved specialty cards for the home page.
-// Inputs: specialty repo (may be nil).
-// Output: specialty card views ordered by name.
-func loadHomeSpecialties(repo *repository.SpecialtyRepo) []components.SpecialtyCardView {
-	if repo == nil {
+// loadHomeDoctors حداکثر ۱۰ پزشک برای صفحه اول را بارگذاری می‌کند.
+func loadHomeDoctors(
+	listing *booking.ListingService,
+	tc *tenant.Context,
+	clinics *repository.ClinicRepo,
+	showClinicBadge bool,
+) []components.DoctorCardView {
+	if listing == nil || tc == nil {
 		return nil
 	}
-	rows, err := repo.ListApproved()
-	if err != nil || len(rows) == 0 {
+	ids, _, err := resolveTenantClinicIDs(tc, clinics)
+	if err != nil || len(ids) == 0 {
 		return nil
 	}
-	out := make([]components.SpecialtyCardView, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, components.SpecialtyCardView{ID: row.ID, Name: row.Name})
+	diversify := tc.Layout == constants.LayoutOrgan || tc.Layout == constants.LayoutPlatform
+	cards, err := listing.ListHomeDoctors(booking.ListFilter{
+		ClinicIDs: ids,
+		Layout:    tc.Layout,
+	}, showClinicBadge, 10, diversify)
+	if err != nil || len(cards) == 0 {
+		return nil
+	}
+	out := make([]components.DoctorCardView, 0, len(cards))
+	for _, item := range cards {
+		out = append(out, components.DoctorCardView{
+			Name:            item.Name,
+			SpecialtyName:   item.SpecialtyName,
+			DoctorSystemID:  item.DoctorSystemID,
+			PhotoURL:        item.PhotoURL,
+			Photo300:        item.Photo300,
+			Photo600:        item.Photo600,
+			Photo900:        item.Photo900,
+			Photo1200:       item.Photo1200,
+			ShortDesc:       item.ShortDesc,
+			ClinicName:      item.ClinicName,
+			ShowClinicBadge: item.ShowClinicBadge,
+			HasSlot:         item.HasSlot,
+			NearestStartsAt: item.NearestStartsAt,
+			BookingURL:      item.BookingURL,
+		})
 	}
 	return out
 }
 
-// loadHomeClinics returns subsidiary clinics for organ/platform home cards.
-// Inputs: tenant context, clinic repo.
-// Output: clinic rows with City preloaded.
+// loadHomeInsurances بیمه‌های مرتبط با مستأجر فعلی را برمی‌گرداند.
+func loadHomeInsurances(tc *tenant.Context, clinics *repository.ClinicRepo, insurances *repository.InsuranceRepo) []components.InsuranceItemView {
+	if tc == nil || insurances == nil {
+		return nil
+	}
+	ids, _, err := resolveTenantClinicIDs(tc, clinics)
+	if err != nil || len(ids) == 0 {
+		return nil
+	}
+	rows, err := insurances.ListByClinicIDs(ids)
+	if err != nil || len(rows) == 0 {
+		return nil
+	}
+	out := make([]components.InsuranceItemView, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, components.InsuranceItemView{
+			Name:        row.Name,
+			LogoURL:     row.LogoURL,
+			Description: row.Description,
+		})
+	}
+	return out
+}
+
+// loadHomeClinics مراکز تابعه ارگان/پلتفرم را برمی‌گرداند.
 func loadHomeClinics(tc *tenant.Context, clinics *repository.ClinicRepo) []models.Clinic {
 	if tc == nil || clinics == nil {
 		return nil
@@ -125,9 +193,7 @@ func loadHomeClinics(tc *tenant.Context, clinics *repository.ClinicRepo) []model
 	}
 }
 
-// toHomeClinicCards maps clinic models to home clinic card views.
-// Inputs: clinic rows with optional City.
-// Output: ClinicCardView slice.
+// toHomeClinicCards مدل مرکز را به کارت خانه نگاشت می‌کند.
 func toHomeClinicCards(rows []models.Clinic) []components.ClinicCardView {
 	if len(rows) == 0 {
 		return nil

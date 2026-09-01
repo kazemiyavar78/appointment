@@ -1,85 +1,67 @@
 package pages
 
-import (
-	"time"
+import "tebpardaz/server/views/components"
 
-	"tebpardaz/server/views/components"
-)
-
-// HomeNewsItem is one news card shown on the home page.
-type HomeNewsItem struct {
-	TitleHTML       string
-	ExcerptHTML     string
-	CoverURL        string
-	PublishedAt     time.Time
-	DetailURL       string
-	ClinicName      string
-	ShowClinicBadge bool
-}
-
-// HomeView drives the tenant home page content.
-type HomeView struct {
-	LatestNews      []HomeNewsItem
-	Specialties     []components.SpecialtyCardView
-	Clinics         []components.ClinicCardView
-	ShowClinicCards bool
-	ShowClinicBadge bool
-	NewsListURL     string
-}
-
-// homeNewsToCard maps a home news item to a NewsCardView.
-func homeNewsToCard(item HomeNewsItem, featured bool) components.NewsCardView {
-	return components.NewsCardView{
-		TitleHTML:       item.TitleHTML,
-		ExcerptHTML:     item.ExcerptHTML,
-		CoverURL:        item.CoverURL,
-		PublishedAt:     item.PublishedAt,
-		DetailURL:       item.DetailURL,
-		ClinicName:      item.ClinicName,
-		ShowClinicBadge: item.ShowClinicBadge,
-		Featured:        featured,
-	}
-}
-
-// Home renders the tenant landing content including specialties, clinics, and news.
+// Home محتوای لندینگ شامل هیرو، پزشکان، تخصص، مرکز و اخبار را رندر می‌کند.
 templ Home(view HomeView) {
-	<div class="mx-auto max-w-6xl">
-		<section class="mb-10 border-b border-surface-border pb-8">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-				<div class="min-w-0">
-					<p class="mb-1 text-sm text-brand">سامانه نوبت‌دهی</p>
-					<h1 class="text-2xl font-bold text-ink sm:text-3xl">رزرو نوبت، ساده و سریع</h1>
-					<p class="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted sm:text-base">
-						پزشک را انتخاب کنید و نزدیک‌ترین زمان آزاد را رزرو کنید.
-					</p>
-				</div>
-				<a
-					class="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-md bg-brand px-6 text-base font-medium text-white hover:bg-brand-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-					href="/doctors"
-				>
+	<div class="ui-fade-in mx-auto max-w-6xl">
+		<section class="ui-hero">
+			<p class="ui-hero-brand">طب‌پرداز</p>
+			<h1 class="ui-hero-title">رزرو نوبت، ساده و سریع</h1>
+			<p class="ui-hero-text">
+				پزشک را انتخاب کنید و نزدیک‌ترین زمان آزاد را رزرو کنید.
+			</p>
+			<div class="ui-hero-actions">
+				<a class="ui-btn ui-btn-primary" href="/doctors">
 					نوبت بگیرید
 				</a>
 			</div>
 		</section>
-		if len(view.Specialties) > 0 {
-			<section class="mb-10">
-				<div class="mb-5">
-					<h2 class="text-lg font-bold text-ink sm:text-xl">تخصص‌ها</h2>
-					<p class="mt-1 text-sm text-ink-muted">برای فیلتر سریع پزشکان، تخصص را انتخاب کنید.</p>
+		if len(view.Doctors) > 0 {
+			<section class="ui-section">
+				<div class="mb-4 flex items-end justify-between gap-3">
+					<div class="ui-section-head mb-0 min-w-0">
+						<h2 class="ui-section-title">پزشکان</h2>
+						<p class="ui-section-desc">برای رزرو، روی کارت پزشک بزنید.</p>
+					</div>
+					<a class="ui-link shrink-0 text-sm" href="/doctors">مشاهده همه</a>
 				</div>
-				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					for _, sp := range view.Specialties {
-						@components.SpecialtyCard(sp)
+				@components.DoctorCardAssets()
+				<div class="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					for _, doc := range view.Doctors {
+						@components.DoctorCard(doc)
 					}
 				</div>
 			</section>
 		}
+		if len(view.Specialties) > 0 {
+			<section class="ui-section">
+				<div class="ui-section-head">
+					<h2 class="ui-section-title">تخصص‌ها</h2>
+					<p class="ui-section-desc">تخصص را انتخاب کنید تا پزشکان همان رشته را ببینید.</p>
+				</div>
+				@components.SpecialtyCardGrid(view.Specialties)
+			</section>
+		}
+		if len(view.Insurances) > 0 {
+			<section class="ui-section">
+				<div class="ui-section-head">
+					<h2 class="ui-section-title">بیمه‌های طرف قرارداد</h2>
+					if view.ShowClinicCards {
+						<p class="ui-section-desc">تجمیع بیمه‌های طرف قرارداد مراکز این مجموعه.</p>
+					} else {
+						<p class="ui-section-desc">بیمه‌هایی که این مرکز می‌پذیرد.</p>
+					}
+				</div>
+				@components.InsuranceList(view.Insurances)
+			</section>
+		}
 		if view.ShowClinicCards {
 			if len(view.Clinics) > 0 {
-				<section class="mb-10">
-					<div class="mb-5">
-						<h2 class="text-lg font-bold text-ink sm:text-xl">مراکز درمانی</h2>
-						<p class="mt-1 text-sm text-ink-muted">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>
+				<section class="ui-section">
+					<div class="ui-section-head">
+						<h2 class="ui-section-title">مراکز درمانی</h2>
+						<p class="ui-section-desc">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						for _, cl := range view.Clinics {
@@ -89,22 +71,22 @@ templ Home(view HomeView) {
 				</section>
 			}
 		}
-		<section>
-			<div class="mb-5 flex items-center justify-between gap-3">
-				<h2 class="text-lg font-bold text-ink sm:text-xl">آخرین اخبار</h2>
-				<a
-					class="inline-flex min-h-[44px] items-center text-sm text-brand hover:underline"
-					href={ templ.SafeURL(view.NewsListURL) }
-				>
+		<section class="ui-section">
+			<div class="mb-4 flex items-end justify-between gap-3">
+				<div class="ui-section-head mb-0 min-w-0">
+					<h2 class="ui-section-title">آخرین اخبار</h2>
+					<p class="ui-section-desc">اطلاعیه‌ها و توضیح تجهیزات مراکز.</p>
+				</div>
+				<a class="ui-link shrink-0 text-sm" href={ templ.SafeURL(view.NewsListURL) }>
 					مشاهده همه
 				</a>
 			</div>
 			if len(view.LatestNews) == 0 {
-				<p class="py-10 text-center text-sm text-ink-muted">خبری برای نمایش وجود ندارد.</p>
+				<p class="py-6 text-center text-sm text-ink-muted">خبری برای نمایش وجود ندارد.</p>
 			} else {
 				<div class="news-grid">
-					for i, item := range view.LatestNews {
-						@components.NewsCard(homeNewsToCard(item, i == 0))
+					for _, item := range view.LatestNews {
+						@components.NewsCard(homeNewsToCard(item))
 					}
 				</div>
 			}

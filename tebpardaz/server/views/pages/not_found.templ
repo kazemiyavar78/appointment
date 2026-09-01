@@ -1,0 +1,21 @@
+package pages
+
+// NotFoundView دادهٔ صفحه ۴۰۴ را نگه می‌دارد.
+type NotFoundView struct {
+	HomeURL string
+}
+
+// NotFound صفحه مسیر ناموجود با بازگشت به خانه دامنه را رندر می‌کند.
+templ NotFound(view NotFoundView) {
+	<div class="ui-fade-in mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center text-center">
+		<p class="ui-hero-brand">۴۰۴</p>
+		<h1 class="ui-hero-title">صفحه پیدا نشد</h1>
+		<p class="ui-hero-text mx-auto">
+			آدرس واردشده در این سایت وجود ندارد. به صفحه اصلی برگردید.
+		</p>
+		<div class="ui-hero-actions">
+			<a class="ui-btn ui-btn-primary" href={ templ.SafeURL(view.HomeURL) }>بازگشت به صفحه اصلی</a>
+		</div>
+		<meta http-equiv="refresh" content={ "4;url=" + view.HomeURL }/>
+	</div>
+}

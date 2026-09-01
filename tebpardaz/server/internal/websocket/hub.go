@@ -3,7 +3,6 @@ package websocket
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -49,7 +48,8 @@ func (h *Hub) Run() {
 			}
 			h.clients[c.ClinicID] = c
 			h.mu.Unlock()
-			log.Printf("ws: clinic %d connected", c.ClinicID)
+			// لاگ شروع اتصال مرکز
+			LogClinicBehavior(c.ClinicID, ActionConnect, "", "", "مرکز متصل شد", nil)
 		case c := <-h.unregister:
 			h.mu.Lock()
 			if cur, ok := h.clients[c.ClinicID]; ok && cur == c {
@@ -57,7 +57,8 @@ func (h *Hub) Run() {
 				_ = c.Close()
 			}
 			h.mu.Unlock()
-			log.Printf("ws: clinic %d disconnected", c.ClinicID)
+			// لاگ قطع اتصال مرکز
+			LogClinicBehavior(c.ClinicID, ActionDisconnect, "", "", "مرکز قطع شد", nil)
 		}
 	}
 }
@@ -136,6 +137,8 @@ func (h *Hub) RequestDoctorList(clinicID uint, timeout time.Duration) (*protocol
 		}
 		return &push, nil
 	case <-timer.C:
+		// لاگ اتمام مهلت رفت‌وبرگشت لیست پزشکان
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeDoctorListRequest), requestID, "مهلت پاسخ لیست پزشکان تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }
@@ -175,6 +178,8 @@ func (h *Hub) RequestAppointmentList(clinicID uint, timeout time.Duration, req p
 		}
 		return &push, nil
 	case <-timer.C:
+		// لاگ اتمام مهلت رفت‌وبرگشت لیست نوبت
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeAppointmentListRequest), requestID, "مهلت پاسخ لیست نوبت تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }
@@ -222,6 +227,8 @@ func (h *Hub) RequestBookingCreate(clinicID uint, timeout time.Duration, req pro
 		}
 		return &ack, nil
 	case <-timer.C:
+		// لاگ اتمام مهلت رفت‌وبرگشت ایجاد نوبت
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeBookingCreate), requestID, "مهلت پاسخ ایجاد نوبت تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }
@@ -262,6 +269,8 @@ func (h *Hub) RequestWaitingQueueList(clinicID uint, timeout time.Duration, requ
 		}
 		return &push, nil
 	case <-timer.C:
+		// لاگ اتمام مهلت رفت‌وبرگشت صف انتظار
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeWaitingQueueListRequest), requestID, "مهلت پاسخ صف انتظار تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }
@@ -307,14 +316,16 @@ func (h *Hub) RequestTestResult(clinicID uint, timeout time.Duration, req protoc
 		}
 		return &resp, nil
 	case <-timer.C:
+		// لاگ اتمام مهلت رفت‌وبرگشت جواب آزمایش
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeTestResultRequest), requestID, "مهلت پاسخ جواب آزمایش تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }
 
 // DeliverReply fulfills a pending request-response waiter when RequestID matches.
-// Inputs: env (inbound envelope from clinic).
+// Inputs: clinicID (مرکز پاسخ‌دهنده), env (inbound envelope from clinic).
 // Output: true when a waiter consumed the envelope.
-func (h *Hub) DeliverReply(env *protocol.Envelope) bool {
+func (h *Hub) DeliverReply(clinicID uint, env *protocol.Envelope) bool {
 	if env == nil || env.RequestID == "" {
 		return false
 	}
@@ -326,24 +337,37 @@ func (h *Hub) DeliverReply(env *protocol.Envelope) bool {
 	}
 	select {
 	case ch <- env:
+		// لاگ تکمیل رفت‌وبرگشت پس از دریافت پاسخ مرکز
+		LogClinicBehavior(clinicID, ActionReply, string(env.Type), env.RequestID, "پاسخ مرکز تحویل waiter شد", nil)
 		return true
 	default:
 		return false
 	}
 }
 
+// sendEnvelope پیام را به مرکز آنلاین می‌فرستد و نتیجه را لاگ می‌کند.
+// ورودی: clinicID و envelope پروتکل.
+// خروجی: true در صورت صف‌شدن موفق برای ارسال.
 func (h *Hub) sendEnvelope(clinicID uint, env *protocol.Envelope) bool {
 	raw, err := env.MustMarshal()
 	if err != nil {
+		LogClinicBehavior(clinicID, ActionError, string(env.Type), env.RequestID, "خطا در marshal پیام خروجی", err)
 		return false
 	}
 	h.mu.RLock()
 	c, ok := h.clients[clinicID]
 	h.mu.RUnlock()
 	if !ok || c == nil {
+		LogClinicBehavior(clinicID, ActionError, string(env.Type), env.RequestID, "مرکز آفلاین است", ErrClinicOffline)
 		return false
 	}
-	return c.Send(raw)
+	if !c.Send(raw) {
+		LogClinicBehavior(clinicID, ActionError, string(env.Type), env.RequestID, "بافر ارسال پر است", nil)
+		return false
+	}
+	// لاگ ارسال پیام به مرکز
+	LogClinicBehavior(clinicID, ActionSend, string(env.Type), env.RequestID, "پیام به مرکز ارسال شد", nil)
+	return true
 }
 
 // DecodeEnvelope unmarshals raw bytes into a protocol Envelope.

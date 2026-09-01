@@ -1,0 +1,114 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// ServiceRow یک ردیف جدول خدمات در پنل ادمین است.
+type ServiceRow struct {
+	ID          uint
+	Name        string
+	Description string
+}
+
+// ServicePageView مدل داده صفحه مدیریت خدمات (CRUD) در پنل سوپرادمین است.
+type ServicePageView struct {
+	Nav             layouts.AdminLayoutView
+	Items           []ServiceRow
+	Message         string
+	EditID          uint
+	EditName        string
+	EditDescription string
+}
+
+// Services صفحه مدیریت خدمات شامل فرم ایجاد/ویرایش و جدول لیست خدمات را رندر می‌کند.
+// ورودی: view مدل داده صفحه خدمات. خروجی: کامپوننت templ صفحه ادمین.
+templ Services(view ServicePageView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-4xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<h1 class="ui-page-title">مدیریت خدمات</h1>
+				<div class="flex flex-wrap gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/clinic-insurances">انتصاب به بیمه‌های مرکز</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/doctor-services">انتصاب به پزشکان</a>
+				</div>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			<section class="ui-panel mb-6">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg text-ink">بروزرسانی خدمت</h2>
+					<form class="grid gap-3 sm:grid-cols-2" method="post" action={ templ.SafeURL("/admin/services/" + formatUint(view.EditID) + "/update") }>
+						@serviceFormFields(view.EditName, view.EditDescription)
+						<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+							<a class="ui-btn ui-btn-ghost" href="/admin/services">انصراف</a>
+						</div>
+					</form>
+				} else {
+					<h2 class="mb-3 text-lg text-ink">ایجاد خدمت جدید</h2>
+					<form class="grid gap-3 sm:grid-cols-2" method="post" action="/admin/services">
+						@serviceFormFields("", "")
+						<div class="sm:col-span-2">
+							<button class="ui-btn ui-btn-primary" type="submit">ایجاد</button>
+						</div>
+					</form>
+				}
+			</section>
+			<section>
+				<h2 class="mb-3 text-lg text-ink">لیست خدمات</h2>
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[640px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-2">ردیف</th>
+								<th class="p-2">نام خدمت</th>
+								<th class="p-2">توضیحات خدمت</th>
+								<th class="p-2">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Items) == 0 {
+								<tr>
+									<td class="p-3 text-ink-muted" colspan="4">خدمتی ثبت نشده است.</td>
+								</tr>
+							}
+							for index, item := range view.Items {
+								<tr class="border-b border-gray-100">
+									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2 font-medium">{ item.Name }</td>
+									<td class="p-2 text-ink-muted">{ item.Description }</td>
+									<td class="p-2 whitespace-nowrap">
+										<a
+											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
+											href={ templ.SafeURL("/admin/services?edit=" + formatUint(item.ID)) }
+										>ویرایش</a>
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/services/" + formatUint(item.ID) + "/delete") } onsubmit="return confirm('این خدمت حذف شود؟ انتصاب‌های آن نیز پاک خواهند شد.');">
+											<button class="rounded border border-red-300 px-2 py-1 text-xs text-red-700" type="submit">حذف</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// serviceFormFields فیلدهای نام و توضیحات خدمت را برای فرم رندر می‌کند.
+// ورودی: name نام خدمت، description توضیحات خدمت. خروجی: کامپوننت فرم.
+templ serviceFormFields(name, description string) {
+	<label class="block text-sm text-ink-muted sm:col-span-2">
+		نام خدمت
+		<input class="ui-field mt-1 w-full" type="text" name="name" value={ name } required maxlength="150" placeholder="مثال: نوار قلب، اکوکاردیوگرافی، جراحی سرپایی"/>
+	</label>
+	<label class="block text-sm text-ink-muted sm:col-span-2">
+		توضیحات خدمت
+		<textarea class="ui-field mt-1 w-full min-h-[90px]" name="description" rows="3" maxlength="1000" placeholder="توضیحات تکمیلی پیرامون خدمت...">{ description }</textarea>
+	</label>
+}

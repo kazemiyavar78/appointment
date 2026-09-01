@@ -1,0 +1,89 @@
+package pages
+
+import "tebpardaz/server/views/components"
+
+// StaticPageView دادهٔ صفحات درباره ما / تماس / قوانین است.
+type StaticPageView struct {
+	Title       string
+	Lead        string
+	BodyHTML    string
+	ClinicName  string
+	Phone       string
+	Address     string
+	ShowReviews bool
+	Reviews     components.ReviewSectionView
+}
+
+// AboutPage صفحه درباره ما را با امکان نظرات مرکز رندر می‌کند.
+templ AboutPage(view StaticPageView) {
+	<div class="ui-fade-in mx-auto max-w-3xl">
+		<section class="ui-hero">
+			if view.ClinicName != "" {
+				<p class="ui-hero-brand">{ view.ClinicName }</p>
+			}
+			<h1 class="ui-hero-title">{ view.Title }</h1>
+			if view.Lead != "" {
+				<p class="ui-hero-text">{ view.Lead }</p>
+			}
+		</section>
+		if view.BodyHTML != "" {
+			<section class="ui-panel prose mb-8 max-w-none text-ink">
+				@templ.Raw(view.BodyHTML)
+			</section>
+		}
+		if view.ShowReviews {
+			@components.ReviewSection(view.Reviews)
+		}
+	</div>
+}
+
+// ContactPage صفحه تماس با ما را رندر می‌کند.
+templ ContactPage(view StaticPageView) {
+	<div class="ui-fade-in mx-auto max-w-3xl">
+		<section class="ui-hero">
+			<h1 class="ui-hero-title">{ view.Title }</h1>
+			if view.Lead != "" {
+				<p class="ui-hero-text">{ view.Lead }</p>
+			}
+		</section>
+		<div class="ui-panel space-y-3">
+			if view.ClinicName != "" {
+				<p class="text-base font-bold text-ink">{ view.ClinicName }</p>
+			}
+			if view.Phone != "" {
+				<p class="text-sm text-ink-muted">تلفن: <span class="font-medium text-ink" dir="ltr">{ view.Phone }</span></p>
+			}
+			if view.Address != "" {
+				<p class="text-sm leading-relaxed text-ink-muted">آدرس: { view.Address }</p>
+			}
+			if view.Phone == "" && view.Address == "" {
+				<p class="text-sm text-ink-muted">برای اطلاعات تماس با پشتیبانی مرکز هماهنگ کنید.</p>
+			}
+		</div>
+	</div>
+}
+
+// TermsPage صفحه قوانین و مقررات را رندر می‌کند.
+templ TermsPage(view StaticPageView) {
+	<div class="ui-fade-in mx-auto max-w-3xl">
+		<section class="ui-hero">
+			<h1 class="ui-hero-title">{ view.Title }</h1>
+			if view.Lead != "" {
+				<p class="ui-hero-text">{ view.Lead }</p>
+			}
+		</section>
+		<section class="ui-panel prose max-w-none space-y-3 text-sm leading-relaxed text-ink">
+			if view.BodyHTML != "" {
+				@templ.Raw(view.BodyHTML)
+			} else {
+				<p>استفاده از سامانه نوبت‌دهی به معنای پذیرش قوانین زیر است:</p>
+				<ul class="list-disc pr-5">
+					<li>اطلاعات هویتی باید صحیح و متعلق به بیمار باشد.</li>
+					<li>نوبت رزرو‌شده فقط برای همان بیمار قابل استفاده است.</li>
+					<li>لغو یا جابه‌جایی نوبت طبق مقررات هر مرکز انجام می‌شود.</li>
+					<li>مسئولیت صحت اطلاعات واردشده با کاربر است.</li>
+				</ul>
+			}
+		</section>
+	</div>
+}

@@ -61,18 +61,18 @@ func NewHandlers(
 func (h *Handlers) ServeWS(c *gin.Context) {
 	clinic, err := h.authenticate(c.Request)
 	if err != nil {
+		// لاگ شکست احراز هویت مرکز
+		LogClinicBehavior(0, ActionAuthFail, "", "", "احراز هویت مرکز ناموفق", err)
 		c.String(http.StatusUnauthorized, err.Error())
 		return
 	}
-	
 
-	
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("error", err)
+		// لاگ شکست ارتقای اتصال به WebSocket
+		LogClinicBehavior(clinic.ID, ActionUpgradeFail, "", "", "ارتقای WebSocket ناموفق", err)
 		return
 	}
-	
 
 	client := NewClientConn(h.Hub, clinic.ID, conn)
 	h.Hub.Register(client)
@@ -89,10 +89,8 @@ func (h *Handlers) authenticate(r *http.Request) (*models.Clinic, error) {
 	if key == "" {
 		return nil, fmt.Errorf("missing clinic_key")
 	}
-	fmt.Println("key", key)
 	if h.Clinics == nil || h.Clinics.DB == nil {
 		// حالت توسعه: اگر DB مدیریت در دسترس نباشد، clinic id عددی پذیرفته می‌شود
-
 		if id, err := strconv.ParseUint(key, 10, 64); err == nil {
 			return &models.Clinic{Model: gorm.Model{ID: uint(id)}, WSClientKey: key}, nil
 		}
@@ -105,8 +103,12 @@ func (h *Handlers) authenticate(r *http.Request) (*models.Clinic, error) {
 func (h *Handlers) handleFrame(client *ClientConn, raw []byte) error {
 	env, err := DecodeEnvelope(raw)
 	if err != nil {
+		LogClinicBehavior(client.ClinicID, ActionError, "", "", "decode envelope ناموفق", err)
 		return err
 	}
+	// لاگ دریافت پیام از مرکز
+	LogClinicBehavior(client.ClinicID, ActionRecv, string(env.Type), env.RequestID, "پیام از مرکز دریافت شد", nil)
+
 	switch env.Type {
 	case protocol.TypePing:
 		pong, err := protocol.NewEnvelope(protocol.TypePong, env.RequestID, nil)
@@ -139,7 +141,7 @@ func (h *Handlers) handleFrame(client *ClientConn, raw []byte) error {
 		}
 		return h.handleWaitingQueueListPush(client, env, &push)
 	case protocol.TypeBookingCreateAck, protocol.TypeBookingCancelAck, protocol.TypeTestResultResponse:
-		_ = h.Hub.DeliverReply(env)
+		_ = h.Hub.DeliverReply(client.ClinicID, env)
 		return nil
 	default:
 		return nil
@@ -183,7 +185,7 @@ func (h *Handlers) handleDoctorListPush(client *ClientConn, env *protocol.Envelo
 		return err
 	}
 	// تکمیل waiter مربوط به doctor.list.request (دریافت لیست زنده ادمین)
-	_ = h.Hub.DeliverReply(env)
+	_ = h.Hub.DeliverReply(client.ClinicID, env)
 	return nil
 }
 
@@ -215,7 +217,7 @@ func (h *Handlers) handleAppointmentListPush(client *ClientConn, env *protocol.E
 		return err
 	}
 	// تکمیل waiter مربوط به appointment.list.request (بروزرسانی یک/همه پزشکان از سمت سرور)
-	_ = h.Hub.DeliverReply(env)
+	_ = h.Hub.DeliverReply(client.ClinicID, env)
 	return nil
 }
 
@@ -238,7 +240,7 @@ func (h *Handlers) handleWeeklyReserveListPush(client *ClientConn, env *protocol
 	if err := client.SendEnvelope(out); err != nil {
 		return err
 	}
-	_ = h.Hub.DeliverReply(env)
+	_ = h.Hub.DeliverReply(client.ClinicID, env)
 	return nil
 }
 
@@ -263,6 +265,6 @@ func (h *Handlers) handleWaitingQueueListPush(client *ClientConn, env *protocol.
 	if err := client.SendEnvelope(out); err != nil {
 		return err
 	}
-	_ = h.Hub.DeliverReply(env)
+	_ = h.Hub.DeliverReply(client.ClinicID, env)
 	return nil
 }

@@ -38,6 +38,7 @@ type bookingWSSubmit struct {
 	Mobile     string `json:"mobile"`
 	BirthDate  string `json:"birth_date"`
 	Sex        string `json:"sex"`
+	OTPTicket  string `json:"otp_ticket"`
 }
 
 // ServeBookingWS keeps one WebSocket open from form submit until the clinic result is reported.
@@ -98,22 +99,33 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 
 	var submit bookingWSSubmit
 	if err := conn.ReadJSON(&submit); err != nil {
-		emit(booking.NewFinal(false, "دریافت اطلاعات فرم ناموفق بود"))
+		emit(booking.NewFinal(false, "دریافت اطلاعات فرم ناموفق بود", ""))
 		return
 	}
 
 	if h.CSRF == nil || !h.CSRF.Verify(c.Request, submit.CSRFToken) {
-		emit(booking.NewFinal(false, "توکن امنیتی نامعتبر است؛ صفحه را تازه کنید"))
+		emit(booking.NewFinal(false, "توکن امنیتی نامعتبر است؛ صفحه را تازه کنید", ""))
 		return
 	}
 
 	if h.Bookings == nil {
-		emit(booking.NewFinal(false, "سرویس نوبت در دسترس نیست"))
+		emit(booking.NewFinal(false, "سرویس نوبت در دسترس نیست", ""))
 		return
+	}
+
+	clinicCode := 0
+	clinicNameStr := ""
+	if h.Clinics != nil {
+		if clinic, e := h.Clinics.GetByID(clinicID); e == nil && clinic != nil {
+			clinicCode = clinic.Code
+			clinicNameStr = clinic.Name
+		}
 	}
 
 	result, bookErr := h.Bookings.Book(booking.BookRequest{
 		ClinicID:   clinicID,
+		ClinicCode: clinicCode,
+		ClinicName: clinicNameStr,
 		Doctor:     doctor,
 		ClientIP:   ip,
 		SlotID:     submit.SlotID,
@@ -123,6 +135,7 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		Mobile:     submit.Mobile,
 		BirthDate:  submit.BirthDate,
 		Sex:        submit.Sex,
+		OTPTicket:  submit.OTPTicket,
 	}, emit)
 
 	if result == nil {
@@ -130,10 +143,10 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		if bookErr != nil {
 			msg = bookErr.Error()
 		}
-		emit(booking.NewFinal(false, msg))
+		emit(booking.NewFinal(false, msg, ""))
 		return
 	}
-	emit(booking.NewFinal(result.OK, result.Message))
+	emit(booking.NewFinal(result.OK, result.Message, result.ExternalID))
 }
 
 // resolveBookingTarget resolves clinic ID and doctor slug for the current tenant layout.

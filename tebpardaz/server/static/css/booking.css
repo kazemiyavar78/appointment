@@ -1,0 +1,792 @@
+/* صفحه رزرو — پالت #4A6CF7، فاصله ۸px، کارت سفید روی #F5F7FA */
+
+.bk-page {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+  background: #F5F7FA;
+  min-height: 60vh;
+  font-size: 16px;
+  color: #1A202C;
+}
+
+@media (min-width: 640px) {
+  .bk-page {
+    max-width: 700px;
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bk-page {
+    max-width: 900px;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(26, 32, 44, 0.06);
+    background: #FFFFFF;
+  }
+}
+
+.bk-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  color: #4A6CF7;
+  text-decoration: none;
+}
+
+.bk-doctor-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(26, 32, 44, 0.05);
+}
+
+.bk-doctor-card__photo,
+.bk-doctor-card__placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.bk-doctor-card__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 108, 247, 0.12);
+  color: #4A6CF7;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .bk-doctor-card__photo,
+  .bk-doctor-card__placeholder {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+.bk-doctor-card__clinic {
+  display: inline-block;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  background: rgba(74, 108, 247, 0.1);
+  color: #4A6CF7;
+  border-radius: 6px;
+}
+
+.bk-doctor-card__name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.bk-doctor-card__spec {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #4A5568;
+}
+
+.bk-alert {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+}
+
+/* استپر */
+.bk-stepper {
+  margin-bottom: 24px;
+}
+
+.bk-stepper__list {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bk-stepper__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.bk-stepper__item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: calc(50% + 14px);
+  width: calc(100% - 28px);
+  height: 2px;
+  background: #E2E8F0;
+}
+
+.bk-stepper__item.is-done:not(:last-child)::after {
+  background: #4A6CF7;
+}
+
+.bk-stepper__dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #E2E8F0;
+  background: #FFFFFF;
+  z-index: 1;
+}
+
+.bk-stepper__item.is-active .bk-stepper__dot {
+  width: 24px;
+  height: 24px;
+  border-color: #4A6CF7;
+  background: #4A6CF7;
+  box-shadow: 0 0 0 4px rgba(74, 108, 247, 0.2);
+}
+
+.bk-stepper__item.is-done .bk-stepper__dot {
+  border-color: #10B981;
+  background: #10B981;
+}
+
+.bk-stepper__label {
+  display: none;
+  font-size: 12px;
+  color: #4A5568;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .bk-stepper__label {
+    display: block;
+  }
+  .bk-stepper__item.is-active .bk-stepper__label {
+    color: #4A6CF7;
+    font-weight: 700;
+  }
+}
+
+/* پنل‌ها */
+.bk-panel {
+  padding: 16px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(26, 32, 44, 0.04);
+}
+
+.bk-panel__title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.bk-panel__desc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #4A5568;
+}
+
+/* کارت نوبت */
+.bk-slots__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: #4A5568;
+  border: 1px dashed #E2E8F0;
+  border-radius: 8px;
+}
+
+.bk-slots__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+  .bk-slots__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .bk-slots__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.bk-slot-card {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  overflow: hidden;
+  min-height: 88px;
+  padding: 12px 12px 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bk-slot-card:active {
+  transform: scale(1.02);
+}
+
+.bk-slot-card.is-selected {
+  border-color: #4A6CF7;
+  box-shadow: 0 4px 16px rgba(74, 108, 247, 0.18);
+}
+
+.bk-slot-card__bar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #4A6CF7;
+}
+
+.bk-slot-card__date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  margin-left: 12px;
+  text-align: center;
+}
+
+.bk-slot-card__day {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: #4A6CF7;
+}
+
+.bk-slot-card__month {
+  font-size: 12px;
+  color: #4A5568;
+}
+
+.bk-slot-card__time {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.bk-slot-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.bk-slot-card__doctor {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-slot-card__meta {
+  font-size: 13px;
+  color: #4A5568;
+  margin-top: 4px;
+}
+
+/* فرم */
+.bk-form__lead {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #4A5568;
+}
+
+.bk-field {
+  margin-bottom: 16px;
+}
+
+.bk-field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .bk-field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.bk-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bk-input-wrap {
+  position: relative;
+}
+
+.bk-input-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.bk-input,
+.bk-form .persian-datepicker-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 40px 12px 12px;
+  font-size: 16px;
+  border: none;
+  border-bottom: 2px solid #E2E8F0;
+  border-radius: 0;
+  background: transparent;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.bk-input:focus,
+.bk-form .persian-datepicker-input:focus {
+  outline: none;
+  border-bottom-color: #4A6CF7;
+}
+
+.bk-input.is-invalid,
+.bk-form .persian-datepicker-input.is-invalid {
+  border-bottom-color: #EF4444;
+}
+
+.bk-field-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #EF4444;
+}
+
+.bk-field-error.is-visible {
+  animation: bk-blink 0.8s ease 2;
+}
+
+@keyframes bk-blink {
+  50% { opacity: 0.4; }
+}
+
+/* جنسیت */
+.bk-sex-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bk-sex-btn__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid #E2E8F0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bk-sex-btn input:checked + .bk-sex-btn__inner {
+  background: #4A6CF7;
+  border-color: #4A6CF7;
+  color: #FFFFFF;
+}
+
+/* دکمه‌ها */
+.bk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.bk-btn:active:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.bk-btn--primary {
+  background: #4A6CF7;
+  color: #FFFFFF;
+}
+
+.bk-btn--primary:disabled {
+  background: #CBD5E0;
+  cursor: not-allowed;
+}
+
+.bk-btn--ghost {
+  background: transparent;
+  color: #4A5568;
+  border: 1px solid #E2E8F0;
+}
+
+.bk-btn--block {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.bk-link {
+  background: none;
+  border: none;
+  color: #4A6CF7;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.bk-btn__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: bk-spin 0.7s linear infinite;
+}
+
+@keyframes bk-spin {
+  to { transform: rotate(360deg); }
+}
+
+.bk-btn.is-loading .bk-btn__text { display: none; }
+.bk-btn.is-loading .bk-btn__spinner { display: inline-block; }
+
+/* OTP */
+.bk-otp {
+  margin-top: 16px;
+}
+
+.bk-otp__card {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(26, 32, 44, 0.08);
+}
+
+.bk-otp__title {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.bk-otp__desc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #4A5568;
+}
+
+.bk-otp__boxes {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  direction: ltr;
+}
+
+.bk-otp__box {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 2px dashed #CBD5E0;
+  border-radius: 8px;
+  background: #FFFFFF;
+}
+
+.bk-otp__box:focus {
+  outline: none;
+  border-style: solid;
+  border-color: #4A6CF7;
+}
+
+.bk-otp__timer {
+  font-size: 14px;
+  color: #A0AEC0;
+  margin: 0 0 8px;
+}
+
+.bk-otp__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bk-otp__actions .bk-btn { flex: 1; }
+
+.bk-otp__status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #4A5568;
+}
+
+.bk-otp__status.is-error { color: #EF4444; }
+.bk-otp__status.is-ok { color: #10B981; }
+
+/* مودال */
+.bk-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .bk-modal {
+    align-items: center;
+  }
+}
+
+.bk-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 32, 44, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.bk-modal__sheet {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 24px;
+  background: #FFFFFF;
+  border-radius: 16px 16px 0 0;
+  text-align: center;
+  animation: bk-slide-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (min-width: 640px) {
+  .bk-modal__sheet {
+    border-radius: 16px;
+  }
+}
+
+@keyframes bk-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.bk-modal__icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+}
+
+.bk-modal__check-circle {
+  stroke: #10B981;
+  stroke-width: 2;
+}
+
+.bk-modal__check-path {
+  stroke: #10B981;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: bk-draw 0.5s ease 0.2s forwards;
+}
+
+@keyframes bk-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.bk-modal.is-error .bk-modal__check-circle,
+.bk-modal.is-error .bk-modal__check-path {
+  stroke: #EF4444;
+}
+
+.bk-modal__title {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.bk-modal__message {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #4A5568;
+}
+
+.bk-modal__summary {
+  text-align: right;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #F5F7FA;
+  border-radius: 8px;
+}
+
+.bk-modal__row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.bk-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bk-hidden { display: none !important; }
+
+/* خدمات و بیمه‌های تحت پوشش پزشک */
+.bk-services-section {
+  margin-top: 32px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(26, 32, 44, 0.05);
+  border: 1px solid #E2E8F0;
+}
+
+.bk-services-section__title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1A202C;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bk-services-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .bk-services-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+.bk-service-card {
+  padding: 16px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bk-service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 108, 247, 0.08);
+}
+
+.bk-service-card__header {
+  margin-bottom: 12px;
+}
+
+.bk-service-card__name {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2D3748;
+}
+
+.bk-service-card__desc {
+  margin: 0;
+  font-size: 13px;
+  color: #718096;
+  line-height: 1.5;
+}
+
+.bk-service-card__insurances {
+  border-top: 1px dashed #CBD5E0;
+  padding-top: 10px;
+}
+
+.bk-service-card__ins-label {
+  display: block;
+  font-size: 12px;
+  color: #4A5568;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.bk-service-card__ins-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bk-service-ins-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1D4ED8;
+}
+
+.bk-service-ins-badge__logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 2px;
+}
+
+.bk-service-ins-badge__name {
+  white-space: nowrap;
+}
+
+.bk-service-card__ins-empty {
+  font-size: 12px;
+  color: #A0AEC0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}

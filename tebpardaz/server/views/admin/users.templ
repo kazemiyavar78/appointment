@@ -65,30 +65,30 @@ func defaultRole(role string) string {
 templ Users(view UsersPageView) {
 	@layouts.AdminLayout(view.Nav) {
 		<div class="mx-auto max-w-5xl">
-			<h1 class="mb-4 text-2xl text-brand">مدیریت کاربران</h1>
+			<h1 class="ui-page-title mb-4">مدیریت کاربران</h1>
 			if view.Message != "" {
-				<p class="mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted">{ view.Message }</p>
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
 			}
-			<section class="mb-6 rounded border border-gray-200 bg-white p-4">
+			<section class="ui-panel mb-6">
 				if view.EditID > 0 {
 					<h2 class="mb-3 text-lg text-ink">بروزرسانی کاربر</h2>
 					<form class="flex flex-wrap items-end gap-3" method="post" action={ templ.SafeURL("/admin/users/" + formatUint(view.EditID) + "/update") } id="user-form">
 						@userFormFields(view)
-						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ذخیره تغییرات</button>
-						<a class="rounded border border-gray-300 px-4 py-2 text-sm" href="/admin/users">انصراف</a>
+						<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+						<a class="ui-btn ui-btn-ghost" href="/admin/users">انصراف</a>
 					</form>
 				} else {
 					<h2 class="mb-3 text-lg text-ink">ایجاد کاربر</h2>
 					<form class="flex flex-wrap items-end gap-3" method="post" action="/admin/users" id="user-form">
 						@userFormFields(view)
-						<button class="rounded bg-brand px-4 py-2 text-white" type="submit">ایجاد</button>
+						<button class="ui-btn ui-btn-primary" type="submit">ایجاد</button>
 					</form>
 				}
 			</section>
 			<section>
 				<h2 class="mb-3 text-lg text-ink">لیست کاربران</h2>
-				<div class="overflow-x-auto">
-					<table class="w-full min-w-[720px] border border-gray-200 bg-white text-sm">
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[720px] text-sm">
 						<thead>
 							<tr class="border-b border-gray-200 bg-surface-soft text-right">
 								<th class="p-2">ردیف</th>
@@ -157,7 +157,7 @@ templ Users(view UsersPageView) {
 templ userFormFields(view UsersPageView) {
 	<label class="block text-sm text-ink-muted">
 		نام کاربری
-		<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="text" name="username" value={ view.EditUsername } required maxlength="100"/>
+		<input class="ui-field mt-1 w-48" type="text" name="username" value={ view.EditUsername } required maxlength="100"/>
 	</label>
 	<label class="block text-sm text-ink-muted">
 		if view.EditID > 0 {
@@ -166,14 +166,14 @@ templ userFormFields(view UsersPageView) {
 			رمز عبور
 		}
 		if view.EditID > 0 {
-			<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="password" name="password" maxlength="100" autocomplete="new-password"/>
+			<input class="ui-field mt-1 w-48" type="password" name="password" maxlength="100" autocomplete="new-password"/>
 		} else {
-			<input class="mt-1 block w-48 rounded border border-gray-300 p-2" type="password" name="password" required maxlength="100" autocomplete="new-password"/>
+			<input class="ui-field mt-1 w-48" type="password" name="password" required maxlength="100" autocomplete="new-password"/>
 		}
 	</label>
 	<label class="block text-sm text-ink-muted">
 		نقش
-		<select class="mt-1 block w-48 rounded border border-gray-300 p-2" name="role" id="user-role">
+		<select class="ui-field mt-1 w-48" name="role" id="user-role">
 			<option value="superadmin" selected?={ roleSelected(defaultRole(view.EditRole), "superadmin") }>سوپر ادمین</option>
 			<option value="clinic_admin" selected?={ roleSelected(defaultRole(view.EditRole), "clinic_admin") }>ادمین کلینیک</option>
 			<option value="organ_admin" selected?={ roleSelected(defaultRole(view.EditRole), "organ_admin") }>ادمین ارگان</option>
@@ -181,7 +181,7 @@ templ userFormFields(view UsersPageView) {
 	</label>
 	<label class="block text-sm text-ink-muted" id="clinic-field">
 		کلینیک
-		<select class="mt-1 block w-56 rounded border border-gray-300 p-2" name="clinic_id">
+		<select class="ui-field mt-1 w-56" name="clinic_id">
 			<option value="">انتخاب کنید</option>
 			for _, clinic := range view.Clinics {
 				<option value={ formatUint(clinic.ID) } selected?={ uintSelected(view.EditClinicID, clinic.ID) }>{ clinic.Name }</option>
@@ -190,7 +190,7 @@ templ userFormFields(view UsersPageView) {
 	</label>
 	<label class="block text-sm text-ink-muted" id="org-field">
 		ارگان
-		<select class="mt-1 block w-56 rounded border border-gray-300 p-2" name="organization_id">
+		<select class="ui-field mt-1 w-56" name="organization_id">
 			<option value="">انتخاب کنید</option>
 			for _, org := range view.Organizations {
 				<option value={ formatUint(org.ID) } selected?={ uintSelected(view.EditOrganizationID, org.ID) }>{ org.Name }</option>

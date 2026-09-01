@@ -2,15 +2,89 @@ package layouts
 
 import "tebpardaz/server/views/components"
 
-// Document is the HTML document shell (no public navbar). Used by admin and public layouts.
-templ Document() {
+// PageHead اطلاعات متاداده و سئوی صفحه در تگ head را نگه می‌دارد.
+type PageHead struct {
+	Title           string
+	MetaDescription string
+	CanonicalURL    string
+	Robots          string
+	OGImage         string
+	OGType          string
+	JSONLD          string
+}
+
+// resolvePageHead مقادیر پیش‌فرض سئو را در صورت خالی بودن تنظیم می‌کند.
+// ورودی: slice اختیاری از PageHead. خروجی: PageHead پرشده با مقادیر معتبر پیش‌فرض.
+func resolvePageHead(heads []PageHead) PageHead {
+	h := PageHead{
+		Title:  "طب‌پرداز | سامانه نوبت‌دهی آنلاین مراکز درمانی",
+		Robots: "index, follow",
+		OGType: "website",
+	}
+	if len(heads) > 0 {
+		custom := heads[0]
+		if custom.Title != "" {
+			h.Title = custom.Title
+		}
+		if custom.MetaDescription != "" {
+			h.MetaDescription = custom.MetaDescription
+		}
+		if custom.CanonicalURL != "" {
+			h.CanonicalURL = custom.CanonicalURL
+		}
+		if custom.Robots != "" {
+			h.Robots = custom.Robots
+		}
+		if custom.OGImage != "" {
+			h.OGImage = custom.OGImage
+		}
+		if custom.OGType != "" {
+			h.OGType = custom.OGType
+		}
+		if custom.JSONLD != "" {
+			h.JSONLD = custom.JSONLD
+		}
+	}
+	return h
+}
+
+// Document پوسته HTML مشترک (بدون نوار عمومی) برای ادمین و لایوت‌های عمومی با پشتیبانی کامل تگ‌های سئو است.
+// ورودی: head اختیاری از نوع PageHead. خروجی: کامپوننت templ.
+templ Document(heads ...PageHead) {
+	{{ head := resolvePageHead(heads) }}
 	<!DOCTYPE html>
 	<html lang="fa" dir="rtl">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>طب‌پرداز</title>
+			<title>{ head.Title }</title>
+			if head.MetaDescription != "" {
+				<meta name="description" content={ head.MetaDescription }/>
+			}
+			if head.Robots != "" {
+				<meta name="robots" content={ head.Robots }/>
+			}
+			if head.CanonicalURL != "" {
+				<link rel="canonical" href={ head.CanonicalURL }/>
+			}
+			<meta property="og:title" content={ head.Title }/>
+			if head.MetaDescription != "" {
+				<meta property="og:description" content={ head.MetaDescription }/>
+			}
+			if head.CanonicalURL != "" {
+				<meta property="og:url" content={ head.CanonicalURL }/>
+			}
+			if head.OGType != "" {
+				<meta property="og:type" content={ head.OGType }/>
+			}
+			if head.OGImage != "" {
+				<meta property="og:image" content={ head.OGImage }/>
+			}
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
 			<link rel="stylesheet" href="/static/css/output.css"/>
+			if head.JSONLD != "" {
+				@templ.Raw("<script type=\"application/ld+json\">" + head.JSONLD + "</script>")
+			}
 		</head>
 		<body class="bg-surface-soft text-ink font-sans">
 			{ children... }
@@ -18,17 +92,18 @@ templ Document() {
 	</html>
 }
 
-// Base is the platform (marketing) layout with the public navbar.
+// Base لایوت ساده پلتفرم با نوار عمومی است.
+// ورودی: ندارد. خروجی: کامپوننت templ.
 templ Base() {
 	@Document() {
 		@components.Navbar(platformNavbar())
-		<main class="min-h-screen p-4">
+		<main class="ui-shell-main min-h-screen">
 			{ children... }
 		</main>
 	}
 }
 
-// platformNavbar returns default nav props for the root platform site.
+// platformNavbar مشخصات ناوبری پیش‌فرض سایت ریشه طب‌پرداز را برمی‌گرداند.
 func platformNavbar() components.NavbarProps {
 	return components.NavbarProps{
 		BrandName: "طب‌پرداز",
@@ -38,21 +113,20 @@ func platformNavbar() components.NavbarProps {
 			{Label: "مراکز", Href: "/clinics"},
 			{Label: "پزشکان", Href: "/doctors"},
 			{Label: "نوبت‌دهی", Href: "/doctors"},
-			{Label: "نوبت هفتگی پزشکان", Href: "/weekly-schedule"},
+			{Label: "برنامه هفتگی پزشکان", Href: "/weekly-schedule"},
 			{Label: "جواب آزمایش", Href: "/test-results"},
 			{Label: "وضعیت نوبت", Href: "/waiting-queue"},
 		},
 	}
 }
 
-// defaultPublicNavLinks is the shared public nav for organ/private tenants.
+// defaultPublicNavLinks لینک‌های مشترک ناوبری عمومی برای لایه ارگان/خصوصی است.
 func defaultPublicNavLinks() []components.NavLink {
 	return []components.NavLink{
 		{Label: "صفحه اصلی", Href: "/", Active: true},
 		{Label: "پزشکان", Href: "/doctors"},
 		{Label: "نوبت‌دهی", Href: "/doctors"},
-		{Label: "نوبت هفتگی پزشکان", Href: "/weekly-schedule"},
+		{Label: "برنامه هفتگی پزشکان", Href: "/weekly-schedule"},
 		{Label: "اخبار", Href: "/news"},
-		{Label: "جواب آزمایش", Href: "/test-results"},
 	}
 }

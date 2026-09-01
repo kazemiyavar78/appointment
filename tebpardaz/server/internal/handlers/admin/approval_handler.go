@@ -214,7 +214,33 @@ func (h *ApprovalHandler) Decide(c *gin.Context) {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	if strings.TrimSpace(photoURL) == "" {
+	photo300, err := h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	photo600, err := h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	photo900, err := h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	photo1200, err := h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	if photo1200 == "" && photoURL != "" {
+		photo1200 = photoURL
+	}
+	if photoURL == "" && photo1200 != "" {
+		photoURL = photo1200
+	}
+	if strings.TrimSpace(photoURL) == "" && strings.TrimSpace(photo1200) == "" {
 		c.String(http.StatusBadRequest, "آپلود یا وارد کردن عکس پزشک قبل از تأیید الزامی است")
 		return
 	}
@@ -231,6 +257,10 @@ func (h *ApprovalHandler) Decide(c *gin.Context) {
 		SpecialtyCode:  pending.SpecialtyCode,
 		SpecialtyID:    uint(specialtyID),
 		PhotoURL:       photoURL,
+		Photo300:       photo300,
+		Photo600:       photo600,
+		Photo900:       photo900,
+		Photo1200:      photo1200,
 		IsActive:       pending.IsActive,
 		ReviewerID:     user.ID,
 		Note:           note,
@@ -246,7 +276,7 @@ func (h *ApprovalHandler) Decide(c *gin.Context) {
 }
 
 // UpdateApproved updates photo and/or specialty for an already-approved doctor.
-// Inputs: gin context form (doctor_id, clinic_id, specialty_id, photo).
+// Inputs: gin context form (doctor_id, clinic_id, specialty_id, photo_300, photo_600, photo_900, photo_1200, photo).
 // Output: redirect to approved tab.
 func (h *ApprovalHandler) UpdateApproved(c *gin.Context) {
 	user, ok := auth.UserFromGin(c)
@@ -254,21 +284,8 @@ func (h *ApprovalHandler) UpdateApproved(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	doctorID, err := strconv.ParseUint(c.PostForm("doctor_id"), 10, 64)
-	if err != nil || doctorID == 0 {
-		c.String(http.StatusBadRequest, "invalid doctor_id")
-		return
-	}
-	clinicIDStr := c.PostForm("clinic_id")
-	clinicID, _ := strconv.ParseUint(clinicIDStr, 10, 64)
-
-	doc, err := h.Doctors.GetByID(uint(doctorID))
-	if err != nil || doc == nil {
-		c.String(http.StatusNotFound, "پزشک یافت نشد")
-		return
-	}
-	if !h.Scope.CanAccess(user, doc.ClinicID) {
-		c.AbortWithStatus(http.StatusForbidden)
+	doc, clinicIDStr, ok := h.loadApprovedDoctorForAction(c, user)
+	if !ok {
 		return
 	}
 
@@ -281,22 +298,122 @@ func (h *ApprovalHandler) UpdateApproved(c *gin.Context) {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	if _, err := h.Doctors.UpdateApprovedProfile(uint(doctorID), specialtyID, photoURL); err != nil {
-		c.String(http.StatusInternalServerError, "بروزرسانی ناموفق بود")
+	photo300, err := h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	if clinicID == 0 {
-		clinicID = uint64(doc.ClinicID)
-		clinicIDStr = strconv.FormatUint(clinicID, 10)
+	photo600, err := h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	photo900, err := h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	photo1200, err := h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	shortDesc := c.PostForm("short_desc")
+	longDesc := c.PostForm("long_desc")
+	photos := repository.DoctorPhotosUpdate{
+		PhotoURL:  photoURL,
+		Photo300:  photo300,
+		Photo600:  photo600,
+		Photo900:  photo900,
+		Photo1200: photo1200,
+	}
+	if _, err := h.Doctors.UpdateApprovedProfile(doc.ID, specialtyID, photos, shortDesc, longDesc, true); err != nil {
+		c.String(http.StatusInternalServerError, "بروزرسانی ناموفق بود")
+		return
 	}
 	c.Redirect(http.StatusFound, buildRedirect(clinicIDStr, tabApproved, c))
 }
 
-// resolvePhotoURL returns uploaded file URL, form photo_url, or fallback.
-// Inputs: gin context, fallback URL.
+// SetActive activates or deactivates an approved doctor on the website.
+// Inputs: gin context form (doctor_id, clinic_id, active=1|0).
+// Output: redirect to approved tab.
+func (h *ApprovalHandler) SetActive(c *gin.Context) {
+	user, ok := auth.UserFromGin(c)
+	if !ok {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	doc, clinicIDStr, ok := h.loadApprovedDoctorForAction(c, user)
+	if !ok {
+		return
+	}
+	active := c.PostForm("active") == "1"
+	if err := h.Doctors.SetActive(doc.ID, active); err != nil {
+		c.String(http.StatusInternalServerError, "تغییر وضعیت ناموفق بود")
+		return
+	}
+	c.Redirect(http.StatusFound, buildRedirect(clinicIDStr, tabApproved, c))
+}
+
+// DeleteApproved soft-deletes an approved doctor and notifies the clinic.
+// Inputs: gin context form (doctor_id, clinic_id).
+// Output: redirect to approved tab.
+func (h *ApprovalHandler) DeleteApproved(c *gin.Context) {
+	user, ok := auth.UserFromGin(c)
+	if !ok {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	doc, clinicIDStr, ok := h.loadApprovedDoctorForAction(c, user)
+	if !ok {
+		return
+	}
+	if err := h.Doctors.DeleteApproved(doc.ID); err != nil {
+		c.String(http.StatusInternalServerError, "حذف پزشک ناموفق بود")
+		return
+	}
+	h.notifyClinic(&models.DoctorApprovalRequest{
+		ClinicID:   doc.ClinicID,
+		DoctorID:   &doc.ID,
+		ExternalID: doc.ExternalID,
+		Status:     string(constants.ApprovalRejected),
+	}, doc.LocalCode)
+	c.Redirect(http.StatusFound, buildRedirect(clinicIDStr, tabApproved, c))
+}
+
+// loadApprovedDoctorForAction loads an approved doctor from form doctor_id and checks clinic scope.
+// Inputs: gin context, acting user.
+// Output: doctor, clinicID string for redirect, and ok=false when response already written.
+func (h *ApprovalHandler) loadApprovedDoctorForAction(
+	c *gin.Context,
+	user *models.AppointmentUser,
+) (*models.Doctor, string, bool) {
+	doctorID, err := strconv.ParseUint(c.PostForm("doctor_id"), 10, 64)
+	if err != nil || doctorID == 0 {
+		c.String(http.StatusBadRequest, "invalid doctor_id")
+		return nil, "", false
+	}
+	doc, err := h.Doctors.GetByID(uint(doctorID))
+	if err != nil || doc == nil || !doc.IsApproved {
+		c.String(http.StatusNotFound, "پزشک یافت نشد")
+		return nil, "", false
+	}
+	if !h.Scope.CanAccess(user, doc.ClinicID) {
+		c.AbortWithStatus(http.StatusForbidden)
+		return nil, "", false
+	}
+	clinicIDStr := c.PostForm("clinic_id")
+	if clinicIDStr == "" {
+		clinicIDStr = strconv.FormatUint(uint64(doc.ClinicID), 10)
+	}
+	return doc, clinicIDStr, true
+}
+
+// resolvePhotoFile returns uploaded file URL, form URL, or fallback for a specific form field name.
+// Inputs: gin context c, fileField form file key, urlField text url key, fallback string.
 // Output: public photo URL or error.
-func (h *ApprovalHandler) resolvePhotoURL(c *gin.Context, fallback string) (string, error) {
-	file, hdr, err := c.Request.FormFile("photo")
+func (h *ApprovalHandler) resolvePhotoFile(c *gin.Context, fileField, urlField, fallback string) (string, error) {
+	file, hdr, err := c.Request.FormFile(fileField)
 	if err == nil && file != nil {
 		defer file.Close()
 		ext := strings.ToLower(filepath.Ext(hdr.Filename))
@@ -311,7 +428,7 @@ func (h *ApprovalHandler) resolvePhotoURL(c *gin.Context, fallback string) (stri
 		if err := os.MkdirAll(doctorUploadDir, 0o755); err != nil {
 			return "", fmt.Errorf("خطا در ذخیره فایل")
 		}
-		name := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		name := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), fileField, ext)
 		destPath := filepath.Join(doctorUploadDir, name)
 		out, createErr := os.Create(destPath)
 		if createErr != nil {
@@ -323,10 +440,19 @@ func (h *ApprovalHandler) resolvePhotoURL(c *gin.Context, fallback string) (stri
 		}
 		return "/static/uploads/doctors/" + name, nil
 	}
-	if url := strings.TrimSpace(c.PostForm("photo_url")); url != "" {
-		return url, nil
+	if urlField != "" {
+		if url := strings.TrimSpace(c.PostForm(urlField)); url != "" {
+			return url, nil
+		}
 	}
 	return strings.TrimSpace(fallback), nil
+}
+
+// resolvePhotoURL returns uploaded file URL, form photo_url, or fallback.
+// Inputs: gin context, fallback URL.
+// Output: public photo URL or error.
+func (h *ApprovalHandler) resolvePhotoURL(c *gin.Context, fallback string) (string, error) {
+	return h.resolvePhotoFile(c, "photo", "photo_url", fallback)
 }
 
 // buildRedirect builds the post-action redirect URL preserving filters.
@@ -442,9 +568,16 @@ func (h *ApprovalHandler) approvedItems(clinicID uint) ([]adminviews.ApprovalIte
 			Mobile:         doc.Mobile,
 			DoctorSystemID: doc.DoctorSystemID,
 			SpecialtyCode:  doc.SpecialtyCode,
+			SpecialtyID:    doc.SpecialtyID,
 			SpecialtyName:  spec,
 			PhotoURL:       doc.PhotoURL,
+			Photo300:       doc.Photo300,
+			Photo600:       doc.Photo600,
+			Photo900:       doc.Photo900,
+			Photo1200:      doc.Photo1200,
 			ExternalID:     doc.ExternalID,
+			ShortDesc:      doc.ShortDesc,
+			LongDesc:       doc.LongDesc,
 			IsActive:       doc.IsActive,
 			Source:         "server",
 			Status:         string(constants.ApprovalApproved),

@@ -42,22 +42,25 @@ var waitingQueueUpgrader = websocket.Upgrader{
 // WaitingQueueHandler فرم و WebSocket عمومی «وضعیت نوبت» را سرو می‌کند.
 type WaitingQueueHandler struct {
 	Clinics   *repository.ClinicRepo
+	Sections  *repository.SectionRepo
 	Cache     *cache.WaitingQueueCache
 	CSRF      *csrf.Manager
 	Refresher *waitingqueue.Refresher
 }
 
 // NewWaitingQueueHandler سازنده WaitingQueueHandler است.
-// ورودی: ریپوی مراکز، کش صف، CSRF، زمان‌بند بروزرسانی تطبیقی.
+// ورودی: ریپوی مراکز، ریپوی بخش‌ها، کش صف، CSRF، زمان‌بند بروزرسانی تطبیقی.
 // خروجی: اشاره‌گر به WaitingQueueHandler.
 func NewWaitingQueueHandler(
 	clinics *repository.ClinicRepo,
+	sections *repository.SectionRepo,
 	queueCache *cache.WaitingQueueCache,
 	csrfMgr *csrf.Manager,
 	refresher *waitingqueue.Refresher,
 ) *WaitingQueueHandler {
 	return &WaitingQueueHandler{
 		Clinics:   clinics,
+		Sections:  sections,
 		Cache:     queueCache,
 		CSRF:      csrfMgr,
 		Refresher: refresher,
@@ -65,13 +68,18 @@ func NewWaitingQueueHandler(
 }
 
 // GetForm فرم جستجوی وضعیت نوبت را نمایش می‌دهد.
+// ورودی: gin context. خروجی: رندر فرم وضعیت نوبت.
 func (h *WaitingQueueHandler) GetForm(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
-	h.renderForm(c, tc, pages.WaitingQueueFormView{FormAction: "/waiting-queue"})
+	view := pages.WaitingQueueFormView{FormAction: "/waiting-queue"}
+	if tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil && h.Sections != nil && !h.Sections.HasDoctorSiteSection(*tc.ClinicID) {
+		view.ErrorMessage = "امکان مشاهده وضعیت نوبت آنلاین برای این مرکز فعال نمی‌باشد (بخش سایت پزشک تعریف نشده است)."
+	}
+	h.renderForm(c, tc, view)
 }
 
 // GetDeepLink صفحه مانیتورینگ را از لینک QR (path params) باز می‌کند.
@@ -107,10 +115,12 @@ func (h *WaitingQueueHandler) GetDeepLink(c *gin.Context) {
 		return
 	}
 	view.SelectedClinicID = clinic.ID
+	applyClinicBranding(&view, clinic)
 	h.applyLookupResult(c, tc, view, clinic.ID, nationalID, admissionNo)
 }
 
 // PostLookup کد ملی و شماره پذیرش را در کش صف جستجو می‌کند.
+// ورودی: gin context. خروجی: رندر نتیجه وضعیت نوبت یا خطای فرم.
 func (h *WaitingQueueHandler) PostLookup(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
@@ -123,6 +133,12 @@ func (h *WaitingQueueHandler) PostLookup(c *gin.Context) {
 		SelectedClinicID: parseUintForm(c.PostForm("clinic_id")),
 		NationalID:       strings.TrimSpace(c.PostForm("national_id")),
 		AdmissionNo:      strings.TrimSpace(c.PostForm("admission_no")),
+	}
+
+	if tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil && h.Sections != nil && !h.Sections.HasDoctorSiteSection(*tc.ClinicID) {
+		view.ErrorMessage = "امکان مشاهده وضعیت نوبت آنلاین برای این مرکز فعال نمی‌باشد (بخش سایت پزشک تعریف نشده است)."
+		h.renderForm(c, tc, view)
+		return
 	}
 
 	if h.CSRF == nil || !h.CSRF.Verify(c.Request, c.PostForm("csrf_token")) {
@@ -152,6 +168,7 @@ func (h *WaitingQueueHandler) PostLookup(c *gin.Context) {
 		return
 	}
 	view.SelectedClinicID = clinic.ID
+	applyClinicBranding(&view, clinic)
 	h.applyLookupResult(c, tc, view, clinic.ID, nid, admissionNo)
 }
 
@@ -180,6 +197,7 @@ func (h *WaitingQueueHandler) applyLookupResult(
 		AheadCount:   status.AheadCount,
 		TotalInQueue: status.TotalInQueue,
 	}
+	view.UpdatedAtUnix = status.UpdatedAtUnix
 	view.WSPath = buildWaitingQueueWSPath(admissionNo, nationalID, clinicID, needClinic)
 	h.renderForm(c, tc, view)
 }
@@ -299,18 +317,24 @@ func (h *WaitingQueueHandler) lookupStatus(clinicID uint, nationalID string, adm
 }
 
 // resolveClinic مرکز معتبر برای لایه فعلی را برمی‌گرداند.
+// ورودی: کانتکست tenant و شناسه کلینیک انتخاب‌شده. خروجی: مدل کلینیک و پیام خطای احتمالی فارسی.
 func (h *WaitingQueueHandler) resolveClinic(tc *tenant.Context, selectedID uint) (*models.Clinic, string) {
 	switch tc.Layout {
 	case constants.LayoutPrivate:
+		var clinic *models.Clinic
 		if tc.Clinic != nil {
-			return tc.Clinic, ""
-		}
-		if tc.ClinicID == nil || h.Clinics == nil {
+			clinic = tc.Clinic
+		} else if tc.ClinicID != nil && h.Clinics != nil {
+			var err error
+			clinic, err = h.Clinics.GetByID(*tc.ClinicID)
+			if err != nil || clinic == nil {
+				return nil, msgWQClinicInvalid
+			}
+		} else {
 			return nil, msgWQClinicInvalid
 		}
-		clinic, err := h.Clinics.GetByID(*tc.ClinicID)
-		if err != nil || clinic == nil {
-			return nil, msgWQClinicInvalid
+		if h.Sections != nil && !h.Sections.HasDoctorSiteSection(clinic.ID) {
+			return nil, "امکان مشاهده وضعیت نوبت آنلاین برای این مرکز فعال نمی‌باشد (بخش سایت پزشک تعریف نشده است)."
 		}
 		return clinic, ""
 
@@ -322,6 +346,9 @@ func (h *WaitingQueueHandler) resolveClinic(tc *tenant.Context, selectedID uint)
 		if err != nil || clinic == nil {
 			return nil, msgWQClinicInvalid
 		}
+		if h.Sections != nil && !h.Sections.HasDoctorSiteSection(clinic.ID) {
+			return nil, "مرکز انتخاب‌شده دارای بخش سایت پزشک نمی‌باشد."
+		}
 		return clinic, ""
 
 	default:
@@ -330,6 +357,7 @@ func (h *WaitingQueueHandler) resolveClinic(tc *tenant.Context, selectedID uint)
 }
 
 // loadScopedClinic مرکز را با محدوده ارگان/پلتفرم بارگذاری می‌کند.
+// ورودی: کانتکست tenant و شناسه مرکز. خروجی: مدل کلینیک یا خطای دیتابیس.
 func (h *WaitingQueueHandler) loadScopedClinic(tc *tenant.Context, clinicID uint) (*models.Clinic, error) {
 	if h.Clinics == nil {
 		return nil, gorm.ErrRecordNotFound
@@ -352,6 +380,7 @@ func (h *WaitingQueueHandler) loadScopedClinic(tc *tenant.Context, clinicID uint
 }
 
 // renderForm صفحه را با لایه عمومی مستأجر رندر می‌کند.
+// ورودی: gin context، کانتکست tenant و مدل نمایش WaitingQueueFormView. خروجی: ندارد.
 func (h *WaitingQueueHandler) renderForm(c *gin.Context, tc *tenant.Context, view pages.WaitingQueueFormView) {
 	view.ShowClinicSelect = tc.Layout == constants.LayoutOrgan || tc.Layout == constants.LayoutPlatform
 	if view.ShowClinicSelect {
@@ -365,10 +394,28 @@ func (h *WaitingQueueHandler) renderForm(c *gin.Context, tc *tenant.Context, vie
 			view.CSRFToken = tok
 		}
 	}
+	// در لایه خصوصی، لوگوی مرکز را حتی قبل از جستجو نشان بده.
+	if view.ClinicLogoURL == "" && tc.Layout == constants.LayoutPrivate && tc.Clinic != nil {
+		applyClinicBranding(&view, tc.Clinic)
+	}
 	renderPublicLayout(c, tc, pages.WaitingQueueForm(view), "waiting-queue")
 }
 
-// clinicOptions لیست مراکز قابل انتخاب در لایه ارگان/پلتفرم را برمی‌گرداند.
+// applyClinicBranding نام و مسیر لوگوی مرکز را روی view می‌گذارد.
+// ورودی: اشاره‌گر view و مدل مرکز.
+// خروجی: ندارد؛ فیلدهای برندینگ view را پر می‌کند.
+func applyClinicBranding(view *pages.WaitingQueueFormView, clinic *models.Clinic) {
+	if view == nil || clinic == nil {
+		return
+	}
+	view.ClinicName = clinic.Name
+	if clinic.Code > 0 {
+		view.ClinicLogoURL = fmt.Sprintf("/static/clinics/%d-logo.jpg", clinic.Code)
+	}
+}
+
+// clinicOptions لیست مراکز قابل انتخاب در لایه ارگان/پلتفرم را که دارای بخش فعال «سایت پزشک» هستند برمی‌گرداند.
+// ورودی: کانتکست tenant. خروجی: آرایه گزینه‌های کلینیک WaitingQueueClinicOption.
 func (h *WaitingQueueHandler) clinicOptions(tc *tenant.Context) []pages.WaitingQueueClinicOption {
 	if h.Clinics == nil {
 		return nil
@@ -386,12 +433,33 @@ func (h *WaitingQueueHandler) clinicOptions(tc *tenant.Context) []pages.WaitingQ
 	default:
 		return nil
 	}
-	if err != nil {
+	if err != nil || len(rows) == 0 {
 		return nil
 	}
+
+	candidateIDs := make([]uint, 0, len(rows))
+	for _, c := range rows {
+		candidateIDs = append(candidateIDs, c.ID)
+	}
+
+	validMap := make(map[uint]bool)
+	if h.Sections != nil {
+		if validIDs, err := h.Sections.ListClinicIDsWithDoctorSite(candidateIDs); err == nil {
+			for _, id := range validIDs {
+				validMap[id] = true
+			}
+		}
+	} else {
+		for _, id := range candidateIDs {
+			validMap[id] = true
+		}
+	}
+
 	out := make([]pages.WaitingQueueClinicOption, 0, len(rows))
 	for _, clinic := range rows {
-		out = append(out, pages.WaitingQueueClinicOption{ID: clinic.ID, Name: clinic.Name})
+		if validMap[clinic.ID] {
+			out = append(out, pages.WaitingQueueClinicOption{ID: clinic.ID, Name: clinic.Name})
+		}
 	}
 	return out
 }

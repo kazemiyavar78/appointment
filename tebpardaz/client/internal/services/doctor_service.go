@@ -29,7 +29,8 @@ func NewDoctorService(store *localdb.Store, sender Sender) *DoctorService {
 	return &DoctorService{Store: store, Sender: sender}
 }
 
-// PushDoctorList reads unregistered local doctors and pushes them to the central server.
+// PushDoctorList reads local HIS doctors and pushes them to the central server for
+// approved updates (by national_id) and pending cache refresh.
 // Inputs: requestID (correlation id for the envelope).
 // Output: error from local read or WebSocket send.
 func (s *DoctorService) PushDoctorList(requestID string) error {
@@ -44,6 +45,7 @@ func (s *DoctorService) PushDoctorList(requestID string) error {
 			name = strings.TrimSpace(row.FirstName + " " + row.LastName)
 		}
 		doctors = append(doctors, protocol.DoctorDTO{
+			ExternalID:     row.ExternalID,
 			LocalCode:      row.Code,
 			FirstName:      row.FirstName,
 			LastName:       row.LastName,

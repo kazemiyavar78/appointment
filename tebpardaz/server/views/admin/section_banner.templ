@@ -1,0 +1,113 @@
+package admin
+
+import (
+	"tebpardaz/server/views/layouts"
+)
+
+// SectionBannerView holds view model for editing section banner.
+type SectionBannerView struct {
+	Nav             layouts.AdminLayoutView
+	SectionID       uint
+	SectionTitle    string
+	ClinicID        uint
+	Slogan          string
+	Description     string
+	Services        string
+	BackgroundColor string
+	ImageURL        string
+	Message         string
+}
+
+// SectionBannerEdit renders the banner configuration form.
+templ SectionBannerEdit(view SectionBannerView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-4xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<div class="flex items-center gap-2 text-sm text-ink-muted mb-1">
+						<a class="hover:text-brand" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بخش‌های مرکز</a>
+						<span>/</span>
+						<span>{ view.SectionTitle }</span>
+					</div>
+					<h1 class="ui-page-title">ویرایش بنر بخش: { view.SectionTitle }</h1>
+				</div>
+				<div class="flex items-center gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule") }>ساعات کاری</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>پیام‌ها</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment") }>تجهیزات</a>
+				</div>
+			</div>
+
+			if view.Message != "" {
+				<p class="ui-panel mb-4 text-sm text-brand">{ view.Message }</p>
+			}
+
+			<section class="ui-panel mb-6">
+				<form class="space-y-5" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") } enctype="multipart/form-data">
+					<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+						<div class="space-y-4 md:col-span-2">
+							<label class="block text-sm font-semibold text-ink">
+								شعار کوتاه
+								<span class="text-xs text-ink-muted font-normal block mt-0.5">یک جمله بسیار کوتاه در حد یک شعار (مثال: مراقبتی که شما را اول می‌گذارد)</span>
+								<input class="ui-field mt-1 w-full" type="text" name="slogan" value={ view.Slogan } maxlength="255" required placeholder="مراقبتی که شما را اول می‌گذارد"/>
+							</label>
+
+							<label class="block text-sm font-semibold text-ink">
+								توضیح کوتاه
+								<span class="text-xs text-ink-muted font-normal block mt-0.5">حداکثر ۲ خط توضیح درباره‌ی آن بخش</span>
+								<textarea class="ui-field mt-1 w-full" name="description" rows="3" maxlength="500" required placeholder="توضیحات کوتاه درباره امکانات و خدمات این بخش...">{ view.Description }</textarea>
+							</label>
+
+							<label class="block text-sm font-semibold text-ink">
+								خدمات و نکات برجسته (حداکثر ۵ مورد)
+								<span class="text-xs text-ink-muted font-normal block mt-0.5">هر مورد را در یک خط جداگانه وارد کنید (حداکثر ۵ خط)</span>
+								<textarea class="ui-field mt-1 w-full font-mono text-sm" name="services" rows="5" maxlength="1000" placeholder="تأییدیه کمیسیون مشترک&#10;متخصصان دارای بورد&#10;پوشش کامل بیمه&#10;ویزیت و رزرو آنلاین">{ view.Services }</textarea>
+							</label>
+						</div>
+
+						<div>
+							<label class="block text-sm font-semibold text-ink mb-1">
+								رنگ پس‌زمینه بنر
+								<span class="text-xs text-ink-muted font-normal block mb-2">انتخاب رنگ پس‌زمینه تیره یا دلخواه برای بنر</span>
+							</label>
+							<div class="flex items-center gap-3">
+								<input class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1" type="color" name="background_color" value={ defaultColor(view.BackgroundColor) }/>
+								<input class="ui-field w-32 font-mono text-xs" dir="ltr" type="text" name="bg_hex" value={ defaultColor(view.BackgroundColor) } readonly/>
+							</div>
+						</div>
+
+						<div>
+							<label class="block text-sm font-semibold text-ink mb-1">
+								تصویر بنر
+								<span class="text-xs text-ink-muted font-normal block mb-2">عکس باکیفیت و متناسب با بخش (حداکثر ۵ مگابایت)</span>
+							</label>
+							<input class="block w-full text-sm text-ink-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20" type="file" name="image" accept="image/*"/>
+							if view.ImageURL != "" {
+								<div class="mt-3 flex items-center gap-4">
+									<img class="h-20 w-32 rounded object-cover border" src={ view.ImageURL } alt="پیش‌نمایش تصویر بنر"/>
+									<label class="flex items-center gap-2 text-xs text-ink-muted cursor-pointer">
+										<input type="checkbox" name="clear_image" value="1"/>
+										حذف تصویر فعلی
+									</label>
+								</div>
+							}
+						</div>
+					</div>
+
+					<div class="border-t border-surface-border pt-4 flex items-center gap-3">
+						<button class="ui-btn ui-btn-primary" type="submit">ذخیره بنر</button>
+						<a class="ui-btn ui-btn-ghost" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بازگشت</a>
+					</div>
+				</form>
+			</section>
+		</div>
+	}
+}
+
+// defaultColor returns default dark teal hex if color is empty.
+func defaultColor(c string) string {
+	if c == "" {
+		return "#0a2e2e"
+	}
+	return c
+}

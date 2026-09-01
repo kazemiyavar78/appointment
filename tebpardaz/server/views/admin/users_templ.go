@@ -103,19 +103,19 @@ func Users(view UsersPageView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><h1 class=\"mb-4 text-2xl text-brand\">مدیریت کاربران</h1>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><h1 class=\"ui-page-title mb-4\">مدیریت کاربران</h1>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.Message != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"mb-3 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-ink-muted\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"ui-panel mb-3 text-sm text-ink-muted\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/users.templ`, Line: 70, Col: 107}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/users.templ`, Line: 70, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -126,7 +126,7 @@ func Users(view UsersPageView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<section class=\"mb-6 rounded border border-gray-200 bg-white p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<section class=\"ui-panel mb-6\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -152,7 +152,7 @@ func Users(view UsersPageView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button class=\"rounded bg-brand px-4 py-2 text-white\" type=\"submit\">ذخیره تغییرات</button> <a class=\"rounded border border-gray-300 px-4 py-2 text-sm\" href=\"/admin/users\">انصراف</a></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button class=\"ui-btn ui-btn-primary\" type=\"submit\">ذخیره تغییرات</button> <a class=\"ui-btn ui-btn-ghost\" href=\"/admin/users\">انصراف</a></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -165,12 +165,12 @@ func Users(view UsersPageView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button class=\"rounded bg-brand px-4 py-2 text-white\" type=\"submit\">ایجاد</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button class=\"ui-btn ui-btn-primary\" type=\"submit\">ایجاد</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</section><section><h2 class=\"mb-3 text-lg text-ink\">لیست کاربران</h2><div class=\"overflow-x-auto\"><table class=\"w-full min-w-[720px] border border-gray-200 bg-white text-sm\"><thead><tr class=\"border-b border-gray-200 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">نام کاربری</th><th class=\"p-2\">نقش</th><th class=\"p-2\">محدوده</th><th class=\"p-2\">وضعیت</th><th class=\"p-2\">اقدام</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</section><section><h2 class=\"mb-3 text-lg text-ink\">لیست کاربران</h2><div class=\"ui-table-wrap\"><table class=\"ui-table min-w-[720px] text-sm\"><thead><tr class=\"border-b border-gray-200 bg-surface-soft text-right\"><th class=\"p-2\">ردیف</th><th class=\"p-2\">نام کاربری</th><th class=\"p-2\">نقش</th><th class=\"p-2\">محدوده</th><th class=\"p-2\">وضعیت</th><th class=\"p-2\">اقدام</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -342,14 +342,14 @@ func userFormFields(view UsersPageView) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<label class=\"block text-sm text-ink-muted\">نام کاربری <input class=\"mt-1 block w-48 rounded border border-gray-300 p-2\" type=\"text\" name=\"username\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<label class=\"block text-sm text-ink-muted\">نام کاربری <input class=\"ui-field mt-1 w-48\" type=\"text\" name=\"username\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.EditUsername)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/users.templ`, Line: 160, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/users.templ`, Line: 160, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -371,17 +371,17 @@ func userFormFields(view UsersPageView) templ.Component {
 			}
 		}
 		if view.EditID > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<input class=\"mt-1 block w-48 rounded border border-gray-300 p-2\" type=\"password\" name=\"password\" maxlength=\"100\" autocomplete=\"new-password\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<input class=\"ui-field mt-1 w-48\" type=\"password\" name=\"password\" maxlength=\"100\" autocomplete=\"new-password\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<input class=\"mt-1 block w-48 rounded border border-gray-300 p-2\" type=\"password\" name=\"password\" required maxlength=\"100\" autocomplete=\"new-password\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<input class=\"ui-field mt-1 w-48\" type=\"password\" name=\"password\" required maxlength=\"100\" autocomplete=\"new-password\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</label> <label class=\"block text-sm text-ink-muted\">نقش <select class=\"mt-1 block w-48 rounded border border-gray-300 p-2\" name=\"role\" id=\"user-role\"><option value=\"superadmin\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</label> <label class=\"block text-sm text-ink-muted\">نقش <select class=\"ui-field mt-1 w-48\" name=\"role\" id=\"user-role\"><option value=\"superadmin\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -411,7 +411,7 @@ func userFormFields(view UsersPageView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ">ادمین ارگان</option></select></label> <label class=\"block text-sm text-ink-muted\" id=\"clinic-field\">کلینیک <select class=\"mt-1 block w-56 rounded border border-gray-300 p-2\" name=\"clinic_id\"><option value=\"\">انتخاب کنید</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, ">ادمین ارگان</option></select></label> <label class=\"block text-sm text-ink-muted\" id=\"clinic-field\">کلینیک <select class=\"ui-field mt-1 w-56\" name=\"clinic_id\"><option value=\"\">انتخاب کنید</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -457,7 +457,7 @@ func userFormFields(view UsersPageView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</select></label> <label class=\"block text-sm text-ink-muted\" id=\"org-field\">ارگان <select class=\"mt-1 block w-56 rounded border border-gray-300 p-2\" name=\"organization_id\"><option value=\"\">انتخاب کنید</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</select></label> <label class=\"block text-sm text-ink-muted\" id=\"org-field\">ارگان <select class=\"ui-field mt-1 w-56\" name=\"organization_id\"><option value=\"\">انتخاب کنید</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

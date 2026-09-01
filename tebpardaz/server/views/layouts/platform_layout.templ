@@ -2,9 +2,9 @@ package layouts
 
 import "tebpardaz/server/views/components"
 
-// PlatformLayoutView drives the company (طب‌پرداز) multi-clinic public shell.
-// Structure mirrors OrganLayoutView: brand + nav + main content.
+// PlatformLayoutView دادهٔ پوسته عمومی شرکت (چندمرکزی) را نگه می‌دارد.
 type PlatformLayoutView struct {
+	Head           PageHead
 	CompanyName    string
 	LogoURL        string
 	HomeURL        string
@@ -12,12 +12,12 @@ type PlatformLayoutView struct {
 	CorporateLinks []components.FooterLink
 }
 
-// PlatformLayout renders the company tenant page with navbar + main content.
+// PlatformLayout صفحه tenant شرکت را با نوار، محتوا و فوتر رندر می‌کند.
 templ PlatformLayout(view PlatformLayoutView) {
-	@Document() {
+	@Document(view.Head) {
 		<div class="flex min-h-screen flex-col">
 			@components.Navbar(platformShellNavbar(view))
-			<main class="flex-1 p-4">
+			<main class="ui-shell-main flex-1">
 				{ children... }
 			</main>
 			@components.Footer(platformFooter(view))
@@ -25,7 +25,7 @@ templ PlatformLayout(view PlatformLayoutView) {
 	}
 }
 
-// platformShellNavbar maps PlatformLayoutView to NavbarProps.
+// platformShellNavbar نمای پلتفرم را به NavbarProps نگاشت می‌کند.
 func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 	name := view.CompanyName
 	if name == "" {
@@ -47,7 +47,7 @@ func platformShellNavbar(view PlatformLayoutView) components.NavbarProps {
 	}
 }
 
-// platformFooter maps PlatformLayoutView to a formal company FooterProps.
+// platformFooter نمای پلتفرم را به FooterProps رسمی شرکت نگاشت می‌کند.
 func platformFooter(view PlatformLayoutView) components.FooterProps {
 	nav := platformShellNavbar(view)
 	return components.FooterProps{

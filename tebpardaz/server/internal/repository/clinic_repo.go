@@ -2,6 +2,7 @@ package repository
 
 import (
 	"tebpardaz/server/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -51,6 +52,7 @@ func (r *ClinicRepo) GetBySlug(slug string) (*models.Clinic, error) {
 // GetByWSClientKey finds a clinic by its WebSocket client key.
 // Inputs: key (Clinic.WSClientKey).
 // Output: clinic pointer or DB error.
+// update LastSyncAt now
 func (r *ClinicRepo) GetByWSClientKey(key string) (*models.Clinic, error) {
 	if r.DB == nil {
 		return nil, gorm.ErrRecordNotFound
@@ -60,6 +62,9 @@ func (r *ClinicRepo) GetByWSClientKey(key string) (*models.Clinic, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// update online clinics
+	r.DB.Model(&clinic).Update("last_sync_at", time.Now())
 	return &clinic, nil
 }
 
