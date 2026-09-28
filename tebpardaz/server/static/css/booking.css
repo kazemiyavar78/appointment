@@ -37,14 +37,47 @@
   text-decoration: none;
 }
 
+.bk-profile {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
 .bk-doctor-card {
   display: flex;
   gap: 16px;
   padding: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
   background: #FFFFFF;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(26, 32, 44, 0.05);
+}
+
+.bk-doctor-about {
+  margin-top: 16px;
+  padding: 16px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(26, 32, 44, 0.05);
+}
+
+.bk-doctor-about__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1A202C;
+}
+
+.bk-doctor-about__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.9;
+  color: #1A202C;
+  white-space: pre-line;
+}
+
+.bk-booking {
+  margin-bottom: 8px;
 }
 
 .bk-doctor-card__photo,
@@ -446,6 +479,10 @@
   cursor: not-allowed;
 }
 
+.bk-btn.is-locked {
+  pointer-events: none;
+}
+
 .bk-btn--ghost {
   background: transparent;
   color: #4A5568;
@@ -497,9 +534,73 @@
   box-shadow: 0 4px 24px rgba(26, 32, 44, 0.08);
 }
 
+.bk-otp__channel-badge {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: #f4f7ff;
+	border: 1px solid #dbe4ff;
+	border-radius: 12px;
+	padding: 12px 14px;
+	margin-bottom: 14px;
+}
+
+.bk-otp__channel-icons {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.bk-otp__channel-icon {
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+.bk-otp__channel-icon svg {
+	width: 18px;
+	height: 18px;
+}
+
+/* آیکون‌ها کمی روی هم بیفتن، مثل بج‌های ترکیبی */
+.bk-otp__channel-icon--bale {
+	margin-left: -8px;
+	z-index: 2;
+}
+.bk-otp__channel-icon--sms {
+	z-index: 1;
+}
+
+.bk-otp__channel-text {
+	font-size: 13px;
+	line-height: 1.7;
+	color: #1f2a44;
+}
+
 .bk-otp__title {
   margin: 0 0 8px;
   font-size: 20px;
+}
+
+.bk-otp__notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.85;
+  color: #1A202C;
+  background: #FEF3C7;
+  border: 2px solid #F59E0B;
+  border-radius: 10px;
+}
+
+.bk-otp__notice strong {
+  font-weight: 800;
 }
 
 .bk-otp__desc {
@@ -531,6 +632,12 @@
   outline: none;
   border-style: solid;
   border-color: #4A6CF7;
+}
+
+.bk-otp__box:disabled {
+  background: #EDF2F7;
+  cursor: not-allowed;
+  opacity: 0.85;
 }
 
 .bk-otp__timer {
@@ -655,6 +762,18 @@
   gap: 8px;
   margin-bottom: 8px;
   font-size: 14px;
+}
+
+.bk-modal__row-label {
+  color: #4A5568;
+}
+
+.bk-modal__tracking {
+  margin-right: auto;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .bk-modal__actions {

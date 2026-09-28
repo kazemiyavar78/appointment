@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"net/url"
 	"strconv"
+	"strings"
 
 	"tebpardaz/server/views/layouts"
 )
@@ -11,6 +13,7 @@ type ServiceRow struct {
 	ID          uint
 	Name        string
 	Description string
+	Packages    []string
 }
 
 // ServicePageView مدل داده صفحه مدیریت خدمات (CRUD) در پنل سوپرادمین است.
@@ -21,16 +24,51 @@ type ServicePageView struct {
 	EditID          uint
 	EditName        string
 	EditDescription string
+	Packages        []ServiceAssignOption
+	SearchQuery     string
+	Page            int
+	PageSize        int
+	Total           int
+	TotalPages      int
 }
 
-// Services صفحه مدیریت خدمات شامل فرم ایجاد/ویرایش و جدول لیست خدمات را رندر می‌کند.
+// ServiceCatalogHref آدرس لیست خدمات را با جستجو، صفحه، ویرایش و پیام می‌سازد.
+// ورودی: عبارت جستجو، شماره صفحه، شناسه ویرایش و کد پیام. خروجی: مسیر نسبی صفحه خدمات.
+func ServiceCatalogHref(q string, page int, editID uint, msg string) string {
+	values := url.Values{}
+	q = strings.TrimSpace(q)
+	if q != "" {
+		values.Set("q", q)
+	}
+	if page > 1 {
+		values.Set("page", strconv.Itoa(page))
+	}
+	if editID > 0 {
+		values.Set("edit", strconv.FormatUint(uint64(editID), 10))
+	}
+	if msg != "" {
+		values.Set("msg", msg)
+	}
+	encoded := values.Encode()
+	if encoded == "" {
+		return "/admin/services"
+	}
+	return "/admin/services?" + encoded
+}
+
+// Services صفحه مدیریت خدمات شامل فرم ایجاد/ویرایش، جستجو و جدول لیست خدمات را رندر می‌کند.
 // ورودی: view مدل داده صفحه خدمات. خروجی: کامپوننت templ صفحه ادمین.
 templ Services(view ServicePageView) {
 	@layouts.AdminLayout(view.Nav) {
-		<div class="mx-auto max-w-4xl">
+		<div class="mx-auto max-w-5xl">
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="ui-page-title">مدیریت خدمات</h1>
+				<div>
+					<h1 class="ui-page-title">مدیریت خدمات</h1>
+					<p class="mt-1 text-xs text-ink-muted">خدمات را تعریف کنید و همان‌جا به بسته‌ها منتسب کنید.</p>
+				</div>
 				<div class="flex flex-wrap gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/packages">بسته‌های خدمات</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/section-packages">انتصاب به بخش‌ها</a>
 					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/clinic-insurances">انتصاب به بیمه‌های مرکز</a>
 					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/doctor-services">انتصاب به پزشکان</a>
 				</div>
@@ -42,16 +80,22 @@ templ Services(view ServicePageView) {
 				if view.EditID > 0 {
 					<h2 class="mb-3 text-lg text-ink">بروزرسانی خدمت</h2>
 					<form class="grid gap-3 sm:grid-cols-2" method="post" action={ templ.SafeURL("/admin/services/" + formatUint(view.EditID) + "/update") }>
+						<input type="hidden" name="q" value={ view.SearchQuery }/>
+						<input type="hidden" name="page" value={ formatInt(view.Page) }/>
 						@serviceFormFields(view.EditName, view.EditDescription)
+						@servicePackagePicker(view.Packages)
 						<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
 							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
-							<a class="ui-btn ui-btn-ghost" href="/admin/services">انصراف</a>
+							<a class="ui-btn ui-btn-ghost" href={ templ.SafeURL(ServiceCatalogHref(view.SearchQuery, view.Page, 0, "")) }>انصراف</a>
 						</div>
 					</form>
 				} else {
 					<h2 class="mb-3 text-lg text-ink">ایجاد خدمت جدید</h2>
 					<form class="grid gap-3 sm:grid-cols-2" method="post" action="/admin/services">
-						@serviceFormFields("", "")
+						<input type="hidden" name="q" value={ view.SearchQuery }/>
+						<input type="hidden" name="page" value={ formatInt(view.Page) }/>
+						@serviceFormFields(view.EditName, view.EditDescription)
+						@servicePackagePicker(view.Packages)
 						<div class="sm:col-span-2">
 							<button class="ui-btn ui-btn-primary" type="submit">ایجاد</button>
 						</div>
@@ -59,34 +103,67 @@ templ Services(view ServicePageView) {
 				}
 			</section>
 			<section>
-				<h2 class="mb-3 text-lg text-ink">لیست خدمات</h2>
+				<div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+					<div>
+						<h2 class="text-lg text-ink">لیست خدمات</h2>
+						<p class="mt-1 text-xs text-ink-muted">{ strconv.Itoa(view.Total) } خدمت</p>
+					</div>
+					<form class="flex flex-wrap items-center gap-2" method="get" action="/admin/services">
+						if view.EditID > 0 {
+							<input type="hidden" name="edit" value={ formatUint(view.EditID) }/>
+						}
+						<input class="ui-field min-w-[16rem] text-sm" type="search" name="q" value={ view.SearchQuery } placeholder="جستجو بر اساس نام یا توضیحات" maxlength="100"/>
+						<button class="ui-btn ui-btn-ghost text-xs" type="submit">جستجو</button>
+						if view.SearchQuery != "" {
+							<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL(ServiceCatalogHref("", 1, view.EditID, "")) }>پاک کردن</a>
+						}
+					</form>
+				</div>
 				<div class="ui-table-wrap">
-					<table class="ui-table min-w-[640px] text-sm">
+					<table class="ui-table min-w-[820px] text-sm">
 						<thead>
 							<tr class="border-b border-gray-200 bg-surface-soft text-right">
 								<th class="p-2">ردیف</th>
 								<th class="p-2">نام خدمت</th>
 								<th class="p-2">توضیحات خدمت</th>
+								<th class="p-2">بسته‌ها</th>
 								<th class="p-2">اقدام</th>
 							</tr>
 						</thead>
 						<tbody>
 							if len(view.Items) == 0 {
 								<tr>
-									<td class="p-3 text-ink-muted" colspan="4">خدمتی ثبت نشده است.</td>
+									if view.SearchQuery != "" {
+										<td class="p-3 text-ink-muted" colspan="5">خدمتی با این عبارت یافت نشد.</td>
+									} else {
+										<td class="p-3 text-ink-muted" colspan="5">خدمتی ثبت نشده است.</td>
+									}
 								</tr>
 							}
 							for index, item := range view.Items {
 								<tr class="border-b border-gray-100">
-									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2">{ strconv.Itoa((view.Page-1)*view.PageSize + index + 1) }</td>
 									<td class="p-2 font-medium">{ item.Name }</td>
 									<td class="p-2 text-ink-muted">{ item.Description }</td>
+									<td class="p-2">
+										if len(item.Packages) == 0 {
+											<span class="text-xs text-ink-muted">—</span>
+										} else {
+											<div class="flex flex-wrap gap-1">
+												for _, name := range item.Packages {
+													<span class="inline-block rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white">{ name }</span>
+												}
+											</div>
+										}
+									</td>
 									<td class="p-2 whitespace-nowrap">
 										<a
 											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
-											href={ templ.SafeURL("/admin/services?edit=" + formatUint(item.ID)) }
+											href={ templ.SafeURL(ServiceCatalogHref(view.SearchQuery, view.Page, item.ID, "")) }
 										>ویرایش</a>
 										<form class="inline" method="post" action={ templ.SafeURL("/admin/services/" + formatUint(item.ID) + "/delete") } onsubmit="return confirm('این خدمت حذف شود؟ انتصاب‌های آن نیز پاک خواهند شد.');">
+											<input type="hidden" name="q" value={ view.SearchQuery }/>
+											<input type="hidden" name="page" value={ formatInt(view.Page) }/>
 											<button class="rounded border border-red-300 px-2 py-1 text-xs text-red-700" type="submit">حذف</button>
 										</form>
 									</td>
@@ -95,8 +172,25 @@ templ Services(view ServicePageView) {
 						</tbody>
 					</table>
 				</div>
+				@servicePager(view)
 			</section>
 		</div>
+	}
+}
+
+// servicePager نوار صفحه‌بندی لیست خدمات را رندر می‌کند.
+// ورودی: view مدل صفحه خدمات. خروجی: ناوبری قبلی/بعدی وقتی بیش از یک صفحه وجود دارد.
+templ servicePager(view ServicePageView) {
+	if view.TotalPages > 1 {
+		<nav class="mt-4 flex flex-wrap items-center justify-center gap-2">
+			if view.Page > 1 {
+				<a class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-brand hover:text-brand" href={ templ.SafeURL(ServiceCatalogHref(view.SearchQuery, view.Page-1, view.EditID, "")) }>قبلی</a>
+			}
+			<span class="text-sm text-ink-muted">صفحه { strconv.Itoa(view.Page) } از { strconv.Itoa(view.TotalPages) }</span>
+			if view.Page < view.TotalPages {
+				<a class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-brand hover:text-brand" href={ templ.SafeURL(ServiceCatalogHref(view.SearchQuery, view.Page+1, view.EditID, "")) }>بعدی</a>
+			}
+		</nav>
 	}
 }
 
@@ -111,4 +205,106 @@ templ serviceFormFields(name, description string) {
 		توضیحات خدمت
 		<textarea class="ui-field mt-1 w-full min-h-[90px]" name="description" rows="3" maxlength="1000" placeholder="توضیحات تکمیلی پیرامون خدمت...">{ description }</textarea>
 	</label>
+}
+
+// servicePackagePicker انتخاب بسته‌هایی را که این خدمت عضو آن‌هاست رندر می‌کند.
+// ورودی: packages گزینه‌های بسته. خروجی: جعبه انتخاب چندتایی داخل همان فرم خدمت.
+templ servicePackagePicker(packages []ServiceAssignOption) {
+	<div class="rounded-xl border border-surface-border bg-white p-4 sm:col-span-2">
+		<div class="flex items-center justify-between pb-3 border-b border-gray-100">
+			<div class="flex items-center gap-2">
+				<i class="fa-solid fa-box-open text-brand text-sm"></i>
+				<h3 class="text-sm font-bold text-ink">انتصاب به بسته‌ها</h3>
+			</div>
+			<span id="svc-pkg-badge" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+				۰ بسته انتخاب شده
+			</span>
+		</div>
+		<p class="mt-2 text-[11px] text-ink-muted">هر خدمت می‌تواند همزمان در چند بسته باشد. بسته‌های انتخاب‌شده در ستون جدول هم دیده می‌شوند.</p>
+		if len(packages) == 0 {
+			<p class="mt-3 text-xs text-ink-muted">
+				هنوز بسته‌ای ثبت نشده است.
+				<a class="text-white hover:underline" href="/admin/services/packages">ایجاد بسته خدمات</a>
+			</p>
+		} else {
+			<div class="mt-3 relative">
+				<input
+					type="search"
+					id="svc-pkg-search"
+					placeholder="جستجوی بسته..."
+					oninput="filterServicePkgItems()"
+					class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+				/>
+				<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+			</div>
+			<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+				<button type="button" onclick="toggleAllServicePkgs(true)" class="text-white hover:underline font-medium">انتخاب همه</button>
+				<button type="button" onclick="toggleAllServicePkgs(false)" class="text-ink-muted hover:underline">لغو انتخاب همه</button>
+			</div>
+			<div id="svc-pkg-list" class="mt-2 max-h-[220px] overflow-y-auto space-y-1.5 pr-1">
+				for _, item := range packages {
+					<label class="svc-pkg-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ strings.ToLower(item.Name + " " + item.Description) }>
+						<input
+							type="checkbox"
+							name="package_ids"
+							value={ formatUint(item.ID) }
+							onchange="updateServicePkgCount()"
+							class="svc-pkg-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+							checked?={ item.Selected }
+						/>
+						<div class="min-w-0 flex-1">
+							<span class="text-xs font-semibold text-ink block">{ item.Name }</span>
+							if item.Description != "" {
+								<span class="text-[11px] text-ink-muted block mt-0.5">{ item.Description }</span>
+							}
+						</div>
+					</label>
+				}
+				<p id="svc-pkg-empty" class="hidden text-center text-xs text-ink-muted py-6">بسته‌ای مطابق جستجو یافت نشد.</p>
+			</div>
+			<script>
+				function toPersianDigitsSvcPkg(n) {
+					var id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+					return String(n).replace(/[0-9]/g, function(w){ return id[+w]; });
+				}
+				function updateServicePkgCount() {
+					var checked = document.querySelectorAll('.svc-pkg-checkbox:checked').length;
+					var badge = document.getElementById('svc-pkg-badge');
+					if (badge) {
+						badge.textContent = toPersianDigitsSvcPkg(checked) + ' بسته انتخاب شده';
+					}
+				}
+				function filterServicePkgItems() {
+					var input = document.getElementById('svc-pkg-search');
+					var q = ((input && input.value) || '').trim().toLowerCase();
+					var items = document.querySelectorAll('.svc-pkg-item');
+					var visibleCount = 0;
+					items.forEach(function(item) {
+						var text = item.getAttribute('data-search') || '';
+						if (!q || text.indexOf(q) !== -1) {
+							item.style.display = '';
+							visibleCount++;
+						} else {
+							item.style.display = 'none';
+						}
+					});
+					var emptyMsg = document.getElementById('svc-pkg-empty');
+					if (emptyMsg) {
+						emptyMsg.classList.toggle('hidden', visibleCount > 0);
+					}
+				}
+				function toggleAllServicePkgs(checked) {
+					document.querySelectorAll('.svc-pkg-item').forEach(function(item) {
+						if (item.style.display !== 'none') {
+							var cb = item.querySelector('.svc-pkg-checkbox');
+							if (cb) cb.checked = checked;
+						}
+					});
+					updateServicePkgCount();
+				}
+				document.addEventListener('DOMContentLoaded', updateServicePkgCount);
+				updateServicePkgCount();
+			</script>
+		}
+	</div>
 }

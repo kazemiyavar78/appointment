@@ -13,67 +13,80 @@ templ Booking(view BookingView) {
 		data-otp-send-url="/otp/send"
 		data-otp-verify-url="/otp/verify"
 		data-patient-lookup-url="/patient/lookup"
+		data-success-url={ view.SubmitURL }
 	>
 		<a class="bk-back" href={ templ.SafeURL(view.BackURL) }>
 			بازگشت به فهرست پزشکان
 		</a>
-		<section class="bk-doctor-card">
-			if view.PhotoURL != "" {
-				<img class="bk-doctor-card__photo" src={ view.PhotoURL } alt="" width="80" height="80" loading="lazy"/>
-			} else {
-				<div class="bk-doctor-card__placeholder" aria-hidden="true">دکتر</div>
+		<section class="bk-profile" aria-label="معرفی پزشک">
+			<section class="bk-doctor-card">
+				if view.PhotoURL != "" {
+					<img class="bk-doctor-card__photo" src={ view.PhotoURL } alt="" width="80" height="80" loading="lazy"/>
+				} else {
+					<div class="bk-doctor-card__placeholder" aria-hidden="true">دکتر</div>
+				}
+				<div class="bk-doctor-card__info">
+					if view.ShowClinic && view.ClinicName != "" {
+						<span class="bk-doctor-card__clinic">{ view.ClinicName }</span>
+					}
+					<h1 class="bk-doctor-card__name">{ view.DoctorName }</h1>
+					if view.SpecialtyName != "" {
+						<p class="bk-doctor-card__spec">{ view.SpecialtyName }</p>
+					}
+				</div>
+			</section>
+			if view.LongDesc != "" {
+				<div class="bk-doctor-about">
+					<h2 class="bk-doctor-about__title">درباره پزشک</h2>
+					<p class="bk-doctor-about__text">{ view.LongDesc }</p>
+				</div>
 			}
-			<div class="bk-doctor-card__info">
-				if view.ShowClinic && view.ClinicName != "" {
-					<span class="bk-doctor-card__clinic">{ view.ClinicName }</span>
-				}
-				<h1 class="bk-doctor-card__name">{ view.DoctorName }</h1>
-				if view.SpecialtyName != "" {
-					<p class="bk-doctor-card__spec">{ view.SpecialtyName }</p>
-				}
-			</div>
 		</section>
-		if view.ErrorMessage != "" {
-			<p class="bk-alert" role="alert">{ view.ErrorMessage }</p>
-		}
-		@components.BookingStepper(components.BookingStepperView{ActiveStep: 1})
-		<form
-			id="booking-form"
-			class="bk-wizard"
-			method="post"
-			action={ templ.SafeURL(view.SubmitURL) }
-			autocomplete="off"
-			novalidate
-		>
-			<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
-			<input type="hidden" name="otp_ticket" id="otp_ticket" value=""/>
-			<section class="bk-panel" id="booking-step-slots" data-step="1">
-				<h2 class="bk-panel__title">نوبت را انتخاب کنید</h2>
-				<p class="bk-panel__desc">روی یکی از کارت‌های زیر بزنید.</p>
-				@components.BookingSlotGrid(components.BookingSlotCardView{
-					InputName:  view.Slots.InputName,
-					Options:    view.Slots.Options,
-					EmptyText:  view.Slots.EmptyText,
-					DoctorName: view.DoctorName,
-				})
-				<button type="button" id="booking-to-info" class="bk-btn bk-btn--primary bk-btn--block" disabled>
-					ادامه
-				</button>
-			</section>
-			<section class="bk-panel bk-hidden" id="booking-step-info" data-step="2" aria-hidden="true">
-				<h2 class="bk-panel__title">اطلاعات بیمار</h2>
-				@components.BookingPatientForm(components.BookingPatientFormView{})
-			</section>
-			@components.BookingOTPPanel(components.BookingOTPPanelView{CodeLength: 5})
-			<div id="booking-progress" class="bk-hidden" aria-hidden="true">
-				<ol class="bk-progress-steps">
-					<li class="booking-step" data-step="1"><span class="booking-step-icon">1</span></li>
-					<li class="booking-step" data-step="2"><span class="booking-step-icon">2</span></li>
-					<li class="booking-step" data-step="3"><span class="booking-step-icon">3</span></li>
-					<li class="booking-step" data-step="4"><span class="booking-step-icon">4</span></li>
-				</ol>
-			</div>
-		</form>
+		<section class="bk-booking" aria-label="نوبت‌دهی">
+			<p
+				id="booking-server-error"
+				class={ "bk-alert", templ.KV("bk-hidden", view.ErrorMessage == "") }
+				role="alert"
+			>{ view.ErrorMessage }</p>
+			@components.BookingStepper(components.BookingStepperView{ActiveStep: 1})
+			<form
+				id="booking-form"
+				class="bk-wizard"
+				method="post"
+				action={ templ.SafeURL(view.SubmitURL) }
+				autocomplete="off"
+				novalidate
+			>
+				<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
+				<input type="hidden" name="otp_ticket" id="otp_ticket" value=""/>
+				<section class="bk-panel" id="booking-step-slots" data-step="1">
+					<h2 class="bk-panel__title">نوبت را انتخاب کنید</h2>
+					<p class="bk-panel__desc">روی یکی از کارت‌های زیر بزنید.</p>
+					@components.BookingSlotGrid(components.BookingSlotCardView{
+						InputName:  view.Slots.InputName,
+						Options:    view.Slots.Options,
+						EmptyText:  view.Slots.EmptyText,
+						DoctorName: view.DoctorName,
+					})
+					<button type="button" id="booking-to-info" class="bk-btn bk-btn--primary bk-btn--block" disabled>
+						ادامه
+					</button>
+				</section>
+				<section class="bk-panel bk-hidden" id="booking-step-info" data-step="2" aria-hidden="true">
+					<h2 class="bk-panel__title">اطلاعات بیمار</h2>
+					@components.BookingPatientForm(components.BookingPatientFormView{})
+				</section>
+				@components.BookingOTPPanel(components.BookingOTPPanelView{CodeLength: 5})
+				<div id="booking-progress" class="bk-hidden" aria-hidden="true">
+					<ol class="bk-progress-steps">
+						<li class="booking-step" data-step="1"><span class="booking-step-icon">1</span></li>
+						<li class="booking-step" data-step="2"><span class="booking-step-icon">2</span></li>
+						<li class="booking-step" data-step="3"><span class="booking-step-icon">3</span></li>
+						<li class="booking-step" data-step="4"><span class="booking-step-icon">4</span></li>
+					</ol>
+				</div>
+			</form>
+		</section>
 		if len(view.Services) > 0 {
 			<section class="bk-services-section">
 				<h2 class="bk-services-section__title">

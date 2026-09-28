@@ -25,3 +25,15 @@ const (
 	FEMALE Sex = "زن"
 	OTHER  Sex = "نامشخص"
 )
+
+// UnknownBirthDate is stored when a patient is captured at OTP time, before birth date is known.
+// Inputs: none. Output: 1900-01-01 UTC, which SQL Server datetime accepts.
+func UnknownBirthDate() time.Time {
+	return time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+}
+
+// BirthDateKnown reports whether t is a real birth date rather than empty or the OTP placeholder.
+// Inputs: birth date loaded from patients. Output: false for zero or year 1900 and earlier.
+func BirthDateKnown(t time.Time) bool {
+	return !t.IsZero() && t.Year() > 1900
+}

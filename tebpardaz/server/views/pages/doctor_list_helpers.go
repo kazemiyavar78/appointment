@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"tebpardaz/server/internal/text"
 )
 
 // uintToString formats a uint for HTML option values in doctor_list.templ.
@@ -30,7 +32,7 @@ func doctorListHasFilters(view DoctorListView) bool {
 	return strings.TrimSpace(view.Query) != "" ||
 		strings.TrimSpace(view.Date) != "" ||
 		view.SpecialtyID > 0 ||
-		view.ClinicID > 0
+		strings.TrimSpace(view.ClinicSlug) != ""
 }
 
 // doctorListPageURL builds a /doctors URL preserving filters for the given page.
@@ -47,8 +49,8 @@ func doctorListPageURL(view DoctorListView, page int) string {
 	if view.SpecialtyID > 0 {
 		q.Set("specialty_id", uintToString(view.SpecialtyID))
 	}
-	if view.ClinicID > 0 {
-		q.Set("clinic_id", uintToString(view.ClinicID))
+	if s := strings.TrimSpace(view.ClinicSlug); s != "" {
+		q.Set("clinic", s)
 	}
 	if page > 1 {
 		q.Set("page", intToString(page))
@@ -100,11 +102,15 @@ func doctorListSpecialtyDescription(view DoctorListView) string {
 // doctorListClinicName returns the clinic label for the active clinic filter.
 // Input: view. Output: clinic name, or empty when unset/unknown.
 func doctorListClinicName(view DoctorListView) string {
-	if view.ClinicID == 0 {
+	slug := strings.TrimSpace(view.ClinicSlug)
+	if slug == "" && view.ClinicID == 0 {
 		return ""
 	}
 	for _, cl := range view.Clinics {
-		if cl.ID == view.ClinicID {
+		if slug != "" && cl.Slug == slug {
+			return cl.Name
+		}
+		if view.ClinicID > 0 && cl.ID == view.ClinicID {
 			return cl.Name
 		}
 	}
@@ -112,7 +118,7 @@ func doctorListClinicName(view DoctorListView) string {
 }
 
 // doctorListClearURL builds a filter URL with one field removed (and page reset).
-// Input: view, clearKey in {q,date,specialty_id,clinic_id}.
+// Input: view, clearKey in {q,date,specialty_id,clinic}.
 // Output: relative URL without that filter.
 func doctorListClearURL(view DoctorListView, clearKey string) string {
 	clone := view
@@ -123,8 +129,9 @@ func doctorListClearURL(view DoctorListView, clearKey string) string {
 		clone.Date = ""
 	case "specialty_id":
 		clone.SpecialtyID = 0
-	case "clinic_id":
+	case "clinic", "clinic_id":
 		clone.ClinicID = 0
+		clone.ClinicSlug = ""
 	}
 	return doctorListPageURL(clone, 1)
 }
@@ -165,4 +172,109 @@ func doctorListPaginationPages(page, totalPages int) []int {
 		prev = p
 	}
 	return out
+}
+
+// doctorListFilterPreview تعداد گزینه‌های تخصص یا مرکز است که قبل از «مشاهده همه» دیده می‌شوند.
+const doctorListFilterPreview = 5
+
+// doctorListRadioItem یک گزینهٔ رادیویی در فیلتر تخصص یا مرکز درمانی است.
+type doctorListRadioItem struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+// doctorListRadioGroup دادهٔ یک گروه فیلتر رادیویی را برای رندر templ نگه می‌دارد.
+type doctorListRadioGroup struct {
+	Title         string
+	CountLabel    string
+	AllLabel      string
+	AllSelected   bool
+	Name          string
+	GroupID       string
+	MoreID        string
+	ShowMoreLabel string
+	HideMoreLabel string
+	Items         []doctorListRadioItem
+}
+
+// doctorListFilterCountLabel تعداد گزینه‌ها را با رقم فارسی کنار عنوان فیلتر نشان می‌دهد.
+// ورودی: n تعداد گزینه‌ها، unit واحد نمایش مثل «تخصص» یا «مرکز».
+// خروجی: برچسب کوتاه، مثلاً «۱۲ تخصص».
+func doctorListFilterCountLabel(n int, unit string) string {
+	return text.FormatPersianInt(int64(n)) + " " + unit
+}
+
+// doctorListSpecialtyRadioGroup گزینه‌های تخصص را از دادهٔ واقعی view می‌سازد.
+// ورودی: view لیست پزشکان و suffix یکتا برای idها.
+// خروجی: گروه رادیویی با name برابر specialty_id.
+func doctorListSpecialtyRadioGroup(view DoctorListView, suffix string) doctorListRadioGroup {
+	items := make([]doctorListRadioItem, 0, len(view.Specialties))
+	for _, sp := range view.Specialties {
+		items = append(items, doctorListRadioItem{
+			Value:    uintToString(sp.ID),
+			Label:    sp.Name,
+			Selected: view.SpecialtyID != 0 && sp.ID == view.SpecialtyID,
+		})
+	}
+	return doctorListRadioGroup{
+		Title:         "تخصص پزشک",
+		CountLabel:    doctorListFilterCountLabel(len(items), "تخصص"),
+		AllLabel:      "همه تخصص‌ها",
+		AllSelected:   view.SpecialtyID == 0,
+		Name:          "specialty_id",
+		GroupID:       "specialty-" + suffix,
+		MoreID:        "specialty-more-" + suffix,
+		ShowMoreLabel: "مشاهده همه تخصص‌ها",
+		HideMoreLabel: "بستن تخصص‌ها",
+		Items:         items,
+	}
+}
+
+// doctorListClinicRadioGroup گزینه‌های مرکز را از دادهٔ واقعی view می‌سازد و slug خالی را رد می‌کند.
+// ورودی: view لیست پزشکان و suffix یکتا برای idها.
+// خروجی: گروه رادیویی با name برابر clinic و مقدار slug.
+func doctorListClinicRadioGroup(view DoctorListView, suffix string) doctorListRadioGroup {
+	slug := strings.TrimSpace(view.ClinicSlug)
+	items := make([]doctorListRadioItem, 0, len(view.Clinics))
+	for _, cl := range view.Clinics {
+		if strings.TrimSpace(cl.Slug) == "" {
+			continue
+		}
+		items = append(items, doctorListRadioItem{
+			Value:    cl.Slug,
+			Label:    cl.Name,
+			Selected: slug != "" && cl.Slug == slug,
+		})
+	}
+	return doctorListRadioGroup{
+		Title:         "مرکز درمانی",
+		CountLabel:    doctorListFilterCountLabel(len(items), "مرکز"),
+		AllLabel:      "همه مراکز",
+		AllSelected:   slug == "",
+		Name:          "clinic",
+		GroupID:       "clinic-" + suffix,
+		MoreID:        "clinic-more-" + suffix,
+		ShowMoreLabel: "مشاهده همه مراکز",
+		HideMoreLabel: "بستن مراکز",
+		Items:         items,
+	}
+}
+
+// doctorListRadioSplit پنج گزینهٔ اول را جدا می‌کند و اگر انتخاب فعلی در ادامه باشد گروه را باز می‌گذارد.
+// ورودی: همهٔ گزینه‌های فیلتر به ترتیب view.
+// خروجی: بخش قابل‌مشاهده، بخش اضافی، و true وقتی گزینهٔ انتخاب‌شده خارج از پنج‌تای اول است.
+func doctorListRadioSplit(items []doctorListRadioItem) (visible, extra []doctorListRadioItem, expanded bool) {
+	if len(items) <= doctorListFilterPreview {
+		return items, nil, false
+	}
+	visible = items[:doctorListFilterPreview]
+	extra = items[doctorListFilterPreview:]
+	for _, item := range extra {
+		if item.Selected {
+			expanded = true
+			break
+		}
+	}
+	return visible, extra, expanded
 }

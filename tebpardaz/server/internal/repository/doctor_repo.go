@@ -8,6 +8,7 @@ import (
 
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/slug"
+	"tebpardaz/server/internal/text"
 	"tebpardaz/shared/constants"
 	"tebpardaz/shared/protocol"
 
@@ -147,14 +148,14 @@ func (r *DoctorRepo) FindExistingPublic(clinicID uint, dto protocol.DoctorDTO) (
 // Inputs: doctor pointer, dto from clinic.
 // Output: none (mutates doctor).
 func (r *DoctorRepo) applyHISFields(doctor *models.Doctor, dto protocol.DoctorDTO) {
-	if dto.Name != "" {
-		doctor.Name = dto.Name
+	if name := normalizeDoctorName(dto.Name); name != "" {
+		doctor.Name = name
 	}
-	if dto.FirstName != "" {
-		doctor.FirstName = dto.FirstName
+	if firstName := normalizeDoctorName(dto.FirstName); firstName != "" {
+		doctor.FirstName = firstName
 	}
-	if dto.LastName != "" {
-		doctor.LastName = dto.LastName
+	if lastName := normalizeDoctorName(dto.LastName); lastName != "" {
+		doctor.LastName = lastName
 	}
 	if dto.Mobile != "" {
 		doctor.Mobile = dto.Mobile
@@ -191,6 +192,7 @@ type ApproveInput struct {
 	Photo600       string
 	Photo900       string
 	Photo1200      string
+	UseClinicLogo  bool
 	IsActive       bool
 	ReviewerID     uint
 	Note           string
@@ -203,6 +205,12 @@ type DoctorPhotosUpdate struct {
 	Photo600  string
 	Photo900  string
 	Photo1200 string
+	// UseClinicLogo اگر غیر nil باشد پرچم استفاده از لوگوی مرکز را تنظیم می‌کند.
+	UseClinicLogo *bool
+	// LogoURL آدرس لوگوی مرکز است و فقط وقتی UseClinicLogo روشن است نوشته می‌شود.
+	LogoURL string
+	// ReplacePhotos همهٔ سایزها را بازنویسی می‌کند، حتی اگر خالی باشند.
+	ReplacePhotos bool
 }
 
 // CreateApproved persists a newly approved doctor (photo + specialty required) and an audit approval row.
@@ -218,6 +226,9 @@ func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequ
 		photo1200 = photoURL
 	}
 	if photoURL == "" {
+		if in.UseClinicLogo {
+			return nil, fmt.Errorf("clinic logo required")
+		}
 		return nil, fmt.Errorf("photo_url required")
 	}
 	if in.SpecialtyID == 0 {
@@ -240,16 +251,16 @@ func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequ
 	}
 
 	externalID := uuid.NewString()
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		name = strings.TrimSpace(in.FirstName + " " + in.LastName)
+	name, firstName, lastName, err := resolveApprovedDoctorNames(in.Name, in.FirstName, in.LastName)
+	if err != nil {
+		return nil, err
 	}
 	doctor := models.Doctor{
 		ClinicID:       in.ClinicID,
 		SpecialtyID:    in.SpecialtyID,
 		Name:           name,
-		FirstName:      in.FirstName,
-		LastName:       in.LastName,
+		FirstName:      firstName,
+		LastName:       lastName,
 		Mobile:         in.Mobile,
 		NationalID:     nid,
 		DoctorSystemID: in.DoctorSystemID,
@@ -259,6 +270,7 @@ func (r *DoctorRepo) CreateApproved(in ApproveInput) (*models.DoctorApprovalRequ
 		Photo600:       strings.TrimSpace(in.Photo600),
 		Photo900:       strings.TrimSpace(in.Photo900),
 		Photo1200:      photo1200,
+		UseClinicLogo:  in.UseClinicLogo,
 		ExternalID:     externalID,
 		LocalCode:      in.LocalCode,
 		IsApproved:     true,
@@ -305,23 +317,55 @@ func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photos Do
 	if specialtyID > 0 {
 		updates["specialty_id"] = specialtyID
 	}
-	if p := strings.TrimSpace(photos.PhotoURL); p != "" {
-		updates["photo_url"] = p
-	}
-	if p := strings.TrimSpace(photos.Photo300); p != "" {
-		updates["photo_300"] = p
-	}
-	if p := strings.TrimSpace(photos.Photo600); p != "" {
-		updates["photo_600"] = p
-	}
-	if p := strings.TrimSpace(photos.Photo900); p != "" {
-		updates["photo_900"] = p
-	}
-	if p := strings.TrimSpace(photos.Photo1200); p != "" {
-		updates["photo_1200"] = p
-		updates["photo_url"] = p
-	} else if p := strings.TrimSpace(photos.PhotoURL); p != "" {
-		updates["photo_url"] = p
+	if photos.UseClinicLogo != nil && *photos.UseClinicLogo {
+		logo := strings.TrimSpace(photos.LogoURL)
+		if logo == "" {
+			return nil, fmt.Errorf("clinic logo required")
+		}
+		updates["use_clinic_logo"] = true
+		updates["photo_url"] = logo
+		updates["photo_300"] = logo
+		updates["photo_600"] = logo
+		updates["photo_900"] = logo
+		updates["photo_1200"] = logo
+	} else {
+		if photos.UseClinicLogo != nil {
+			updates["use_clinic_logo"] = false
+		}
+		if photos.ReplacePhotos {
+			url := strings.TrimSpace(photos.PhotoURL)
+			photo1200 := strings.TrimSpace(photos.Photo1200)
+			if photo1200 == "" {
+				photo1200 = url
+			}
+			if url == "" {
+				url = photo1200
+			}
+			updates["photo_url"] = url
+			updates["photo_300"] = strings.TrimSpace(photos.Photo300)
+			updates["photo_600"] = strings.TrimSpace(photos.Photo600)
+			updates["photo_900"] = strings.TrimSpace(photos.Photo900)
+			updates["photo_1200"] = photo1200
+		} else {
+			if p := strings.TrimSpace(photos.PhotoURL); p != "" {
+				updates["photo_url"] = p
+			}
+			if p := strings.TrimSpace(photos.Photo300); p != "" {
+				updates["photo_300"] = p
+			}
+			if p := strings.TrimSpace(photos.Photo600); p != "" {
+				updates["photo_600"] = p
+			}
+			if p := strings.TrimSpace(photos.Photo900); p != "" {
+				updates["photo_900"] = p
+			}
+			if p := strings.TrimSpace(photos.Photo1200); p != "" {
+				updates["photo_1200"] = p
+				updates["photo_url"] = p
+			} else if p := strings.TrimSpace(photos.PhotoURL); p != "" {
+				updates["photo_url"] = p
+			}
+		}
 	}
 	if setDesc {
 		updates["short_desc"] = strings.TrimSpace(shortDesc)
@@ -330,7 +374,9 @@ func (r *DoctorRepo) UpdateApprovedProfile(doctorID, specialtyID uint, photos Do
 	if len(updates) == 0 {
 		return doc, nil
 	}
-	if err := r.DB.Model(doc).Updates(updates).Error; err != nil {
+	// Model را خالی می‌گذاریم تا association ازپیش‌لودشده Specialty
+	// مقدار specialty_id را در SaveBeforeAssociations به تخصص قبلی برنگرداند.
+	if err := r.DB.Model(&models.Doctor{}).Where("id = ?", doctorID).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	return r.GetByID(doctorID)
@@ -375,9 +421,8 @@ func (r *DoctorRepo) GetByID(id uint) (*models.Doctor, error) {
 	return &doctor, nil
 }
 
-// GetPublicByClinicAndSlug loads an approved active doctor by clinic and URL slug.
-// Inputs: clinicID, slug (public path segment).
-// Output: doctor with Specialty preloaded, or gorm.ErrRecordNotFound.
+// GetPublicByClinicAndSlug پزشک تأییدشده و فعال را با اسلاگ مرکز برای صفحه رزرو بارگذاری می‌کند.
+// ورودی: شناسه مرکز و اسلاگ پزشک. خروجی: پزشک با تخصص، یا ErrRecordNotFound اگر تخصص در نوبت‌دهی مخفی باشد.
 func (r *DoctorRepo) GetPublicByClinicAndSlug(clinicID uint, slug string) (*models.Doctor, error) {
 	slug = strings.TrimSpace(slug)
 	if r == nil || r.DB == nil || clinicID == 0 || slug == "" {
@@ -385,8 +430,8 @@ func (r *DoctorRepo) GetPublicByClinicAndSlug(clinicID uint, slug string) (*mode
 	}
 	var doctor models.Doctor
 	err := r.DB.Where(
-		"clinic_id = ? AND slug = ? AND is_approved = ? AND is_active = ? AND external_id <> ''",
-		clinicID, slug, true, true,
+		"clinic_id = ? AND slug = ? AND is_approved = ? AND is_active = ? AND external_id <> '' AND specialty_id IN (?)",
+		clinicID, slug, true, true, bookableSpecialtyIDsQuery(r.DB),
 	).Preload("Specialty").First(&doctor).Error
 	if err != nil {
 		return nil, err
@@ -423,6 +468,21 @@ func (r *DoctorRepo) EnsureSlug(doctor *models.Doctor) error {
 		}
 	}
 	return fmt.Errorf("unable to allocate unique doctor slug")
+}
+
+// resolveApprovedDoctorNames نام قابل‌نمایش پزشک تأییدشده را می‌سازد.
+// ورودی: نام، نام کوچک و نام خانوادگی خام. خروجی: سه مقدار نرمال‌شده، یا خطا اگر هیچ نامی نماند.
+func resolveApprovedDoctorNames(name, firstName, lastName string) (string, string, string, error) {
+	firstName = normalizeDoctorName(firstName)
+	lastName = normalizeDoctorName(lastName)
+	name = normalizeDoctorName(name)
+	if name == "" {
+		name = strings.TrimSpace(firstName + " " + lastName)
+	}
+	if name == "" {
+		return "", "", "", fmt.Errorf("doctor name required")
+	}
+	return name, firstName, lastName, nil
 }
 
 // slugifyDoctorName builds a base slug from doctor display name fields.
@@ -468,9 +528,8 @@ type DoctorPublicFilter struct {
 	Query       string
 }
 
-// ListPublic returns approved, active doctors matching the public booking filters.
-// Inputs: filter (clinic IDs required; optional specialty and name query).
-// Output: doctor rows with Specialty preloaded, ordered by name.
+// ListPublic پزشکان تأییدشده و فعال نوبت‌دهی را برمی‌گرداند و تخصص‌های مخفی از نوبت‌دهی را کنار می‌گذارد.
+// ورودی: فیلتر (شناسه مراکز الزامی؛ تخصص و نام اختیاری). خروجی: پزشکان با تخصص، مرتب بر اساس نام.
 func (r *DoctorRepo) ListPublic(filter DoctorPublicFilter) ([]models.Doctor, error) {
 	if r == nil || r.DB == nil {
 		return nil, fmt.Errorf("doctor repo unavailable")
@@ -479,20 +538,76 @@ func (r *DoctorRepo) ListPublic(filter DoctorPublicFilter) ([]models.Doctor, err
 		return nil, nil
 	}
 	q := r.DB.Where(
-		"clinic_id IN ? AND is_approved = ? AND is_active = ? AND external_id <> ''",
-		filter.ClinicIDs, true, true,
+		"clinic_id IN ? AND is_approved = ? AND is_active = ? AND external_id <> '' AND specialty_id IN (?)",
+		filter.ClinicIDs, true, true, bookableSpecialtyIDsQuery(r.DB),
 	)
 	if filter.SpecialtyID > 0 {
 		q = q.Where("specialty_id = ?", filter.SpecialtyID)
 	}
-	if name := strings.TrimSpace(filter.Query); name != "" {
-		like := "%" + name + "%"
-		q = q.Where(
-			"(name LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR (first_name + ' ' + last_name) LIKE ?)",
-			like, like, like, like,
-		)
-	}
+	q = applyDoctorNameSearch(q, filter.Query)
 	var rows []models.Doctor
 	err := q.Preload("Specialty").Order("name asc").Find(&rows).Error
 	return rows, err
+}
+
+// bookableSpecialtyIDsQuery شناسه تخصص‌های تأییدشده و قابل‌نمایش در نوبت‌دهی را انتخاب می‌کند.
+// ورودی: اتصال GORM. خروجی: زیرپرس‌وجوی id برای استفاده در IN.
+func bookableSpecialtyIDsQuery(db *gorm.DB) *gorm.DB {
+	return db.Model(&models.Specialty{}).
+		Select("id").
+		Where("is_approved = ? AND show_in_booking = ?", true, true)
+}
+
+// normalizeDoctorName نام پزشک را با قاعدهٔ محافظه‌کارانه نرمال می‌کند.
+// ورودی: متن خام. خروجی: متن انسانی. ئ، ة، رقم و slug عوض نمی‌شوند.
+func normalizeDoctorName(s string) string {
+	return text.NormalizePersianText(s)
+}
+
+// applyDoctorNameSearch عبارت نام را با شکل جدید و در صورت تفاوت با شکل legacy جستجو می‌کند.
+// ورودی: query جاری و متن کاربر. خروجی: همان query با شرط LIKE. ذخیره را عوض نمی‌کند.
+func applyDoctorNameSearch(q *gorm.DB, raw string) *gorm.DB {
+	forms := text.SearchLegacyForms(raw)
+	if len(forms) == 0 || q == nil {
+		return q
+	}
+	clause := "(name LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR (first_name + ' ' + last_name) LIKE ?)"
+	args := make([]any, 0, len(forms)*4)
+	parts := make([]string, 0, len(forms))
+	for _, form := range forms {
+		like := "%" + form + "%"
+		parts = append(parts, clause)
+		args = append(args, like, like, like, like)
+	}
+	return q.Where("("+strings.Join(parts, " OR ")+")", args...)
+}
+
+// MigrateAllDoctorNamesToPersian نام‌های عربی ذخیره‌شده را به فارسی بروزرسانی می‌کند.
+// ورودی: ندارد. خروجی: تعداد ردیف‌های نام‌تغییریافته. slug و شناسه نوشته نمی‌شوند.
+func (r *DoctorRepo) MigrateAllDoctorNamesToPersian() (int, error) {
+	if r == nil || r.DB == nil {
+		return 0, fmt.Errorf("doctor repo unavailable")
+	}
+	var doctors []models.Doctor
+	if err := r.DB.Select("id", "name", "first_name", "last_name").Find(&doctors).Error; err != nil {
+		return 0, err
+	}
+	updated := 0
+	for _, doc := range doctors {
+		name := normalizeDoctorName(doc.Name)
+		firstName := normalizeDoctorName(doc.FirstName)
+		lastName := normalizeDoctorName(doc.LastName)
+		if name == doc.Name && firstName == doc.FirstName && lastName == doc.LastName {
+			continue
+		}
+		if err := r.DB.Model(&models.Doctor{}).Where("id = ?", doc.ID).Updates(map[string]any{
+			"name":       name,
+			"first_name": firstName,
+			"last_name":  lastName,
+		}).Error; err != nil {
+			return updated, err
+		}
+		updated++
+	}
+	return updated, nil
 }

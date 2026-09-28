@@ -12,6 +12,15 @@ type DoctorOption struct {
 	Selected bool
 }
 
+// ServicePackageOption یک بسته خدمات برای انتخاب در فرم‌های انتصاب است.
+type ServicePackageOption struct {
+	ID         uint
+	Name       string
+	ServiceIDs []uint
+	Count      int
+	Selected   bool
+}
+
 // DoctorServicesView مدل داده صفحه انتصاب خدمات به پزشکان است.
 type DoctorServicesView struct {
 	Nav              layouts.AdminLayoutView
@@ -21,6 +30,7 @@ type DoctorServicesView struct {
 	Doctors          []DoctorOption
 	SelectedDoctorID uint
 	Services         []ServiceAssignOption
+	Packages         []ServicePackageOption
 }
 
 // DoctorServices صفحه انتصاب خدمات به پزشکان را رندر می‌کند.
@@ -35,10 +45,13 @@ templ DoctorServices(view DoctorServicesView) {
 						خدمات درمانی و پوشش‌های هر پزشک را در مرکز درمانی مشخص کنید.
 					</p>
 				</div>
-				<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services">
-					<i class="fa-solid fa-arrow-right ml-1"></i>
-					بازگشت به لیست خدمات
-				</a>
+				<div class="flex flex-wrap gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/packages">بسته‌های خدمات</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services">
+						<i class="fa-solid fa-arrow-right ml-1"></i>
+						بازگشت به لیست خدمات
+					</a>
+				</div>
 			</div>
 			if view.Message != "" {
 				<div class="ui-panel mb-4 text-sm font-medium text-brand-dark bg-brand/5 border border-brand/20">
@@ -82,6 +95,32 @@ templ DoctorServices(view DoctorServicesView) {
 			} else {
 				<form method="post" action="/admin/services/doctor-services" id="doctor-services-form" onsubmit="return validateDoctorServicesForm()">
 					<input type="hidden" name="clinic_id" value={ formatUint(view.SelectedClinicID) }/>
+
+					if len(view.Packages) > 0 {
+						<div class="mb-5 rounded-xl border border-brand/15 bg-brand/5 p-4">
+							<div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+								<p class="text-xs font-semibold text-ink">
+									<i class="fa-solid fa-box-open text-brand ml-1"></i>
+									اعمال بسته خدمات
+								</p>
+								<p class="text-[11px] text-ink-muted">با انتخاب هر بسته، تمام خدمات آن برای پزشکان انتخاب‌شده علامت می‌خورند.</p>
+							</div>
+							<div class="flex flex-wrap gap-1.5">
+								for _, pkg := range view.Packages {
+									<button
+										type="button"
+										class="pkg-apply-btn rounded-full border border-brand/30 bg-white px-2.5 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white transition-colors"
+										data-ids={ joinUintIDs(pkg.ServiceIDs) }
+										onclick="applyServicePackage(this)"
+										title={ "انتخاب تمام خدمات بسته " + pkg.Name }
+									>
+										{ pkg.Name }
+										<span class="opacity-70">({ formatUint(uint(pkg.Count)) })</span>
+									</button>
+								}
+							</div>
+						</div>
+					}
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 						<!-- ستون انتخاب پزشکان -->
@@ -165,7 +204,7 @@ templ DoctorServices(view DoctorServicesView) {
 
 							<!-- دکمه‌های اقدام سریع خدمات -->
 							<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
-								<button type="button" onclick="toggleAllSrvs(true)" class="text-brand hover:underline font-medium">
+								<button type="button" onclick="toggleAllSrvs(true)" class="text-white hover:underline font-medium">
 									انتخاب همه
 								</button>
 								<button type="button" onclick="toggleAllSrvs(false)" class="text-ink-muted hover:underline">
@@ -176,21 +215,16 @@ templ DoctorServices(view DoctorServicesView) {
 							<!-- لیست اسکرول‌شونده خدمات -->
 							<div id="srv-list-container" class="mt-2 flex-1 overflow-y-auto space-y-1.5 pr-1 divide-y divide-gray-50">
 								for _, item := range view.Services {
-									<label class="srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ strings.ToLower(item.Name + " " + item.Description) }>
+									<label class="srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ serviceAssignSearchText(item) }>
 										<input
 											type="checkbox"
 											name="service_ids"
 											value={ formatUint(item.ID) }
-											onchange="updateSrvCount()"
+											onchange="updateSrvCount(); syncPackageButtons()"
 											class="srv-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
 											checked?={ item.Selected }
 										/>
-										<div class="min-w-0 flex-1">
-											<span class="text-xs font-semibold text-ink block">{ item.Name }</span>
-											if item.Description != "" {
-												<span class="text-[11px] text-ink-muted block mt-0.5">{ item.Description }</span>
-											}
-										</div>
+										@serviceAssignLabel(item)
 									</label>
 								}
 								<p id="srv-empty-msg" class="hidden text-center text-xs text-ink-muted py-8">
@@ -204,7 +238,7 @@ templ DoctorServices(view DoctorServicesView) {
 					<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
 						<div class="text-xs text-ink-muted leading-relaxed">
 							<i class="fa-solid fa-circle-info text-brand ml-1"></i>
-							با ذخیره اطلاعات، خدمات علامت‌خورده به تمام پزشکان انتخاب‌شده در بالا اختصاص داده می‌شوند.
+							با ذخیره اطلاعات، خدمات علامت‌خورده — از جمله خدمات بسته‌های اعمال‌شده — به تمام پزشکان انتخاب‌شده اختصاص داده می‌شوند.
 						</div>
 						<button class="ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold" type="submit">
 							<i class="fa-solid fa-floppy-disk ml-1.5"></i>
@@ -293,6 +327,39 @@ templ DoctorServices(view DoctorServicesView) {
 							}
 						});
 						updateSrvCount();
+						syncPackageButtons();
+					}
+
+					function applyServicePackage(btn) {
+						var ids = (btn.getAttribute('data-ids') || '').split(',').filter(Boolean);
+						if (ids.length === 0) {
+							alert('این بسته هنوز خدمتی ندارد.');
+							return;
+						}
+						var allChecked = ids.every(function(id) {
+							var cb = document.querySelector('.srv-checkbox[value="' + id + '"]');
+							return cb && cb.checked;
+						});
+						ids.forEach(function(id) {
+							var cb = document.querySelector('.srv-checkbox[value="' + id + '"]');
+							if (cb) cb.checked = !allChecked;
+						});
+						updateSrvCount();
+						syncPackageButtons();
+					}
+
+					function syncPackageButtons() {
+						document.querySelectorAll('.pkg-apply-btn').forEach(function(btn) {
+							var ids = (btn.getAttribute('data-ids') || '').split(',').filter(Boolean);
+							var active = ids.length > 0 && ids.every(function(id) {
+								var cb = document.querySelector('.srv-checkbox[value="' + id + '"]');
+								return cb && cb.checked;
+							});
+							btn.classList.toggle('bg-brand', active);
+							btn.classList.toggle('text-white', active);
+							btn.classList.toggle('bg-white', !active);
+							btn.classList.toggle('text-brand', !active);
+						});
 					}
 
 					function validateDoctorServicesForm() {
@@ -307,9 +374,11 @@ templ DoctorServices(view DoctorServicesView) {
 					document.addEventListener('DOMContentLoaded', function() {
 						updateDocCount();
 						updateSrvCount();
+						syncPackageButtons();
 					});
 					updateDocCount();
 					updateSrvCount();
+					syncPackageButtons();
 				</script>
 			}
 		</div>

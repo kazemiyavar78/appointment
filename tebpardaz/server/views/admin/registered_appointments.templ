@@ -1,0 +1,399 @@
+package admin
+
+import (
+	"net/url"
+	"strconv"
+	"time"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// RegisteredAppointmentRow is one website-booked appointment or an unbooked OTP lead in the admin table.
+type RegisteredAppointmentRow struct {
+	ID           uint
+	Kind         string
+	TrackingCode string
+	PatientName  string
+	DoctorName   string
+	ClinicName   string
+	StartsAt     time.Time
+	CreatedAt    time.Time
+	Status       string
+	StatusLabel  string
+	VisitStatus  string
+	VisitLabel   string
+	IPAddress    string
+	FailedReason string
+}
+
+// RegisteredAppointmentsView is the admin registered-appointment list page model.
+type RegisteredAppointmentsView struct {
+	Nav         layouts.AdminLayoutView
+	Clinics     []ClinicOption
+	Rows        []RegisteredAppointmentRow
+	Total       int64
+	Page        int
+	PerPage     int
+	TotalPages  int
+	ClinicID    uint
+	Status      string
+	SearchQuery string
+	FromDate    string
+	ToDate      string
+	Message     string
+}
+
+// registeredAppointmentsHref builds the list URL with current filters and the given page.
+func registeredAppointmentsHref(view RegisteredAppointmentsView, page int) string {
+	v := url.Values{}
+	if view.SearchQuery != "" {
+		v.Set("q", view.SearchQuery)
+	}
+	if view.ClinicID > 0 {
+		v.Set("clinic_id", strconv.FormatUint(uint64(view.ClinicID), 10))
+	}
+	if view.Status != "" {
+		v.Set("status", view.Status)
+	}
+	if view.FromDate != "" {
+		v.Set("from", view.FromDate)
+	}
+	if view.ToDate != "" {
+		v.Set("to", view.ToDate)
+	}
+	if page > 1 {
+		v.Set("page", strconv.Itoa(page))
+	}
+	if qs := v.Encode(); qs != "" {
+		return "/admin/bookings?" + qs
+	}
+	return "/admin/bookings"
+}
+
+// displayIP returns a placeholder when the booking IP is missing.
+func displayIP(ip string) string {
+	if ip == "" {
+		return "—"
+	}
+	return ip
+}
+
+// RegisteredAppointments renders booked patient appointments with patient and behavior actions.
+templ RegisteredAppointments(view RegisteredAppointmentsView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div id="booking-detail-modal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-labelledby="booking-detail-title" aria-hidden="true">
+			<div class="admin-modal-dialog">
+				<div class="admin-modal-header">
+					<h2 id="booking-detail-title" class="text-base font-semibold">جزئیات</h2>
+					<button id="booking-detail-close" type="button" class="ui-btn ui-btn-ghost text-xs">بستن</button>
+				</div>
+				<div id="booking-detail-body" class="admin-modal-body custom-glass-scrollbar text-sm">
+					در حال بارگذاری...
+				</div>
+			</div>
+		</div>
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4">
+				<h1 class="ui-page-title">نوبت‌های ثبت‌شده</h1>
+				<p class="mt-1 text-sm text-ink-muted">نوبت‌های ثبت‌شده از سایت، به‌همراه بیمارانی که کد تایید گرفته‌اند ولی نوبت ثبت نکرده‌اند.</p>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			} else {
+				<form class="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-2 xl:grid-cols-4" method="get" action="/admin/bookings">
+					<label class="block text-sm text-ink-muted">
+						جستجو
+						<input class="ui-field mt-1 w-full" type="search" name="q" value={ view.SearchQuery } placeholder="نام، کد ملی، موبایل، آی‌پی، پزشک..."/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						مرکز
+						<select class="ui-field mt-1 w-full" name="clinic_id">
+							if view.ClinicID == 0 {
+								<option value="" selected>همه مراکز</option>
+							} else {
+								<option value="">همه مراکز</option>
+							}
+							for _, clinic := range view.Clinics {
+								if clinic.Selected {
+									<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }</option>
+								} else {
+									<option value={ formatUint(clinic.ID) }>{ clinic.Name }</option>
+								}
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						وضعیت
+						<select class="ui-field mt-1 w-full" name="status">
+							if view.Status == "" {
+								<option value="" selected>همه</option>
+							} else {
+								<option value="">همه</option>
+							}
+							if optionSelected(view.Status, "pending") {
+								<option value="pending" selected>در انتظار</option>
+							} else {
+								<option value="pending">در انتظار</option>
+							}
+							if optionSelected(view.Status, "confirmed") {
+								<option value="confirmed" selected>تأیید شده</option>
+							} else {
+								<option value="confirmed">تأیید شده</option>
+							}
+							if optionSelected(view.Status, "failed") {
+								<option value="failed" selected>ناموفق</option>
+							} else {
+								<option value="failed">ناموفق</option>
+							}
+							if optionSelected(view.Status, "otp_unbooked") {
+								<option value="otp_unbooked" selected>بدون ثبت نوبت</option>
+							} else {
+								<option value="otp_unbooked">بدون ثبت نوبت</option>
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						از تاریخ نوبت
+						<input class="ui-field mt-1 w-full" type="date" name="from" value={ view.FromDate }/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						تا تاریخ نوبت
+						<input class="ui-field mt-1 w-full" type="date" name="to" value={ view.ToDate }/>
+					</label>
+					<div class="flex items-end gap-2 md:col-span-2 xl:col-span-4">
+						<button class="ui-btn ui-btn-primary" type="submit">اعمال فیلتر</button>
+						<a class="ui-btn" href="/admin/bookings">پاک کردن فیلتر</a>
+					</div>
+				</form>
+				<p class="mb-2 text-sm text-ink-muted">
+					تعداد کل: { formatInt64(view.Total) } — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }
+				</p>
+				<div class="overflow-x-auto ui-panel !p-0">
+					<table class="ui-table min-w-full text-sm">
+						<thead class="border-b border-border bg-surface-soft text-ink-muted">
+							<tr>
+								<th class="px-3 py-2 text-right">کد رهگیری</th>
+								<th class="px-3 py-2 text-right">بیمار</th>
+								<th class="px-3 py-2 text-right">پزشک</th>
+								<th class="px-3 py-2 text-right">مرکز</th>
+								<th class="px-3 py-2 text-right">زمان نوبت</th>
+								<th class="px-3 py-2 text-right">زمان ثبت</th>
+								<th class="px-3 py-2 text-right">وضعیت</th>
+								<th class="px-3 py-2 text-right">مراجعه</th>
+								<th class="px-3 py-2 text-right">آی‌پی</th>
+								<th class="px-3 py-2 text-right">دلیل ناموفقیت</th>
+								<th class="px-3 py-2 text-right">عملیات</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Rows) == 0 {
+								<tr>
+									<td class="px-3 py-4 text-ink-muted" colspan="11">موردی برای نمایش نیست.</td>
+								</tr>
+							}
+							for _, row := range view.Rows {
+								<tr class="border-b border-border">
+									<td class="px-3 py-2 tabular-nums">{ row.TrackingCode }</td>
+									<td class="px-3 py-2">{ row.PatientName }</td>
+									<td class="px-3 py-2">{ row.DoctorName }</td>
+									<td class="px-3 py-2">{ row.ClinicName }</td>
+									<td class="px-3 py-2 whitespace-nowrap">{ formatShamsiDateTime(row.StartsAt) }</td>
+									<td class="px-3 py-2 whitespace-nowrap">{ formatLogDateTime(row.CreatedAt) }</td>
+									<td class="px-3 py-2">{ row.StatusLabel }</td>
+									<td class="px-3 py-2" data-visit-for={ formatUint(row.ID) } data-visit-kind={ row.Kind }>{ row.VisitLabel }</td>
+									<td class="px-3 py-2 font-mono dir-ltr text-left">{ displayIP(row.IPAddress) }</td>
+									if optionSelected(row.Status, "failed") {
+										<td class="px-3 py-2">{ row.FailedReason }</td>
+									} else {
+										<td class="px-3 py-2">—</td>
+									}
+									<td class="px-3 py-2">
+										<div class="flex flex-wrap gap-1">
+											<button type="button" class="ui-btn ui-btn-ghost !min-h-0 px-2.5 py-1 text-xs" data-action="patient" data-kind={ row.Kind } data-id={ formatUint(row.ID) }>اطلاعات بیمار</button>
+											<button type="button" class="ui-btn ui-btn-ghost !min-h-0 px-2.5 py-1 text-xs" data-action="behavior" data-kind={ row.Kind } data-id={ formatUint(row.ID) }>رفتار بیمار</button>
+											<button type="button" class="ui-btn ui-btn-ghost !min-h-0 px-2.5 py-1 text-xs" data-action="visit" data-kind={ row.Kind } data-id={ formatUint(row.ID) }>بررسی مراجعه</button>
+										</div>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				@visitorPager(view.Page, view.TotalPages, registeredAppointmentsHref(view, view.Page-1), registeredAppointmentsHref(view, view.Page+1))
+			}
+		</div>
+		<script>
+			(function () {
+				var modal = document.getElementById("booking-detail-modal");
+				var title = document.getElementById("booking-detail-title");
+				var body = document.getElementById("booking-detail-body");
+				var closeBtn = document.getElementById("booking-detail-close");
+				if (!modal || !title || !body) return;
+
+				function openModal() {
+					if (modal.parentElement !== document.body) {
+						document.body.appendChild(modal);
+					}
+					modal.classList.remove("hidden");
+					modal.setAttribute("aria-hidden", "false");
+					document.body.classList.add("admin-modal-open");
+				}
+				function closeModal() {
+					modal.classList.add("hidden");
+					modal.setAttribute("aria-hidden", "true");
+					document.body.classList.remove("admin-modal-open");
+				}
+				function setLoading(label) {
+					title.textContent = label;
+					body.textContent = "در حال بارگذاری...";
+					openModal();
+				}
+				function el(tag, className, text) {
+					var node = document.createElement(tag);
+					if (className) node.className = className;
+					if (text != null) node.textContent = text;
+					return node;
+				}
+				function dlRow(label, value) {
+					var wrap = el("div", "grid grid-cols-3 gap-2 border-b border-gray-50 py-2");
+					wrap.appendChild(el("dt", "text-ink-muted", label));
+					wrap.appendChild(el("dd", "col-span-2", value || "—"));
+					return wrap;
+				}
+				function renderPatient(data) {
+					title.textContent = "اطلاعات بیمار";
+					body.replaceChildren();
+					if (!data || !data.ok || !data.patient) {
+						body.textContent = (data && data.message) || "اطلاعات بیمار یافت نشد.";
+						return;
+					}
+					var p = data.patient;
+					var list = el("dl", "");
+					list.appendChild(dlRow("نام", p.first_name));
+					list.appendChild(dlRow("نام خانوادگی", p.last_name));
+					list.appendChild(dlRow("کد ملی", p.national_id));
+					list.appendChild(dlRow("موبایل", p.mobile));
+					list.appendChild(dlRow("تاریخ تولد", p.birth_date));
+					list.appendChild(dlRow("جنسیت", p.sex));
+					body.appendChild(list);
+				}
+				function renderBehavior(data) {
+					title.textContent = "رفتار بیمار";
+					body.replaceChildren();
+					if (!data || !data.ok) {
+						body.textContent = (data && data.message) || "خطا در دریافت رفتار بیمار.";
+						return;
+					}
+					var summary = el("dl", "mb-4");
+					summary.appendChild(dlRow("آی‌پی", data.ip));
+					if (data.visit_count != null) summary.appendChild(dlRow("تعداد بازدید ثبت‌شده", String(data.visit_count)));
+					if (data.last_visit_at) summary.appendChild(dlRow("آخرین بازدید", data.last_visit_at));
+					if (data.first_visit_at) summary.appendChild(dlRow("اولین بازدید", data.first_visit_at));
+					body.appendChild(summary);
+					if (data.message) {
+						body.appendChild(el("p", "mb-3 text-ink-muted", data.message));
+					}
+					if (data.visits_url) {
+						var link = el("a", "mb-3 inline-block text-brand hover:underline", "مشاهده همه در بازدید صفحات");
+						link.href = data.visits_url;
+						body.appendChild(link);
+					}
+					var visits = data.visits || [];
+					if (!visits.length) return;
+					var wrap = el("div", "admin-modal-table-wrap custom-glass-scrollbar");
+					var table = el("table", "ui-table min-w-full text-sm");
+					var thead = document.createElement("thead");
+					thead.className = "border-b border-border bg-surface-soft text-ink-muted";
+					var headRow = document.createElement("tr");
+					["زمان", "دامنه", "مرکز", "مسیر", "مرورگر", "سیستم‌عامل", "گوگل", "ارجاع"].forEach(function (label) {
+						headRow.appendChild(el("th", "px-2 py-2 text-right", label));
+					});
+					thead.appendChild(headRow);
+					table.appendChild(thead);
+					var tbody = document.createElement("tbody");
+					visits.forEach(function (row) {
+						var tr = document.createElement("tr");
+						tr.className = "border-b border-border";
+						var cells = [
+							row.created_at,
+							row.host,
+							row.clinic_name,
+							row.path,
+							row.browser,
+							row.os,
+							row.is_from_google ? "بله" : "خیر",
+							row.referrer
+						];
+						cells.forEach(function (value, idx) {
+							var td = el("td", "px-2 py-2", value || "—");
+							if (idx === 1 || idx === 3 || idx === 7) {
+								td.className += " dir-ltr text-left max-w-xs truncate";
+								if (idx === 3 && row.full_url) td.title = row.full_url;
+								if (idx === 7 && row.referrer) td.title = row.referrer;
+							}
+							tr.appendChild(td);
+						});
+						tbody.appendChild(tr);
+					});
+					table.appendChild(tbody);
+					wrap.appendChild(table);
+					body.appendChild(wrap);
+				}
+				function renderVisit(data) {
+					title.textContent = "بررسی مراجعه";
+					body.replaceChildren();
+					if (!data || !data.ok) {
+						body.textContent = (data && data.message) || "بررسی مراجعه انجام نشد.";
+						return;
+					}
+					body.textContent = data.message || data.label || "بررسی انجام شد.";
+					if (data.id != null && data.label) {
+						var cell = document.querySelector('[data-visit-for="' + data.id + '"][data-visit-kind="' + (data.kind || "appointment") + '"]');
+						if (cell) cell.textContent = data.label;
+					}
+				}
+				function fetchJSON(path, renderer, method) {
+					fetch(path, { method: method || "GET", credentials: "same-origin", headers: { "Accept": "application/json" } })
+						.then(function (res) {
+							return res.json().then(function (data) {
+								return { ok: res.ok, data: data };
+							}).catch(function () {
+								return { ok: res.ok, data: { ok: false, message: "پاسخ نامعتبر است." } };
+							});
+						})
+						.then(function (result) {
+							renderer(result.data || { ok: false, message: "خطا در دریافت اطلاعات." });
+						})
+						.catch(function () {
+							renderer({ ok: false, message: "ارتباط با سرور برقرار نشد." });
+						});
+				}
+				document.addEventListener("click", function (ev) {
+					var btn = ev.target.closest("[data-action][data-id]");
+					if (!btn) return;
+					var id = btn.getAttribute("data-id");
+					var action = btn.getAttribute("data-action");
+					var kind = btn.getAttribute("data-kind") || "appointment";
+					var prefix = kind === "otp" ? "/admin/bookings/otp/" : "/admin/bookings/";
+					if (action === "patient") {
+						setLoading("اطلاعات بیمار");
+						fetchJSON(prefix + id + "/patient", renderPatient);
+					} else if (action === "behavior") {
+						setLoading("رفتار بیمار");
+						fetchJSON(prefix + id + "/behavior", renderBehavior);
+					} else if (action === "visit") {
+						setLoading("بررسی مراجعه");
+						fetchJSON(prefix + id + "/visit-check", renderVisit, "POST");
+					}
+				});
+				if (closeBtn) closeBtn.addEventListener("click", closeModal);
+				modal.addEventListener("click", function (ev) {
+					if (ev.target === modal) closeModal();
+				});
+				document.addEventListener("keydown", function (ev) {
+					if (ev.key === "Escape") closeModal();
+				});
+			})();
+		</script>
+	}
+}

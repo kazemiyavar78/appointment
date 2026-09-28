@@ -11,13 +11,14 @@ import (
 	"tebpardaz/server/internal/csrf"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/sms"
+	"tebpardaz/server/internal/statusnotify"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/pages"
 	"tebpardaz/shared/constants"
 
-	"github.com/a-h/templ"
 	"github.com/gin-gonic/gin"
 	ptime "github.com/yaa110/go-persian-calendar"
 	"gorm.io/gorm"
@@ -35,6 +36,7 @@ type BookingHandler struct {
 	OTP      *booking.OTPStore
 	SMS      *sms.Client
 	Services *repository.ServiceRepo
+	Status   *statusnotify.Notifier
 }
 
 // NewBookingHandler constructs a BookingHandler.
@@ -49,6 +51,7 @@ func NewBookingHandler(
 	otp *booking.OTPStore,
 	smsClient *sms.Client,
 	services *repository.ServiceRepo,
+	status *statusnotify.Notifier,
 ) *BookingHandler {
 	return &BookingHandler{
 		Doctors:  doctors,
@@ -61,6 +64,7 @@ func NewBookingHandler(
 		OTP:      otp,
 		SMS:      smsClient,
 		Services: services,
+		Status:   status,
 	}
 }
 
@@ -76,29 +80,29 @@ func (h *BookingHandler) Get(c *gin.Context) {
 	}
 	clinicSlug, doctorSlug, ok := bookingPathSlugs(c.Param("path"))
 	if !ok {
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 
 	switch {
 	case doctorSlug == "" && tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil:
-		h.renderBooking(c, tc, *tc.ClinicID, clinicName(tc), clinicSlug, false)
+		h.renderBooking(c, tc, tc.Clinic, *tc.ClinicID, clinicName(tc), clinicSlug, false)
 	case doctorSlug != "" && tc.Layout == constants.LayoutOrgan:
 		clinic, err := h.resolveOrganClinic(tc, clinicSlug)
 		if err != nil || clinic == nil {
-			c.Status(http.StatusNotFound)
+			NotFound(c)
 			return
 		}
-		h.renderBooking(c, tc, clinic.ID, clinic.Name, doctorSlug, true)
+		h.renderBooking(c, tc, clinic, clinic.ID, clinic.Name, doctorSlug, true)
 	case doctorSlug != "" && tc.Layout == constants.LayoutPlatform:
 		clinic, err := h.resolveClinicByPathKey(clinicSlug)
 		if err != nil || clinic == nil {
-			c.Status(http.StatusNotFound)
+			NotFound(c)
 			return
 		}
-		h.renderBooking(c, tc, clinic.ID, clinic.Name, doctorSlug, true)
+		h.renderBooking(c, tc, clinic, clinic.ID, clinic.Name, doctorSlug, true)
 	default:
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 	}
 }
 
@@ -170,18 +174,19 @@ func (h *BookingHandler) resolveClinicByPathKey(key string) (*models.Clinic, err
 func (h *BookingHandler) renderBooking(
 	c *gin.Context,
 	tc *tenant.Context,
+	clinic *models.Clinic,
 	clinicID uint,
 	clinicName string,
 	doctorSlug string,
 	showClinic bool,
 ) {
 	if doctorSlug == "" || h.Doctors == nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 	doctor, err := h.Doctors.GetPublicByClinicAndSlug(clinicID, doctorSlug)
 	if err != nil || doctor == nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 	_ = h.Doctors.EnsureSlug(doctor)
@@ -201,7 +206,6 @@ func (h *BookingHandler) renderBooking(
 	if h.Slots != nil {
 		slots = h.Slots.AvailableForDoctor(clinicID, doctor.ID, time.Now(), 40)
 	}
-	
 
 	backURL := booking.SafeReturnPath(c.Query("return"))
 	if backURL == "" {
@@ -230,7 +234,41 @@ func (h *BookingHandler) renderBooking(
 		Reviews:  reviews,
 		Services: services,
 	}
-	h.renderWithLayout(c, tc, pages.Booking(view), "booking")
+	// شماره نظام پزشکی و کد ملی وارد متادیتا و JSON-LD نمی‌شوند.
+	meta := seo.BookingMeta(view.DoctorName, view.SpecialtyName, view.ClinicName, requestCanonical(c))
+	head := headFromMeta(meta)
+	head.JSONLD = seo.BookingPageGraph(bookingSchemaInput(c, tc, clinic, doctor, clinicName, meta.Title, meta.Description, meta.Canonical))
+	RenderPublicLayoutWithHead(c, tc, pages.Booking(view), "booking", head)
+}
+
+// bookingSchemaInput ورودی گراف پزشک را از رکورد همان صفحه می‌سازد.
+// ورودی: درخواست، مستأجر، مرکز، پزشک، نام مرکز و متادیتای فاز 1B. خروجی: BookingPageInput.
+// @id پزشک همان canonical صفحه است. ClinicOrigin فقط برای worksFor است.
+func bookingSchemaInput(c *gin.Context, tc *tenant.Context, clinic *models.Clinic, doctor *models.Doctor, clinicName, title, description, canonical string) seo.BookingPageInput {
+	in := seo.BookingPageInput{
+		BaseURL:       publicBaseURL(c),
+		Canonical:     canonical,
+		Title:         title,
+		Description:   description,
+		DoctorName:    doctorDisplayName(*doctor),
+		DoctorSlug:    doctor.Slug,
+		Specialty:     doctor.Specialty.Name,
+		PhotoURL:      resolveDoctorPhoto(doctor),
+		UseClinicLogo: doctor.UseClinicLogo,
+		ClinicName:    strings.TrimSpace(clinicName),
+	}
+	if clinic == nil {
+		return in
+	}
+	if in.ClinicName == "" {
+		in.ClinicName = strings.TrimSpace(clinic.Name)
+	}
+	if tc != nil && tc.Layout == constants.LayoutPrivate {
+		in.ClinicOrigin = seo.ClinicSchemaOrigin(in.BaseURL, clinic.Domain, clinic.IsActiveOnWebsite)
+		return in
+	}
+	in.ClinicOrigin = seo.OfficialClinicOrigin(clinic.Domain, clinic.IsActiveOnWebsite)
+	return in
 }
 
 // buildDoctorServices لیست خدمات ارائه شده توسط پزشک و بیمه‌های پوشش‌دهنده در مرکز را استخراج می‌کند.
@@ -300,9 +338,9 @@ func (h *BookingHandler) buildDoctorReviews(c *gin.Context, doctor *models.Docto
 		CSRFToken:   csrfToken,
 	}
 	if flash := c.Query("review"); flash == "ok" {
-		view.InfoMessage = "نظر شما ثبت شد و پس از تأیید نمایش داده می‌شود."
+		view.Submitted = true
 	} else if flash == "error" {
-		view.ErrorMessage = "ثبت نظر ناموفق بود. امتیاز ۱ تا ۵ الزامی است."
+		view.ErrorMessage = "ثبت نظر ناموفق بود. انتخاب امتیاز الزامی است."
 	}
 	if h.Reviews == nil {
 		return view
@@ -312,21 +350,13 @@ func (h *BookingHandler) buildDoctorReviews(c *gin.Context, doctor *models.Docto
 	view.Average = sum.Average
 	rows, _ := h.Reviews.ListApprovedBodies(models.ReviewTargetDoctor, doctor.ID, 20)
 	for _, row := range rows {
-		name := row.AuthorName
-		if name == "" {
-			name = "کاربر"
-		}
 		view.Items = append(view.Items, components.ReviewItemView{
-			AuthorName: name,
+			AuthorName: strings.TrimSpace(row.AuthorName),
 			Rating:     row.Rating,
 			Body:       row.Body,
 		})
 	}
 	return view
-}
-
-func (h *BookingHandler) renderWithLayout(c *gin.Context, tc *tenant.Context, child templ.Component, activeNav string) {
-	renderPublicLayout(c, tc, child, activeNav)
 }
 
 func clinicName(tc *tenant.Context) string {
@@ -378,7 +408,7 @@ func toSlotOptions(slots []models.DoctorSlot) []components.SlotOption {
 
 // persianMonthAbbr مخفف فارسی نام ماه شمسی را برمی‌گرداند.
 func persianMonthAbbr(month int) string {
-	abbrs := []string{"", "فرو", "ارد", "خرد", "تیر", "مرد", "شهر", "مهر", "آبان", "آذر", "دی", "بهم", "اسف"}
+	abbrs := []string{"", "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"}
 	if month < 1 || month > 12 {
 		return ""
 	}

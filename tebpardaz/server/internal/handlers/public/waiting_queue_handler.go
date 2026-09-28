@@ -2,17 +2,21 @@ package public
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"tebpardaz/server/internal/analytics"
+	"tebpardaz/server/internal/branding"
 	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/csrf"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/internal/waitingqueue"
+	"tebpardaz/server/views/layouts"
 	"tebpardaz/server/views/pages"
 	"tebpardaz/shared/constants"
 	"tebpardaz/shared/protocol"
@@ -23,9 +27,10 @@ import (
 )
 
 const (
-	msgWQCSRFInvalid   = "نشست نامعتبر است؛ صفحه را تازه کنید"
-	msgWQInvalidForm   = "لطفاً شماره پذیرش را درست وارد کنید"
-	msgWQClinicInvalid = "مرکز انتخاب‌شده معتبر نیست"
+	msgWQCSRFInvalid        = "نشست نامعتبر است؛ صفحه را تازه کنید"
+	msgWQInvalidForm        = "لطفاً شماره پذیرش را درست وارد کنید"
+	msgWQClinicInvalid      = "مرکز انتخاب‌شده معتبر نیست"
+	msgWQDailyNationalLimit = "تعداد کدهای ملی جدید از این دستگاه/شبکه امروز به سقف مجاز رسیده است"
 	// nationalIDPathEmpty در مسیر URL به‌جای کد ملی خالی استفاده می‌شود (برای QR بدون کد ملی).
 	nationalIDPathEmpty = "-"
 	wqPatientPushEvery  = 5 * time.Second
@@ -41,11 +46,14 @@ var waitingQueueUpgrader = websocket.Upgrader{
 
 // WaitingQueueHandler فرم و WebSocket عمومی «وضعیت نوبت» را سرو می‌کند.
 type WaitingQueueHandler struct {
-	Clinics   *repository.ClinicRepo
-	Sections  *repository.SectionRepo
-	Cache     *cache.WaitingQueueCache
-	CSRF      *csrf.Manager
-	Refresher *waitingqueue.Refresher
+	Clinics        *repository.ClinicRepo
+	Sections       *repository.SectionRepo
+	Cache          *cache.WaitingQueueCache
+	CSRF           *csrf.Manager
+	Refresher      *waitingqueue.Refresher
+	Submissions    *repository.WaitingQueueSubmissionRepo
+	NIDLimit       *cache.NationalIDLimiter
+	VAPIDPublicKey string
 }
 
 // NewWaitingQueueHandler سازنده WaitingQueueHandler است.
@@ -116,7 +124,7 @@ func (h *WaitingQueueHandler) GetDeepLink(c *gin.Context) {
 	}
 	view.SelectedClinicID = clinic.ID
 	applyClinicBranding(&view, clinic)
-	h.applyLookupResult(c, tc, view, clinic.ID, nationalID, admissionNo)
+	h.applyLookupResult(c, tc, view, clinic.ID, nationalID, admissionNo, false, "")
 }
 
 // PostLookup کد ملی و شماره پذیرش را در کش صف جستجو می‌کند.
@@ -169,10 +177,18 @@ func (h *WaitingQueueHandler) PostLookup(c *gin.Context) {
 	}
 	view.SelectedClinicID = clinic.ID
 	applyClinicBranding(&view, clinic)
-	h.applyLookupResult(c, tc, view, clinic.ID, nid, admissionNo)
+	clientIP := analytics.ClientIP(c)
+	if nid != "" && h.NIDLimit != nil && !h.NIDLimit.WouldAllow(clientIP, nid) {
+		view.ErrorMessage = msgWQDailyNationalLimit
+		c.Status(http.StatusTooManyRequests)
+		h.renderForm(c, tc, view)
+		return
+	}
+	h.applyLookupResult(c, tc, view, clinic.ID, nid, admissionNo, true, clientIP)
 }
 
 // applyLookupResult نتیجه جستجو را روی view اعمال و رندر می‌کند.
+// اگر record درست باشد و پذیرش پیدا شود، سقف کدملی بررسی و سابقه در دیتابیس ثبت می‌شود.
 func (h *WaitingQueueHandler) applyLookupResult(
 	c *gin.Context,
 	tc *tenant.Context,
@@ -180,12 +196,27 @@ func (h *WaitingQueueHandler) applyLookupResult(
 	clinicID uint,
 	nationalID string,
 	admissionNo int,
+	record bool,
+	clientIP string,
 ) {
 	status := h.lookupStatus(clinicID, nationalID, admissionNo)
 	if !status.Found {
 		view.InfoMessage = status.Message
 		h.renderForm(c, tc, view)
 		return
+	}
+	if record {
+		if nationalID != "" && h.NIDLimit != nil && !h.NIDLimit.Allow(clientIP, nationalID) {
+			view.ErrorMessage = msgWQDailyNationalLimit
+			c.Status(http.StatusTooManyRequests)
+			h.renderForm(c, tc, view)
+			return
+		}
+		if h.Submissions != nil {
+			if err := h.Submissions.Create(clinicID, admissionNo, nationalID, clientIP); err != nil {
+				log.Printf("waiting-queue submission: %v", err)
+			}
+		}
 	}
 
 	needClinic := tc.Layout == constants.LayoutOrgan || tc.Layout == constants.LayoutPlatform
@@ -199,6 +230,8 @@ func (h *WaitingQueueHandler) applyLookupResult(
 	}
 	view.UpdatedAtUnix = status.UpdatedAtUnix
 	view.WSPath = buildWaitingQueueWSPath(admissionNo, nationalID, clinicID, needClinic)
+	view.PushPath = buildWaitingQueuePushPath(admissionNo, nationalID, clinicID, needClinic)
+	view.VAPIDPublicKey = h.VAPIDPublicKey
 	h.renderForm(c, tc, view)
 }
 
@@ -295,6 +328,34 @@ func buildWaitingQueueWSPath(admissionNo int, nationalID string, clinicID uint, 
 		return fmt.Sprintf("/%d/%s/%d/ws/waiting-queue", admissionNo, nid, clinicID)
 	}
 	return fmt.Sprintf("/%d/%s/ws/waiting-queue", admissionNo, nid)
+}
+
+// buildWaitingQueuePushPath مسیر ثبت اشتراک اعلان را هم‌شکل لینک صف می‌سازد.
+// ورودی: شماره پذیرش، کد ملی، clinicID و نیاز به clinic در مسیر.
+// خروجی: مسیر نسبی POST اشتراک.
+func buildWaitingQueuePushPath(admissionNo int, nationalID string, clinicID uint, needClinic bool) string {
+	nid := nationalID
+	if nid == "" {
+		nid = nationalIDPathEmpty
+	}
+	if needClinic {
+		return fmt.Sprintf("/%d/%s/%d/push-subscribe", admissionNo, nid, clinicID)
+	}
+	return fmt.Sprintf("/%d/%s/push-subscribe", admissionNo, nid)
+}
+
+// buildWaitingQueuePagePath آدرسی است که با لمس اعلان باز می‌شود.
+// ورودی: شماره پذیرش، کد ملی، clinicID و نیاز به clinic در مسیر.
+// خروجی: مسیر صفحه زنده وضعیت نوبت.
+func buildWaitingQueuePagePath(admissionNo int, nationalID string, clinicID uint, needClinic bool) string {
+	nid := nationalID
+	if nid == "" {
+		nid = nationalIDPathEmpty
+	}
+	if needClinic {
+		return fmt.Sprintf("/%d/%s/%d/waiting-queue", admissionNo, nid, clinicID)
+	}
+	return fmt.Sprintf("/%d/%s/waiting-queue", admissionNo, nid)
 }
 
 // displayNationalID برای نمایش در فرم؛ placeholder مسیر را خالی نشان می‌دهد.
@@ -398,7 +459,15 @@ func (h *WaitingQueueHandler) renderForm(c *gin.Context, tc *tenant.Context, vie
 	if view.ClinicLogoURL == "" && tc.Layout == constants.LayoutPrivate && tc.Clinic != nil {
 		applyClinicBranding(&view, tc.Clinic)
 	}
-	renderPublicLayout(c, tc, pages.WaitingQueueForm(view), "waiting-queue")
+	title := "وضعیت نوبت شما"
+	if view.ClinicName != "" {
+		title = view.ClinicName + " | وضعیت نوبت"
+	}
+	RenderPublicLayoutWithHead(c, tc, pages.WaitingQueueForm(view), "waiting-queue", layouts.PageHead{
+		Title:       title,
+		Robots:      "noindex, nofollow",
+		ManifestURL: "/manifest.webmanifest",
+	})
 }
 
 // applyClinicBranding نام و مسیر لوگوی مرکز را روی view می‌گذارد.
@@ -409,9 +478,7 @@ func applyClinicBranding(view *pages.WaitingQueueFormView, clinic *models.Clinic
 		return
 	}
 	view.ClinicName = clinic.Name
-	if clinic.Code > 0 {
-		view.ClinicLogoURL = fmt.Sprintf("/static/clinics/%d-logo.jpg", clinic.Code)
-	}
+	view.ClinicLogoURL = branding.ClinicLogoURL(clinic)
 }
 
 // clinicOptions لیست مراکز قابل انتخاب در لایه ارگان/پلتفرم را که دارای بخش فعال «سایت پزشک» هستند برمی‌گرداند.

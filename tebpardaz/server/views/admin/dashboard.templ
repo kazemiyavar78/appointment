@@ -1,0 +1,371 @@
+package admin
+
+import (
+	"net/url"
+	"strconv"
+
+	"tebpardaz/server/internal/dashboard"
+	"tebpardaz/server/views/layouts"
+)
+
+// DashboardView is the clinic-home management dashboard page model.
+type DashboardView struct {
+	Nav            layouts.AdminLayoutView
+	Data           dashboard.Snapshot
+	DataJSON       string
+	Range          string
+	ClinicID       uint
+	Clinics        []ClinicOption
+	ShowClinicPick bool
+	Message        string
+	LoadError      bool
+}
+
+// dashHref لینک داشبورد را با بازه و مرکز می‌سازد.
+func dashHref(rangeKey string, clinicID uint) string {
+	v := url.Values{}
+	if rangeKey != "" && rangeKey != string(dashboard.RangeToday) {
+		v.Set("range", rangeKey)
+	}
+	if clinicID > 0 {
+		v.Set("clinic_id", strconv.FormatUint(uint64(clinicID), 10))
+	}
+	if qs := v.Encode(); qs != "" {
+		return "/admin?" + qs
+	}
+	return "/admin"
+}
+
+// dashDataURL آدرس JSON بروزرسانی داشبورد را برمی‌گرداند.
+func dashDataURL(rangeKey string, clinicID uint) string {
+	v := url.Values{}
+	v.Set("range", rangeKey)
+	if clinicID > 0 {
+		v.Set("clinic_id", strconv.FormatUint(uint64(clinicID), 10))
+	}
+	return "/admin/dashboard/data?" + v.Encode()
+}
+
+// kpiTone کلاس رنگی مثبت/منفی/خنثی کارت KPI را برمی‌گرداند.
+func kpiTone(k dashboard.KPI) string {
+	switch k.Sentiment {
+	case dashboard.SentimentPositive:
+		return "is-positive"
+	case dashboard.SentimentNegative:
+		return "is-negative"
+	default:
+		return "is-neutral"
+	}
+}
+
+// kpiArrow آیکون جهت تغییر KPI را برمی‌گرداند.
+func kpiArrow(k dashboard.KPI) string {
+	switch k.Direction {
+	case dashboard.DirectionUp:
+		return "fa-solid fa-arrow-trend-up"
+	case dashboard.DirectionDown:
+		return "fa-solid fa-arrow-trend-down"
+	default:
+		return "fa-solid fa-minus"
+	}
+}
+
+// hourBarPct ارتفاع نسبی ستون ساعت را به‌صورت عدد درصد برمی‌گرداند.
+func hourBarPct(h dashboard.HourCount) string {
+	n := h.Share
+	if h.Count == 0 {
+		return "4"
+	}
+	if n < 8 {
+		n = 8
+	}
+	return strconv.Itoa(n)
+}
+
+// hourBarClass کلاس اوج/خالی بودن ستون ساعت را برمی‌گرداند.
+func hourBarClass(h dashboard.HourCount) string {
+	if h.Count == 0 {
+		return "is-empty"
+	}
+	if h.Share >= 70 {
+		return "is-peak"
+	}
+	return ""
+}
+
+// Dashboard رندر داشبورد مدیریتی صفحه اول پنل مرکز است.
+// ورودی: view شامل snapshot واقعی بازدید و نوبت. خروجی: کامپوننت templ.
+templ Dashboard(view DashboardView) {
+	@layouts.AdminLayout(view.Nav) {
+		<link rel="stylesheet" href="/static/css/admin_dashboard.css"/>
+		<div
+			class="dash"
+			id="dash-root"
+			data-range={ view.Range }
+			data-clinic-id={ formatUint(view.ClinicID) }
+			data-data-url={ dashDataURL(view.Range, view.ClinicID) }
+			data-loading="0"
+		>
+			<div class="dash-toolbar">
+				<div>
+					<h1 class="ui-page-title">داشبورد مدیریت مرکز</h1>
+					<p class="ui-page-desc">وضعیت امروز سایت و نوبت‌دهی — بدون داده ساختگی، فقط آمار واقعی.</p>
+				</div>
+				<div class="dash-toolbar-actions">
+					<div class="dash-ranges" role="tablist" aria-label="بازه زمانی">
+						for _, opt := range dashboard.RangeOptions() {
+							<a
+								class={ "dash-range", templ.KV("is-active", view.Range == string(opt.Key) || (view.Range == "" && opt.Key == dashboard.RangeToday)) }
+								href={ templ.SafeURL(dashHref(string(opt.Key), view.ClinicID)) }
+								data-range={ string(opt.Key) }
+							>{ opt.Label }</a>
+						}
+					</div>
+					if view.ShowClinicPick {
+						<form class="dash-clinic-form" method="get" action="/admin">
+							<input type="hidden" name="range" value={ view.Range }/>
+							<label class="sr-only" for="dash-clinic">مرکز</label>
+							<select class="ui-field dash-clinic" id="dash-clinic" name="clinic_id" onchange="this.form.submit()">
+								<option value="">همه مراکز</option>
+								for _, cl := range view.Clinics {
+									if cl.Selected {
+										<option value={ formatUint(cl.ID) } selected>{ cl.Name }</option>
+									} else {
+										<option value={ formatUint(cl.ID) }>{ cl.Name }</option>
+									}
+								}
+							</select>
+						</form>
+					}
+					<button class="ui-btn dash-refresh" id="dash-refresh" type="button">
+						<i class="fa-solid fa-rotate"></i>
+						<span>بروزرسانی</span>
+					</button>
+				</div>
+			</div>
+
+			<div class="dash-meta">
+				<span>آخرین بروزرسانی: <strong id="dash-updated">{ view.Data.UpdatedText }</strong></span>
+				<span id="dash-range-label">{ view.Data.RangeLabel }</span>
+			</div>
+
+			<div id="dash-banner" class="dash-banner" hidden></div>
+			if view.LoadError && view.Message != "" {
+				<div class="dash-banner is-error">{ view.Message }</div>
+			}
+
+			<div class="dash-loading" id="dash-loading" hidden>
+				<div class="dash-skel"></div>
+				<p>در حال بارگذاری اطلاعات...</p>
+			</div>
+
+			<div id="dash-body">
+				<section class="dash-kpis" aria-label="شاخص‌های کلیدی">
+					for _, k := range view.Data.KPIs {
+						@dashKPICard(k)
+					}
+					if len(view.Data.KPIs) == 0 {
+						@dashEmpty("شاخصی برای نمایش نیست.")
+					}
+				</section>
+
+				<section class="dash-card dash-chart-card" aria-label="نمودار ۷ روز اخیر">
+					<div class="dash-card-head">
+						<h2>بازدید و نوبت ثبت‌شده</h2>
+						<p>مقایسه روند بازدید سایت و نوبت‌های ثبت‌شده</p>
+					</div>
+					<div class="dash-chart-wrap" id="dash-chart-wrap">
+						if len(view.Data.Daily) == 0 {
+							@dashEmpty("برای این بازه روندی ثبت نشده است.")
+						} else {
+							<svg id="dash-chart" class="dash-chart" viewBox="0 0 640 240" role="img" aria-label="نمودار مقایسه‌ای بازدید و نوبت"></svg>
+							<div id="dash-chart-tooltip" class="dash-tooltip" hidden></div>
+							<div class="dash-legend">
+								<span><i class="dash-dot is-visit"></i> بازدید</span>
+								<span><i class="dash-dot is-appt"></i> نوبت ثبت‌شده</span>
+							</div>
+						}
+					</div>
+				</section>
+
+				<div class="dash-grid-2">
+					<section class="dash-card" data-section="top-pages">
+						<div class="dash-card-head">
+							<h2>پربازدیدترین صفحات</h2>
+						</div>
+						@dashNamedList(view.Data.TopPages, "در این بازه بازدیدی ثبت نشده است.")
+					</section>
+					<section class="dash-card" data-section="top-doctors">
+						<div class="dash-card-head">
+							<h2>پربازدیدترین پزشکان</h2>
+						</div>
+						@dashNamedList(view.Data.TopDoctors, "بازدید صفحه نوبت پزشک ثبت نشده است.")
+					</section>
+					<section class="dash-card" data-section="top-specialties">
+						<div class="dash-card-head">
+							<h2>پربازدیدترین تخصص‌ها</h2>
+						</div>
+						@dashNamedList(view.Data.TopSpecialties, "بازدید تخصص در این بازه ثبت نشده است.")
+					</section>
+					<section class="dash-card" data-section="top-services">
+						<div class="dash-card-head">
+							<h2>پربازدیدترین خدمات</h2>
+						</div>
+						@dashNamedList(view.Data.TopServices, "خدمت متناظری از بازدید پزشکان به‌دست نیامد.")
+					</section>
+				</div>
+
+				<section class="dash-card" data-section="peak-hours">
+					<div class="dash-card-head">
+						<h2>ساعات پرترافیک سایت</h2>
+						<p>توزیع بازدید بر اساس ساعت شبانه‌روز</p>
+					</div>
+					@dashHours(view.Data.PeakHours)
+				</section>
+
+				<div class="dash-grid-2">
+					<section class="dash-card" data-section="booking-status">
+						<div class="dash-card-head">
+							<h2>وضعیت نوبت‌دهی</h2>
+						</div>
+						<div class="dash-status-grid" id="dash-status">
+							@dashStatusItem("موفق", view.Data.Booking.ConfirmedText, "is-positive", "/admin/bookings?status=confirmed")
+							@dashStatusItem("ناموفق", view.Data.Booking.FailedText, "is-negative", "/admin/bookings?status=failed")
+							@dashStatusItem("لغوشده", view.Data.Booking.CancelledText, "is-warn", "/admin/bookings?status=cancelled")
+							@dashStatusItem("در انتظار", view.Data.Booking.PendingText, "is-neutral", "/admin/bookings?status=pending")
+						</div>
+					</section>
+					<section class="dash-card" data-section="open-doctors">
+						<div class="dash-card-head">
+							<h2>پزشکان دارای ظرفیت خالی</h2>
+							<p>بر اساس نوبت‌های زنده دریافتی از مرکز</p>
+						</div>
+						@dashNamedList(view.Data.Booking.OpenDoctors, "ظرفیت زنده‌ای از مراکز دریافت نشده است.")
+					</section>
+				</div>
+
+				<section class="dash-card dash-insights" data-section="insights">
+					<div class="dash-card-head">
+						<h2>خلاصه امروز</h2>
+						<p>مهم‌ترین تغییرات بازه انتخاب‌شده</p>
+					</div>
+					if len(view.Data.Insights) == 0 {
+						@dashEmpty("خلاصه‌ای برای این بازه ساخته نشد.")
+					} else {
+						<ul class="dash-insight-list" id="dash-insights">
+							for _, line := range view.Data.Insights {
+								<li>{ line }</li>
+							}
+						</ul>
+					}
+				</section>
+			</div>
+		</div>
+
+		<dialog class="dash-modal" id="dash-kpi-modal">
+			<form method="dialog" class="dash-modal-card">
+				<button class="dash-modal-close" value="close" aria-label="بستن">×</button>
+				<p class="dash-modal-kicker">جزئیات شاخص</p>
+				<h3 id="dash-modal-title">—</h3>
+				<p class="dash-modal-value" id="dash-modal-value">—</p>
+				<p class="dash-modal-prev" id="dash-modal-prev">—</p>
+				<p class="dash-modal-change" id="dash-modal-change">—</p>
+				<p class="dash-modal-hint" id="dash-modal-hint"></p>
+				<a class="ui-btn ui-btn-primary" id="dash-modal-link" href="/admin/bookings">مشاهده جزئیات</a>
+			</form>
+		</dialog>
+
+		<script type="application/json" id="dashboard-data">
+			@templ.Raw(view.DataJSON)
+		</script>
+		<script src="/static/js/admin_dashboard.js" defer></script>
+	}
+}
+
+// dashKPICard یک کارت شاخص قابل‌کلیک با مقدار و درصد تغییر را رندر می‌کند.
+templ dashKPICard(k dashboard.KPI) {
+	<button
+		type="button"
+		class={ "dash-kpi", kpiTone(k) }
+		data-kpi-id={ string(k.ID) }
+		data-detail-url={ k.DetailURL }
+		data-label={ k.Label }
+		data-value-text={ k.ValueText }
+		data-previous-text={ k.PreviousText }
+		data-change-text={ k.ChangeText }
+		data-hint={ k.Hint }
+	>
+		<span class="dash-kpi-icon"><i class={ k.Icon }></i></span>
+		<span class="dash-kpi-label">{ k.Label }</span>
+		<strong class="dash-kpi-value" data-kpi-value>{ k.ValueText }</strong>
+		<span class="dash-kpi-change">
+			<i class={ kpiArrow(k) }></i>
+			<span data-kpi-change>{ k.ChangeText }</span>
+		</span>
+	</button>
+}
+
+// dashNamedList فهرست رتبه‌بندی‌شده یا حالت خالی را رندر می‌کند.
+templ dashNamedList(rows []dashboard.NamedCount, empty string) {
+	if len(rows) == 0 {
+		@dashEmpty(empty)
+	} else {
+		<ul class="dash-rank">
+			for _, row := range rows {
+				<li>
+					if row.URL != "" {
+						<a href={ templ.SafeURL(row.URL) }>
+							<span class="dash-rank-label">
+								{ row.Label }
+								if row.Sub != "" {
+									<small>{ row.Sub }</small>
+								}
+							</span>
+							<strong>{ row.Text }</strong>
+						</a>
+					} else {
+						<span class="dash-rank-label">
+							{ row.Label }
+							if row.Sub != "" {
+								<small>{ row.Sub }</small>
+							}
+						</span>
+						<strong>{ row.Text }</strong>
+					}
+				</li>
+			}
+		</ul>
+	}
+}
+
+// dashHours نمودار ستونی ۲۴ ساعته ترافیک را رندر می‌کند.
+templ dashHours(hours []dashboard.HourCount) {
+	if len(hours) == 0 {
+		@dashEmpty("توزیع ساعتی برای این بازه وجود ندارد.")
+	} else {
+		<div class="dash-hours" id="dash-hours">
+			for _, h := range hours {
+				<div class={ "dash-hour", hourBarClass(h) } title={ h.Label + " — " + h.Text }>
+					<span class="dash-hour-bar" style={ "--h:" + hourBarPct(h) }></span>
+					<span class="dash-hour-label">{ h.Label }</span>
+				</div>
+			}
+		</div>
+	}
+}
+
+// dashStatusItem یک کارت وضعیت نوبت با لینک فیلتر شده را رندر می‌کند.
+templ dashStatusItem(label, value, tone, href string) {
+	<a class={ "dash-status", tone } href={ templ.SafeURL(href) }>
+		<span>{ label }</span>
+		<strong>{ value }</strong>
+	</a>
+}
+
+// dashEmpty حالت خالی یک بخش داشبورد را نمایش می‌دهد.
+templ dashEmpty(message string) {
+	<div class="dash-empty">
+		<i class="fa-regular fa-folder-open"></i>
+		<p>{ message }</p>
+	</div>
+}

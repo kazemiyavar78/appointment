@@ -1,7 +1,6 @@
 package public
 
 import (
-	"fmt"
 	"net/http"
 
 	"tebpardaz/server/internal/repository"
@@ -32,8 +31,7 @@ func (h *SpecialtyHandler) List(c *gin.Context) {
 	switch tc.Layout {
 	case constants.LayoutOrgan, constants.LayoutPrivate, constants.LayoutPlatform:
 	default:
-		fmt.Println("SpecialtyHandler: Layout not found")
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 

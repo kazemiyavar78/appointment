@@ -42,7 +42,7 @@ templ NewsDetail(view NewsDetailView) {
 		if view.CoverURL != "" {
 			<img class="mb-6 max-h-[28rem] w-full rounded-xl object-cover" src={ view.CoverURL } alt="" loading="lazy" decoding="async"/>
 		}
-		<div class="prose max-w-none text-ink [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded">
+		<div class="news-rich-body prose max-w-none text-ink">
 			@templ.Raw(view.BodyHTML)
 		</div>
 	</article>

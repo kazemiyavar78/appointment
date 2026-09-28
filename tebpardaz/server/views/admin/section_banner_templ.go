@@ -9,21 +9,30 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"strconv"
+
 	"tebpardaz/server/views/layouts"
 )
 
 // SectionBannerView holds view model for editing section banner.
 type SectionBannerView struct {
-	Nav             layouts.AdminLayoutView
-	SectionID       uint
-	SectionTitle    string
-	ClinicID        uint
-	Slogan          string
-	Description     string
-	Services        string
-	BackgroundColor string
-	ImageURL        string
-	Message         string
+	Nav                   layouts.AdminLayoutView
+	SectionID             uint
+	SectionTitle          string
+	ClinicID              uint
+	Slogan                string
+	Description           string
+	Services              string
+	BackgroundColor       string
+	BackgroundColorEnd    string
+	UseBackgroundGradient bool
+	BackgroundGradientDir string
+	ImageURL              string
+	OverlayColor          string
+	UseOverlayGradient    bool
+	OverlayOpacityLeft    int
+	OverlayOpacityBottom  int
+	Message               string
 }
 
 // SectionBannerEdit renders the banner configuration form.
@@ -67,7 +76,7 @@ func SectionBannerEdit(view SectionBannerView) templ.Component {
 			var templ_7745c5c3_Var3 templ.SafeURL
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 28, Col: 112}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 37, Col: 112}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -80,7 +89,7 @@ func SectionBannerEdit(view SectionBannerView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(view.SectionTitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 30, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 39, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -93,7 +102,7 @@ func SectionBannerEdit(view SectionBannerView) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(view.SectionTitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 32, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 41, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -106,7 +115,7 @@ func SectionBannerEdit(view SectionBannerView) templ.Component {
 			var templ_7745c5c3_Var6 templ.SafeURL
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 35, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 44, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -117,165 +126,335 @@ func SectionBannerEdit(view SectionBannerView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 templ.SafeURL
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages"))
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/doctors"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 36, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 45, Col: 126}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">پیام\u200cها</a> <a class=\"ui-btn ui-btn-ghost text-xs\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">پزشکان</a> <a class=\"ui-btn ui-btn-ghost text-xs\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 templ.SafeURL
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment"))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 37, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 46, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">تجهیزات</a></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\">پیام\u200cها</a> <a class=\"ui-btn ui-btn-ghost text-xs\" href=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var9 templ.SafeURL
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 47, Col: 128}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\">تجهیزات</a></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.Message != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"ui-panel mb-4 text-sm text-brand\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"ui-panel mb-4 text-sm text-brand\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var9 string
-				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
+				var templ_7745c5c3_Var10 string
+				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 42, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 52, Col: 62}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</p>")
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<section class=\"ui-panel mb-6\"><form class=\"space-y-5\" method=\"post\" action=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<section class=\"ui-panel mb-6\"><form id=\"section-banner-form\" class=\"space-y-5\" method=\"post\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var10 templ.SafeURL
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner"))
+			var templ_7745c5c3_Var11 templ.SafeURL
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 46, Col: 125}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 56, Col: 150}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" enctype=\"multipart/form-data\"><div class=\"grid grid-cols-1 gap-5 md:grid-cols-2\"><div class=\"space-y-4 md:col-span-2\"><label class=\"block text-sm font-semibold text-ink\">شعار کوتاه <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">یک جمله بسیار کوتاه در حد یک شعار (مثال: مراقبتی که شما را اول می\u200cگذارد)</span> <input class=\"ui-field mt-1 w-full\" type=\"text\" name=\"slogan\" value=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.Slogan)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 52, Col: 89}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" maxlength=\"255\" required placeholder=\"مراقبتی که شما را اول می\u200cگذارد\"></label> <label class=\"block text-sm font-semibold text-ink\">توضیح کوتاه <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">حداکثر ۲ خط توضیح درباره\u200cی آن بخش</span> <textarea class=\"ui-field mt-1 w-full\" name=\"description\" rows=\"3\" maxlength=\"500\" required placeholder=\"توضیحات کوتاه درباره امکانات و خدمات این بخش...\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" enctype=\"multipart/form-data\"><div class=\"grid grid-cols-1 gap-5 md:grid-cols-2\"><div class=\"space-y-4 md:col-span-2\"><label class=\"block text-sm font-semibold text-ink\">شعار کوتاه <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">یک جمله بسیار کوتاه در حد یک شعار (مثال: مراقبتی که شما را اول می\u200cگذارد)</span> <input class=\"ui-field mt-1 w-full\" type=\"text\" name=\"slogan\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(view.Description)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.Slogan)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 58, Col: 217}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 62, Col: 89}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</textarea></label> <label class=\"block text-sm font-semibold text-ink\">خدمات و نکات برجسته (حداکثر ۵ مورد) <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">هر مورد را در یک خط جداگانه وارد کنید (حداکثر ۵ خط)</span> <textarea class=\"ui-field mt-1 w-full font-mono text-sm\" name=\"services\" rows=\"5\" maxlength=\"1000\" placeholder=\"تأییدیه کمیسیون مشترک&#10;متخصصان دارای بورد&#10;پوشش کامل بیمه&#10;ویزیت و رزرو آنلاین\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" maxlength=\"255\" required placeholder=\"مراقبتی که شما را اول می\u200cگذارد\"></label> <label class=\"block text-sm font-semibold text-ink\">توضیح کوتاه <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">حداکثر ۲ خط توضیح درباره\u200cی آن بخش</span> <textarea class=\"ui-field mt-1 w-full\" name=\"description\" rows=\"3\" maxlength=\"500\" required placeholder=\"توضیحات کوتاه درباره امکانات و خدمات این بخش...\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(view.Services)
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(view.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 64, Col: 287}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 68, Col: 217}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</textarea></label></div><div><label class=\"block text-sm font-semibold text-ink mb-1\">رنگ پس\u200cزمینه بنر <span class=\"text-xs text-ink-muted font-normal block mb-2\">انتخاب رنگ پس\u200cزمینه تیره یا دلخواه برای بنر</span></label><div class=\"flex items-center gap-3\"><input class=\"h-10 w-14 cursor-pointer rounded border border-gray-300 p-1\" type=\"color\" name=\"background_color\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</textarea></label> <label class=\"block text-sm font-semibold text-ink\">خدمات و نکات برجسته (حداکثر ۵ مورد) <span class=\"text-xs text-ink-muted font-normal block mt-0.5\">هر مورد را در یک خط جداگانه وارد کنید (حداکثر ۵ خط)</span> <textarea class=\"ui-field mt-1 w-full font-mono text-sm\" name=\"services\" rows=\"5\" maxlength=\"1000\" placeholder=\"تأییدیه کمیسیون مشترک&#10;متخصصان دارای بورد&#10;پوشش کامل بیمه&#10;ویزیت و رزرو آنلاین\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColor(view.BackgroundColor))
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(view.Services)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 74, Col: 162}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 74, Col: 287}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"> <input class=\"ui-field w-32 font-mono text-xs\" dir=\"ltr\" type=\"text\" name=\"bg_hex\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</textarea></label></div><div class=\"md:col-span-2 rounded-xl border border-gray-200 bg-surface-soft/40 p-4 space-y-4\"><div><h2 class=\"text-sm font-bold text-ink\">پس\u200cزمینه بنر</h2><p class=\"text-xs text-ink-muted mt-0.5\">رنگ یکدست یا گرادیان برای ستون متن بنر (همان پس\u200cزمینه بخش بالایی صفحه)</p></div><div class=\"flex flex-wrap gap-4\"><label class=\"inline-flex items-center gap-2 text-sm cursor-pointer\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if !view.UseBackgroundGradient {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<input type=\"radio\" name=\"use_background_gradient\" value=\"0\" checked class=\"h-4 w-4 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<input type=\"radio\" name=\"use_background_gradient\" value=\"0\" class=\"h-4 w-4 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "رنگ یکدست</label> <label class=\"inline-flex items-center gap-2 text-sm cursor-pointer\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if view.UseBackgroundGradient {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<input type=\"radio\" name=\"use_background_gradient\" value=\"1\" checked class=\"h-4 w-4 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<input type=\"radio\" name=\"use_background_gradient\" value=\"1\" class=\"h-4 w-4 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "گرادیان</label></div><div class=\"grid grid-cols-1 gap-4 sm:grid-cols-3\"><label class=\"block text-sm text-ink-muted\">رنگ شروع / یکدست<div class=\"mt-1 flex items-center gap-2\"><input id=\"bg-color-start\" class=\"h-10 w-14 cursor-pointer rounded border border-gray-300 p-1\" type=\"color\" name=\"background_color\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColor(view.BackgroundColor))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 75, Col: 133}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 105, Col: 184}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" readonly></div></div><div><label class=\"block text-sm font-semibold text-ink mb-1\">تصویر بنر <span class=\"text-xs text-ink-muted font-normal block mb-2\">عکس باکیفیت و متناسب با بخش (حداکثر ۵ مگابایت)</span></label> <input class=\"block w-full text-sm text-ink-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20\" type=\"file\" name=\"image\" accept=\"image/*\"> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\"> <input id=\"bg-hex-start\" class=\"ui-field w-28 font-mono text-xs\" dir=\"ltr\" type=\"text\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColor(view.BackgroundColor))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 106, Col: 139}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" maxlength=\"7\"></div></label><div id=\"bg-gradient-fields\" class=\"sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2\"><label class=\"block text-sm text-ink-muted\">رنگ پایان گرادیان<div class=\"mt-1 flex items-center gap-2\"><input id=\"bg-color-end\" class=\"h-10 w-14 cursor-pointer rounded border border-gray-300 p-1\" type=\"color\" name=\"background_color_end\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var17 string
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColorEnd(view.BackgroundColorEnd))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 113, Col: 193}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"> <input id=\"bg-hex-end\" class=\"ui-field w-28 font-mono text-xs\" dir=\"ltr\" type=\"text\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var18 string
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColorEnd(view.BackgroundColorEnd))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 114, Col: 144}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" maxlength=\"7\"></div></label> <label class=\"block text-sm text-ink-muted\">جهت گرادیان <select id=\"bg-gradient-dir\" class=\"ui-field mt-1 w-full\" name=\"background_gradient_dir\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = gradientDirOptions(view.BackgroundGradientDir).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</select></label></div></div><div id=\"bg-preview\" class=\"h-16 rounded-xl border border-gray-200\"></div></div><div class=\"md:col-span-2 rounded-xl border border-gray-200 bg-surface-soft/40 p-4 space-y-4\"><div class=\"flex flex-wrap items-start justify-between gap-3\"><div><h2 class=\"text-sm font-bold text-ink\">پوشش گرادیان روی تصویر بنر</h2><p class=\"text-xs text-ink-muted mt-0.5\">لایه نیمه\u200cشفاف روی عکس برای خوانایی متن در محل اتصال تصویر و نوشته</p></div><label class=\"inline-flex items-center gap-2 text-sm font-medium cursor-pointer\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if view.UseOverlayGradient {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<input id=\"use-overlay\" type=\"checkbox\" name=\"use_overlay_gradient\" value=\"1\" checked class=\"h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<input id=\"use-overlay\" type=\"checkbox\" name=\"use_overlay_gradient\" value=\"1\" class=\"h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "فعال</label></div><div id=\"overlay-fields\" class=\"grid grid-cols-1 gap-4 sm:grid-cols-3\"><label class=\"block text-sm text-ink-muted\">رنگ پوشش<div class=\"mt-1 flex items-center gap-2\"><input id=\"overlay-color\" class=\"h-10 w-14 cursor-pointer rounded border border-gray-300 p-1\" type=\"color\" name=\"overlay_color\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColor(view.OverlayColor))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 147, Col: 177}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\"> <input id=\"overlay-hex\" class=\"ui-field w-28 font-mono text-xs\" dir=\"ltr\" type=\"text\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var20 string
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(defaultColor(view.OverlayColor))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 148, Col: 135}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" maxlength=\"7\"></div></label> <label class=\"block text-sm text-ink-muted\">شدت پوشش سمت متن (<span id=\"overlay-left-label\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var21 string
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(view.OverlayOpacityLeft))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 152, Col: 109}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span>٪) <input id=\"overlay-left\" class=\"mt-3 w-full\" type=\"range\" name=\"overlay_opacity_left\" min=\"0\" max=\"100\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var22 string
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(view.OverlayOpacityLeft))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 153, Col: 158}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\"></label> <label class=\"block text-sm text-ink-muted\">شدت پوشش پایین تصویر (<span id=\"overlay-bottom-label\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var23 string
+			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(view.OverlayOpacityBottom))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 156, Col: 121}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span>٪) <input id=\"overlay-bottom\" class=\"mt-3 w-full\" type=\"range\" name=\"overlay_opacity_bottom\" min=\"0\" max=\"100\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var24 string
+			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(view.OverlayOpacityBottom))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 157, Col: 164}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\"></label></div><div id=\"overlay-preview\" class=\"relative h-28 overflow-hidden rounded-xl border border-gray-200\"><div class=\"absolute inset-0 bg-[linear-gradient(45deg,#d1d5db_25%,#9ca3af_25%,#9ca3af_50%,#d1d5db_50%,#d1d5db_75%,#9ca3af_75%)] bg-[length:24px_24px]\"></div><div id=\"overlay-preview-layer\" class=\"absolute inset-0 pointer-events-none\"></div></div></div><div class=\"md:col-span-2\"><label class=\"block text-sm font-semibold text-ink mb-1\">تصویر بنر <span class=\"text-xs text-ink-muted font-normal block mb-2\">عکس باکیفیت و متناسب با بخش (حداکثر ۵ مگابایت)</span></label> <input class=\"block w-full text-sm text-ink-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20\" type=\"file\" name=\"image\" accept=\"image/*\"> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.ImageURL != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"mt-3 flex items-center gap-4\"><img class=\"h-20 w-32 rounded object-cover border\" src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"mt-3 flex items-center gap-4\"><img class=\"h-20 w-32 rounded object-cover border\" src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var16 string
-				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.ImageURL)
+				var templ_7745c5c3_Var25 string
+				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.ImageURL)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 87, Col: 79}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 174, Col: 79}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" alt=\"پیش\u200cنمایش تصویر بنر\"> <label class=\"flex items-center gap-2 text-xs text-ink-muted cursor-pointer\"><input type=\"checkbox\" name=\"clear_image\" value=\"1\"> حذف تصویر فعلی</label></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" alt=\"پیش\u200cنمایش تصویر بنر\"> <label class=\"flex items-center gap-2 text-xs text-ink-muted cursor-pointer\"><input type=\"checkbox\" name=\"clear_image\" value=\"1\"> حذف تصویر فعلی</label></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><div class=\"border-t border-surface-border pt-4 flex items-center gap-3\"><button class=\"ui-btn ui-btn-primary\" type=\"submit\">ذخیره بنر</button> <a class=\"ui-btn ui-btn-ghost\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div></div><div class=\"border-t border-surface-border pt-4 flex items-center gap-3\"><button class=\"ui-btn ui-btn-primary\" type=\"submit\">ذخیره بنر</button> <a class=\"ui-btn ui-btn-ghost\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var17 templ.SafeURL
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)))
+			var templ_7745c5c3_Var26 templ.SafeURL
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 99, Col: 115}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 186, Col: 115}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\">بازگشت</a></div></form></section></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\">بازگشت</a></div></form></section></div><script>\n\t\t\t(function () {\n\t\t\t\tconst form = document.getElementById(\"section-banner-form\");\n\t\t\t\tif (!form) return;\n\n\t\t\t\tconst startColor = document.getElementById(\"bg-color-start\");\n\t\t\t\tconst startHex = document.getElementById(\"bg-hex-start\");\n\t\t\t\tconst endColor = document.getElementById(\"bg-color-end\");\n\t\t\t\tconst endHex = document.getElementById(\"bg-hex-end\");\n\t\t\t\tconst dir = document.getElementById(\"bg-gradient-dir\");\n\t\t\t\tconst preview = document.getElementById(\"bg-preview\");\n\t\t\t\tconst overlayColor = document.getElementById(\"overlay-color\");\n\t\t\t\tconst overlayHex = document.getElementById(\"overlay-hex\");\n\t\t\t\tconst overlayLeft = document.getElementById(\"overlay-left\");\n\t\t\t\tconst overlayBottom = document.getElementById(\"overlay-bottom\");\n\t\t\t\tconst overlayLayer = document.getElementById(\"overlay-preview-layer\");\n\t\t\t\tconst overlayFields = document.getElementById(\"overlay-fields\");\n\t\t\t\tconst useOverlay = document.getElementById(\"use-overlay\");\n\t\t\t\tconst hexRe = /^#[0-9a-fA-F]{6}$/;\n\n\t\t\t\tfunction hexToRgba(hex, alpha) {\n\t\t\t\t\tconst h = hex.replace(\"#\", \"\");\n\t\t\t\t\tconst r = parseInt(h.slice(0, 2), 16);\n\t\t\t\t\tconst g = parseInt(h.slice(2, 4), 16);\n\t\t\t\t\tconst b = parseInt(h.slice(4, 6), 16);\n\t\t\t\t\treturn \"rgba(\" + r + \",\" + g + \",\" + b + \",\" + alpha + \")\";\n\t\t\t\t}\n\n\t\t\t\tfunction useGradient() {\n\t\t\t\t\tconst checked = form.querySelector('input[name=\"use_background_gradient\"]:checked');\n\t\t\t\t\treturn checked && checked.value === \"1\";\n\t\t\t\t}\n\n\t\t\t\tfunction bindColorPair(picker, hexInput) {\n\t\t\t\t\tif (!picker || !hexInput) return;\n\t\t\t\t\tpicker.addEventListener(\"input\", function () {\n\t\t\t\t\t\thexInput.value = picker.value;\n\t\t\t\t\t\tupdatePreview();\n\t\t\t\t\t});\n\t\t\t\t\thexInput.addEventListener(\"input\", function () {\n\t\t\t\t\t\tif (hexRe.test(hexInput.value)) {\n\t\t\t\t\t\t\tpicker.value = hexInput.value;\n\t\t\t\t\t\t\tupdatePreview();\n\t\t\t\t\t\t}\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tfunction updatePreview() {\n\t\t\t\t\tconst start = startColor ? startColor.value : \"#0a2e2e\";\n\t\t\t\t\tconst end = endColor ? endColor.value : \"#134e4a\";\n\t\t\t\t\tconst direction = dir ? dir.value : \"to left\";\n\t\t\t\t\tif (preview) {\n\t\t\t\t\t\tpreview.style.background = useGradient()\n\t\t\t\t\t\t\t? \"linear-gradient(\" + direction + \", \" + start + \", \" + end + \")\"\n\t\t\t\t\t\t\t: start;\n\t\t\t\t\t}\n\t\t\t\t\tconst gradientFields = document.getElementById(\"bg-gradient-fields\");\n\t\t\t\t\tif (gradientFields) {\n\t\t\t\t\t\tgradientFields.style.opacity = useGradient() ? \"1\" : \"0.45\";\n\t\t\t\t\t}\n\t\t\t\t\tif (overlayFields) {\n\t\t\t\t\t\toverlayFields.style.opacity = useOverlay && useOverlay.checked ? \"1\" : \"0.45\";\n\t\t\t\t\t}\n\t\t\t\t\tif (overlayLayer) {\n\t\t\t\t\t\tif (!useOverlay || !useOverlay.checked) {\n\t\t\t\t\t\t\toverlayLayer.style.background = \"none\";\n\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t}\n\t\t\t\t\t\tconst color = overlayColor ? overlayColor.value : start;\n\t\t\t\t\t\tconst left = overlayLeft ? Number(overlayLeft.value) / 100 : 0.85;\n\t\t\t\t\t\tconst bottom = overlayBottom ? Number(overlayBottom.value) / 100 : 0.6;\n\t\t\t\t\t\toverlayLayer.style.background =\n\t\t\t\t\t\t\t\"linear-gradient(to left, \" + hexToRgba(color, left) + \" 0%, transparent 40%), \" +\n\t\t\t\t\t\t\t\"linear-gradient(to top, \" + hexToRgba(color, bottom) + \" 0%, transparent 50%)\";\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tform.querySelectorAll('input[name=\"use_background_gradient\"]').forEach(function (el) {\n\t\t\t\t\tel.addEventListener(\"change\", updatePreview);\n\t\t\t\t});\n\t\t\t\tif (dir) dir.addEventListener(\"change\", updatePreview);\n\t\t\t\tif (overlayLeft) overlayLeft.addEventListener(\"input\", function () {\n\t\t\t\t\tconst label = document.getElementById(\"overlay-left-label\");\n\t\t\t\t\tif (label) label.textContent = overlayLeft.value;\n\t\t\t\t\tupdatePreview();\n\t\t\t\t});\n\t\t\t\tif (overlayBottom) overlayBottom.addEventListener(\"input\", function () {\n\t\t\t\t\tconst label = document.getElementById(\"overlay-bottom-label\");\n\t\t\t\t\tif (label) label.textContent = overlayBottom.value;\n\t\t\t\t\tupdatePreview();\n\t\t\t\t});\n\t\t\t\tif (useOverlay) useOverlay.addEventListener(\"change\", updatePreview);\n\n\t\t\t\tbindColorPair(startColor, startHex);\n\t\t\t\tbindColorPair(endColor, endHex);\n\t\t\t\tbindColorPair(overlayColor, overlayHex);\n\t\t\t\tupdatePreview();\n\t\t\t})();\n\t\t</script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -295,6 +474,133 @@ func defaultColor(c string) string {
 		return "#0a2e2e"
 	}
 	return c
+}
+
+// defaultColorEnd returns the default gradient end color if empty.
+func defaultColorEnd(c string) string {
+	if c == "" {
+		return "#134e4a"
+	}
+	return c
+}
+
+// gradientDirOptions renders the CSS direction <option> list for the banner gradient.
+func gradientDirOptions(current string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var27 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var27 == nil {
+			templ_7745c5c3_Var27 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		for _, item := range gradientDirChoices() {
+			if dirSelected(current, item.Value) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<option value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var28 string
+				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 313, Col: 29}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\" selected>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var29 string
+				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 313, Col: 53}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</option>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<option value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var30 string
+				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.Value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 315, Col: 29}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var31 string
+				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/section_banner.templ`, Line: 315, Col: 44}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</option>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// gradientDirChoice is one selectable CSS gradient direction.
+type gradientDirChoice struct {
+	Value string
+	Label string
+}
+
+// gradientDirChoices returns the allowed banner gradient directions with Persian labels.
+func gradientDirChoices() []gradientDirChoice {
+	return []gradientDirChoice{
+		{Value: "to left", Label: "به چپ"},
+		{Value: "to right", Label: "به راست"},
+		{Value: "to top", Label: "به بالا"},
+		{Value: "to bottom", Label: "به پایین"},
+		{Value: "to top left", Label: "مورب بالا-چپ"},
+		{Value: "to top right", Label: "مورب بالا-راست"},
+		{Value: "to bottom left", Label: "مورب پایین-چپ"},
+		{Value: "to bottom right", Label: "مورب پایین-راست"},
+	}
+}
+
+// dirSelected reports whether the stored gradient direction matches an option value.
+func dirSelected(current, value string) bool {
+	if current == "" {
+		return value == "to left"
+	}
+	return current == value
 }
 
 var _ = templruntime.GeneratedTemplate

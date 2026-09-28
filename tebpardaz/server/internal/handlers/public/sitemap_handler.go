@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"time"
 
+	"tebpardaz/server/internal/booking"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
 	"tebpardaz/server/internal/tenant"
@@ -39,6 +41,95 @@ type SitemapHandler struct {
 	News     *repository.NewsRepo
 }
 
+// buildPlatformAboutSitemapEntry یک ورودی sitemap مخصوص صفحه «درباره ما» دامنه tebpardaz.ir می‌سازد.
+// ورودی: baseURL و lastMod.
+// خروجی: SitemapURL با مسیر /about، جدا از صفحات درباره کلینیک‌های مشتری.
+func buildPlatformAboutSitemapEntry(baseURL, lastMod string) SitemapURL {
+	return SitemapURL{
+		Loc:        baseURL + "/about",
+		LastMod:    lastMod,
+		ChangeFreq: "monthly",
+		Priority:   "0.8",
+	}
+}
+
+// shouldIncludePlatformAboutSitemap مشخص می‌کند آیا entry صفحه درباره پلتفرم باید در sitemap باشد.
+// ورودی: کانتکست tenant.
+// خروجی: true فقط برای دامنه اصلی tebpardaz.ir (LayoutPlatform).
+func shouldIncludePlatformAboutSitemap(tc *tenant.Context) bool {
+	return tc != nil && tc.Layout == constants.LayoutPlatform
+}
+
+// buildBookingSitemapLoc URL مطلق صفحه رزرو پزشک را برای sitemap با segmentهای URL-encoded می‌سازد.
+// ورودی: baseURL، نوع layout، مرکز (برای پلتفرم/ارگان)، اسلاگ پزشک.
+// خروجی: URL مطلق یا رشته خالی اگر مسیر رزرو معتبر نباشد.
+func buildBookingSitemapLoc(baseURL string, layout constants.LayoutKind, clinic *models.Clinic, doctorSlug string) string {
+	doctorSlug = strings.TrimSpace(doctorSlug)
+	if doctorSlug == "" {
+		return ""
+	}
+	clinicKey := ""
+	if layout != constants.LayoutPrivate {
+		clinicKey = booking.ClinicPathKey(clinic)
+		if clinicKey == "" {
+			return ""
+		}
+	}
+	relative := booking.BuildBookingURL(layout, clinicKey, doctorSlug)
+	rest := strings.TrimPrefix(relative, "/booking/")
+	if rest == "" || rest == relative {
+		return ""
+	}
+	parts := strings.Split(rest, "/")
+	for i, p := range parts {
+		parts[i] = url.PathEscape(p)
+	}
+	return baseURL + "/booking/" + strings.Join(parts, "/")
+}
+
+// includeDoctorInBookingSitemap لینک رزرو پزشک را فقط برای تخصص‌های قابل‌نمایش در نوبت‌دهی نگه می‌دارد.
+// ورودی: مدل پزشک با تخصص پیش‌بارگذاری‌شده. خروجی: true اگر پزشک فعال، دارای اسلاگ و تخصص قابل رزرو باشد.
+func includeDoctorInBookingSitemap(doc models.Doctor) bool {
+	return doc.IsActive && strings.TrimSpace(doc.Slug) != "" && doc.Specialty.IsVisibleInBooking()
+}
+
+// platformAboutLastMod زمان build را از vcs.time برمی‌گرداند.
+// ورودی: ندارد. خروجی: RFC3339، یا رشته خالی اگر زمان build معتبر نباشد.
+// زمان تولید sitemap جایگزین lastmod نمی‌شود.
+func platformAboutLastMod() string {
+	info, ok := debug.ReadBuildInfo()
+	return lastModFromBuildInfo(info, ok)
+}
+
+// lastModFromBuildInfo مقدار vcs.time را به lastmod تبدیل می‌کند.
+// ورودی: اطلاعات بیلد و ok حاصل ReadBuildInfo. خروجی: RFC3339 یا رشته خالی.
+func lastModFromBuildInfo(info *debug.BuildInfo, ok bool) string {
+	if !ok || info == nil {
+		return ""
+	}
+	for _, s := range info.Settings {
+		if s.Key != "vcs.time" || s.Value == "" {
+			continue
+		}
+		if t, err := time.Parse(time.RFC3339Nano, s.Value); err == nil {
+			return t.UTC().Format(time.RFC3339)
+		}
+		if t, err := time.Parse(time.RFC3339, s.Value); err == nil {
+			return t.UTC().Format(time.RFC3339)
+		}
+	}
+	return ""
+}
+
+// newsSitemapLastMod زمان واقعی ویرایش خبر را برای lastmod برمی‌گرداند.
+// ورودی: زمان UpdatedAt. خروجی: RFC3339، یا خالی اگر زمان صفر باشد.
+func newsSitemapLastMod(updatedAt time.Time) string {
+	if updatedAt.IsZero() {
+		return ""
+	}
+	return updatedAt.UTC().Format(time.RFC3339)
+}
+
 // NewSitemapHandler نمونه جدیدی از SitemapHandler را با وابستگی‌های ریپازیتوری ایجاد می‌کند.
 // ورودی: ریپازیتوری‌های کلینیک، پزشک، بخش و اخبار.
 // خروجی: اشاره‌گر به SitemapHandler.
@@ -61,22 +152,22 @@ func NewSitemapHandler(
 // خروجی: محتوای XML با سرلوحه Content-Type مناسب application/xml.
 func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 	tc, _ := tenant.FromGin(c)
-	scheme := "https"
-	if c.Request.TLS == nil && !strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
-		scheme = "http"
-	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	baseURL := publicBaseURL(c)
 
 	var urls []SitemapURL
 
 	// ۱. صفحات پایه مشترک
 	urls = append(urls,
-		SitemapURL{Loc: baseURL + "/", LastMod: nowStr, ChangeFreq: "daily", Priority: "1.0"},
-		SitemapURL{Loc: baseURL + "/doctors", LastMod: nowStr, ChangeFreq: "daily", Priority: "0.9"},
-		SitemapURL{Loc: baseURL + "/weekly-schedule", LastMod: nowStr, ChangeFreq: "daily", Priority: "0.9"},
-		SitemapURL{Loc: baseURL + "/news", LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.7"},
+		SitemapURL{Loc: baseURL + "/", ChangeFreq: "daily", Priority: "1.0"},
+		SitemapURL{Loc: baseURL + "/doctors", ChangeFreq: "daily", Priority: "0.9"},
+		SitemapURL{Loc: baseURL + "/weekly-schedule", ChangeFreq: "daily", Priority: "0.9"},
+		SitemapURL{Loc: baseURL + "/news", ChangeFreq: "weekly", Priority: "0.7"},
 	)
+
+	// صفحه «درباره ما» فقط برای دامنه پلتفرم (tebpardaz.ir) — جدا از about کلینیک‌های مشتری
+	if shouldIncludePlatformAboutSitemap(tc) {
+		urls = append(urls, buildPlatformAboutSitemapEntry(baseURL, platformAboutLastMod()))
+	}
 
 	// اسلاگ‌های ۵ صفحه اختصاصی به صورت URL-Encoded
 	encodedWorkingHours := url.PathEscape("ساعات-کاری")
@@ -90,12 +181,12 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 		clinicID := *tc.ClinicID
 
 		urls = append(urls,
-			SitemapURL{Loc: baseURL + "/sections", LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedWorkingHours), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedMessages), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
-			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedEquipment), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.8"},
-			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedSchedule), LastMod: nowStr, ChangeFreq: "daily", Priority: "0.9"},
-			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedIntro), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
+			SitemapURL{Loc: baseURL + "/sections", ChangeFreq: "weekly", Priority: "0.8"},
+			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedWorkingHours), ChangeFreq: "weekly", Priority: "0.8"},
+			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedMessages), ChangeFreq: "monthly", Priority: "0.7"},
+			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedEquipment), ChangeFreq: "monthly", Priority: "0.8"},
+			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedSchedule), ChangeFreq: "daily", Priority: "0.9"},
+			SitemapURL{Loc: fmt.Sprintf("%s/%s", baseURL, encodedIntro), ChangeFreq: "monthly", Priority: "0.7"},
 		)
 
 		if h.Sections != nil {
@@ -103,11 +194,11 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 				for _, s := range secList {
 					encodedSecSlug := url.PathEscape(s.Slug)
 					urls = append(urls,
-						SitemapURL{Loc: fmt.Sprintf("%s/section/%s", baseURL, encodedSecSlug), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedWorkingHours), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.7"},
-						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedMessages), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
-						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedEquipment), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
-						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedIntro), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
+						SitemapURL{Loc: fmt.Sprintf("%s/section/%s", baseURL, encodedSecSlug), ChangeFreq: "weekly", Priority: "0.8"},
+						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedWorkingHours), ChangeFreq: "weekly", Priority: "0.7"},
+						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedMessages), ChangeFreq: "monthly", Priority: "0.7"},
+						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedEquipment), ChangeFreq: "monthly", Priority: "0.7"},
+						SitemapURL{Loc: fmt.Sprintf("%s/section/%s/%s", baseURL, encodedSecSlug, encodedIntro), ChangeFreq: "monthly", Priority: "0.7"},
 					)
 				}
 			}
@@ -116,13 +207,14 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 		if h.Doctors != nil {
 			if docs, err := h.Doctors.ListApprovedByClinic(clinicID); err == nil {
 				for _, doc := range docs {
-					if doc.IsActive && doc.Slug != "" {
-						urls = append(urls, SitemapURL{
-							Loc:        fmt.Sprintf("%s/booking/%d/%s", baseURL, clinicID, doc.Slug),
-							LastMod:    nowStr,
-							ChangeFreq: "weekly",
-							Priority:   "0.8",
-						})
+					if includeDoctorInBookingSitemap(doc) {
+						if loc := buildBookingSitemapLoc(baseURL, constants.LayoutPrivate, nil, doc.Slug); loc != "" {
+							urls = append(urls, SitemapURL{
+								Loc:        loc,
+								ChangeFreq: "weekly",
+								Priority:   "0.8",
+							})
+						}
 					}
 				}
 			}
@@ -130,8 +222,7 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 	} else {
 		// پلتفرم یا ارگان
 		urls = append(urls,
-			SitemapURL{Loc: baseURL + "/clinics", LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-			SitemapURL{Loc: baseURL + "/sections", LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
+			SitemapURL{Loc: baseURL + "/sections", ChangeFreq: "weekly", Priority: "0.8"},
 		)
 
 		var targetClinics []models.Clinic
@@ -149,12 +240,12 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 			if cl.Slug != nil && *cl.Slug != "" {
 				cSlug := *cl.Slug
 				urls = append(urls,
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/sections", baseURL, cSlug), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedWorkingHours), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedMessages), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedEquipment), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.8"},
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedSchedule), LastMod: nowStr, ChangeFreq: "daily", Priority: "0.9"},
-					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedIntro), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/sections", baseURL, cSlug), ChangeFreq: "weekly", Priority: "0.8"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedWorkingHours), ChangeFreq: "weekly", Priority: "0.8"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedMessages), ChangeFreq: "monthly", Priority: "0.7"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedEquipment), ChangeFreq: "monthly", Priority: "0.8"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedSchedule), ChangeFreq: "daily", Priority: "0.9"},
+					SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/%s", baseURL, cSlug, encodedIntro), ChangeFreq: "monthly", Priority: "0.7"},
 				)
 
 				if h.Sections != nil {
@@ -162,11 +253,31 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 						for _, s := range secList {
 							encodedSecSlug := url.PathEscape(s.Slug)
 							urls = append(urls,
-								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s", baseURL, cSlug, encodedSecSlug), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.8"},
-								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedWorkingHours), LastMod: nowStr, ChangeFreq: "weekly", Priority: "0.7"},
-								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedMessages), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
-								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedEquipment), LastMod: nowStr, ChangeFreq: "monthly", Priority: "0.7"},
+								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s", baseURL, cSlug, encodedSecSlug), ChangeFreq: "weekly", Priority: "0.8"},
+								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedWorkingHours), ChangeFreq: "weekly", Priority: "0.7"},
+								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedMessages), ChangeFreq: "monthly", Priority: "0.7"},
+								SitemapURL{Loc: fmt.Sprintf("%s/clinics/%s/section/%s/%s", baseURL, cSlug, encodedSecSlug, encodedEquipment), ChangeFreq: "monthly", Priority: "0.7"},
 							)
+						}
+					}
+				}
+
+				if h.Doctors != nil {
+					layout := constants.LayoutPlatform
+					if tc != nil && tc.Layout == constants.LayoutOrgan {
+						layout = constants.LayoutOrgan
+					}
+					if docs, err := h.Doctors.ListApprovedByClinic(cl.ID); err == nil {
+						for _, doc := range docs {
+							if includeDoctorInBookingSitemap(doc) {
+								if loc := buildBookingSitemapLoc(baseURL, layout, &cl, doc.Slug); loc != "" {
+									urls = append(urls, SitemapURL{
+										Loc:        loc,
+										ChangeFreq: "weekly",
+										Priority:   "0.8",
+									})
+								}
+							}
 						}
 					}
 				}
@@ -184,7 +295,7 @@ func (h *SitemapHandler) ServeSitemap(c *gin.Context) {
 			for _, n := range newsList {
 				urls = append(urls, SitemapURL{
 					Loc:        fmt.Sprintf("%s/news/%d", baseURL, n.ID),
-					LastMod:    n.UpdatedAt.UTC().Format(time.RFC3339),
+					LastMod:    newsSitemapLastMod(n.UpdatedAt),
 					ChangeFreq: "monthly",
 					Priority:   "0.6",
 				})

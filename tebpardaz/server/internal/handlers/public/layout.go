@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"tebpardaz/server/internal/branding"
 	"tebpardaz/server/internal/repository"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/layouts"
+	"tebpardaz/server/views/pages"
 	"tebpardaz/shared/constants"
 
 	"github.com/a-h/templ"
@@ -121,6 +123,10 @@ func RenderPublicLayoutWithHead(c *gin.Context, tc *tenant.Context, child templ.
 		if head.Title == "" && tc.Clinic != nil {
 			head.Title = tc.Clinic.Name + " | رزرو نوبت آنلاین"
 		}
+		if tc.Clinic != nil {
+			// PageHead مقدار است؛ favicon باید قبل از کپی شدن داخل view ست شود.
+			head.FaviconURL = branding.ClinicFaviconURL(tc.Clinic)
+		}
 		navLinks := publicNavLinksForTenant(tc, activeNav)
 		view := layouts.PrivateLayoutView{
 			Head:     head,
@@ -128,7 +134,7 @@ func RenderPublicLayoutWithHead(c *gin.Context, tc *tenant.Context, child templ.
 		}
 		if tc.Clinic != nil {
 			view.ClinicName = tc.Clinic.Name
-			view.LogoURL = fmt.Sprintf("/static/clinics/%d-logo.jpg", tc.Clinic.Code)
+			view.LogoURL = branding.ClinicLogoURL(tc.Clinic)
 			view.Phone = tc.Clinic.Phone
 			view.Address = tc.Clinic.Address
 			view.City = tc.Clinic.City.Name
@@ -137,6 +143,12 @@ func RenderPublicLayoutWithHead(c *gin.Context, tc *tenant.Context, child templ.
 		err = layouts.PrivateLayout(view).Render(ctx, c.Writer)
 	default:
 		c.Status(http.StatusNotFound)
+		head := layouts.PageHead{
+			Title:  "صفحه پیدا نشد | طب‌پرداز",
+			Robots: "noindex, nofollow",
+		}
+		standalone := templ.WithChildren(c.Request.Context(), pages.NotFound(pages.NotFoundView{HomeURL: "/"}))
+		_ = layouts.Document(head).Render(standalone, c.Writer)
 		return
 	}
 	if err != nil {
@@ -163,7 +175,7 @@ func publicNavLinks(active string) []components.NavLink {
 func publicNavLinksForPlatform(tc *tenant.Context, active string) []components.NavLink {
 	links := []components.NavLink{
 		{Label: "صفحه اصلی", Href: "/", Active: active == "home"},
-		{Label: "مراکز", Href: "/clinics", Active: active == "clinics"},
+		{Label: "مراکز", Href: "/#clinics", Active: active == "clinics"},
 		{Label: "پزشکان", Href: "/doctors", Active: active == "doctors" || active == "booking"},
 		{Label: "نوبت‌دهی", Href: "/doctors", Active: active == "booking"},
 		{Label: "نوبت هفتگی پزشکان", Href: "/weekly-schedule", Active: active == "weekly-schedule"},
@@ -182,7 +194,7 @@ func publicNavLinksForPlatform(tc *tenant.Context, active string) []components.N
 					for _, s := range sections {
 						targetHref := fmt.Sprintf("/section/%s", s.Slug)
 						if clinicSlug != "" {
-							targetHref = fmt.Sprintf("/%s/section/%s", clinicSlug, s.Slug)
+							targetHref = fmt.Sprintf("/clinics/%s/section/%s", clinicSlug, s.Slug)
 						}
 						childActive := active == "section_"+s.Slug
 						if childActive {
@@ -219,6 +231,7 @@ func publicNavLinksForPlatform(tc *tenant.Context, active string) []components.N
 func publicNavLinksForOrgan(tc *tenant.Context, active string) []components.NavLink {
 	links := []components.NavLink{
 		{Label: "صفحه اصلی", Href: "/", Active: active == "home"},
+		{Label: "مراکز", Href: "/#clinics", Active: active == "clinics"},
 		{Label: "پزشکان", Href: "/doctors", Active: active == "doctors" || active == "booking"},
 		{Label: "نوبت‌دهی", Href: "/doctors", Active: active == "booking"},
 		{Label: "برنامه هفتگی پزشکان", Href: "/weekly-schedule", Active: active == "weekly-schedule"},
@@ -237,7 +250,7 @@ func publicNavLinksForOrgan(tc *tenant.Context, active string) []components.NavL
 					for _, s := range sections {
 						targetHref := fmt.Sprintf("/section/%s", s.Slug)
 						if clinicSlug != "" {
-							targetHref = fmt.Sprintf("/%s/section/%s", clinicSlug, s.Slug)
+							targetHref = fmt.Sprintf("/clinics/%s/section/%s", clinicSlug, s.Slug)
 						}
 						childActive := active == "section_"+s.Slug
 						if childActive {

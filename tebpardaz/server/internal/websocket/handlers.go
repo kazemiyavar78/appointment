@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/models"
@@ -32,10 +33,17 @@ type Handlers struct {
 	WeeklyReserves *cache.WeeklyReserveCache
 	// WaitingQueues کش صف انتظار بیماران (بدون دیتابیس)
 	WaitingQueues *cache.WaitingQueueCache
+	// OnWaitingQueueUpdated بعد از جایگزینی صف در کش صدا زده می‌شود تا اعلان پس‌زمینه جدا از ACK مرکز برود.
+	OnWaitingQueueUpdated func(clinicID uint)
+	// Appointments نوبت‌های سایت برای بررسی مراجعه در جدول پذیرش مرکز.
+	Appointments *repository.AppointmentRepo
+
+	visitMu   sync.Mutex
+	visitBusy map[uint]bool
 }
 
 // NewHandlers سازنده هندلرهای HTTP مربوط به WebSocket است.
-// ورودی: hub، ریپوی مراکز، ریپوی پزشکان، کش اسلات‌ها، کش پزشکان تأییدنشده، کش نوبت هفتگی، کش صف انتظار.
+// ورودی: hub، ریپوی مراکز، ریپوی پزشکان، کش اسلات‌ها، کش پزشکان تأییدنشده، کش نوبت هفتگی، کش صف انتظار، ریپوی نوبت بیمار.
 // خروجی: اشاره‌گر به Handlers.
 func NewHandlers(
 	hub *Hub,
@@ -45,6 +53,7 @@ func NewHandlers(
 	pending *cache.DoctorCache,
 	weekly *cache.WeeklyReserveCache,
 	waiting *cache.WaitingQueueCache,
+	appointments *repository.AppointmentRepo,
 ) *Handlers {
 	return &Handlers{
 		Hub:            hub,
@@ -54,6 +63,8 @@ func NewHandlers(
 		PendingDoctors: pending,
 		WeeklyReserves: weekly,
 		WaitingQueues:  waiting,
+		Appointments:   appointments,
+		visitBusy:      make(map[uint]bool),
 	}
 }
 
@@ -140,8 +151,11 @@ func (h *Handlers) handleFrame(client *ClientConn, raw []byte) error {
 			return err
 		}
 		return h.handleWaitingQueueListPush(client, env, &push)
-	case protocol.TypeBookingCreateAck, protocol.TypeBookingCancelAck, protocol.TypeTestResultResponse:
+	case protocol.TypeBookingCreateAck, protocol.TypeBookingCancelAck, protocol.TypeTestResultResponse, protocol.TypeVisitCheckResponse:
 		_ = h.Hub.DeliverReply(client.ClinicID, env)
+		return nil
+	case protocol.TypeVisitSyncRequest:
+		go h.runVisitSync(client.ClinicID)
 		return nil
 	default:
 		return nil
@@ -251,6 +265,10 @@ func (h *Handlers) handleWaitingQueueListPush(client *ClientConn, env *protocol.
 	accepted := 0
 	if h.WaitingQueues != nil {
 		accepted = h.WaitingQueues.ReplaceFromPush(client.ClinicID, push)
+		if h.OnWaitingQueueUpdated != nil && client != nil {
+			clinicID := client.ClinicID
+			go h.OnWaitingQueueUpdated(clinicID)
+		}
 	} else if push != nil {
 		for _, doc := range push.Doctors {
 			accepted += len(doc.Patients)

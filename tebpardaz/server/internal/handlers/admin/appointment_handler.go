@@ -227,9 +227,15 @@ func buildDoctorItems(doctors []models.Doctor, slotsByDoctor map[uint][]models.D
 	return items
 }
 
+// toSlotItems اسلات‌های کش را برای جدول لیست نوبت‌ها آماده می‌کند.
+// ورودی: اسلات‌های یک پزشک. خروجی: ردیف‌های قابل نمایش؛ نوبت امروز پس از گذشتن زمان حضور پزشک حذف می‌شود.
 func toSlotItems(slots []models.DoctorSlot) []adminviews.AppointmentSlotItem {
+	now := time.Now()
 	items := make([]adminviews.AppointmentSlotItem, 0, len(slots))
 	for _, slot := range slots {
+		if cache.TodayPresencePassed(slot, now) {
+			continue
+		}
 		items = append(items, adminviews.AppointmentSlotItem{
 			StartsAt:    slot.StartsAt,
 			EndsAt:      slot.EndsAt,

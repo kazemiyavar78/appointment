@@ -14,7 +14,9 @@ type SpecialtyRow struct {
 	NameEN           string
 	ShortDescription string
 	Icon             string
+	SortOrder        int
 	IsApproved       bool
+	ShowInBooking    bool
 }
 
 // SpecialtyPageView is the full page model for specialty CRUD.
@@ -29,7 +31,9 @@ type SpecialtyPageView struct {
 	EditDescription      string
 	EditIcon             string
 	EditColor            string
+	EditSortOrder        int
 	EditApproved         bool
+	EditShowInBooking    bool
 }
 
 // approvedLabel برچسب متنی وضعیت تأیید تخصص را برمی‌گرداند.
@@ -41,11 +45,20 @@ func approvedLabel(approved bool) string {
 	return "در انتظار"
 }
 
+// bookingDisplayLabel برچسب نمایش تخصص در نوبت‌دهی را برمی‌گرداند.
+// ورودی: وضعیت نمایش در نوبت‌دهی. خروجی: رشته متنی وضعیت.
+func bookingDisplayLabel(show bool) string {
+	if show {
+		return "نمایش"
+	}
+	return "مخفی"
+}
+
 // Specialties صفحه مدیریت تخصص‌ها شامل فرم ایجاد/ویرایش و جدول لیست تخصص‌ها را رندر می‌کند.
 // ورودی: view مدل کامل صفحه تخصص. خروجی: کامپوننت templ صفحه ادمین.
 templ Specialties(view SpecialtyPageView) {
 	@layouts.AdminLayout(view.Nav) {
-		<div class="mx-auto max-w-4xl">
+		<div class="mx-auto max-w-7xl">
 			<h1 class="ui-page-title mb-4">مدیریت تخصص‌ها</h1>
 			if view.Message != "" {
 				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
@@ -73,27 +86,30 @@ templ Specialties(view SpecialtyPageView) {
 			<section>
 				<h2 class="mb-3 text-lg text-ink">لیست تخصص‌ها</h2>
 				<div class="ui-table-wrap">
-					<table class="ui-table min-w-[720px] text-sm">
+					<table class="ui-table min-w-[920px] text-sm">
 						<thead>
 							<tr class="border-b border-gray-200 bg-surface-soft text-right">
 								<th class="p-2">ردیف</th>
+								<th class="p-2">ترتیب</th>
 								<th class="p-2">آیکون</th>
 								<th class="p-2">نام فارسی</th>
 								<th class="p-2">نام انگلیسی</th>
 								<th class="p-2">توضیح کوتاه</th>
 								<th class="p-2">وضعیت</th>
+								<th class="p-2">نوبت‌دهی</th>
 								<th class="p-2">اقدام</th>
 							</tr>
 						</thead>
 						<tbody>
 							if len(view.Items) == 0 {
 								<tr>
-									<td class="p-3 text-ink-muted" colspan="7">تخصصی ثبت نشده است.</td>
+									<td class="p-3 text-ink-muted" colspan="9">تخصصی ثبت نشده است.</td>
 								</tr>
 							}
 							for index, item := range view.Items {
 								<tr class="border-b border-gray-100">
 									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2">{ strconv.Itoa(item.SortOrder) }</td>
 									<td class="p-2">
 										<div class="flex items-center gap-2">
 											<span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-soft text-brand">
@@ -110,6 +126,7 @@ templ Specialties(view SpecialtyPageView) {
 									<td class="p-2">{ item.NameEN }</td>
 									<td class="p-2 max-w-[12rem] truncate" title={ item.ShortDescription }>{ item.ShortDescription }</td>
 									<td class="p-2">{ approvedLabel(item.IsApproved) }</td>
+									<td class="p-2">{ bookingDisplayLabel(item.ShowInBooking) }</td>
 									<td class="p-2 whitespace-nowrap">
 										<a
 											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
@@ -214,6 +231,10 @@ templ specialtyFormFields(view SpecialtyPageView) {
 		رنگ آیکون
 		<input class="ui-field mt-1 w-full" type="text" name="color" value={ view.EditColor } maxlength="100" placeholder="#0d9488"/>
 	</label>
+	<label class="block text-sm text-ink-muted">
+		ترتیب نمایش (عدد کوچک‌تر جلوتر)
+		<input class="ui-field mt-1 w-full" type="number" name="sort_order" value={ strconv.Itoa(view.EditSortOrder) } min="0" max="999"/>
+	</label>
 	<label class="flex items-center gap-2 text-sm text-ink-muted sm:col-span-2">
 		if view.EditApproved {
 			<input type="checkbox" name="is_approved" value="1" checked/>
@@ -222,4 +243,15 @@ templ specialtyFormFields(view SpecialtyPageView) {
 		}
 		تأیید شده
 	</label>
+	<div class="sm:col-span-2">
+		<label class="flex items-center gap-2 text-sm text-ink-muted">
+			if view.EditShowInBooking {
+				<input type="checkbox" name="show_in_booking" value="1" checked/>
+			} else {
+				<input type="checkbox" name="show_in_booking" value="1"/>
+			}
+			نمایش در نوبت‌دهی
+		</label>
+		<span class="mt-1 block text-xs text-ink-faint">اگر غیرفعال باشد، این تخصص در فیلتر رزرو و کارت‌های صفحه اصلی دیده نمی‌شود؛ همچنان می‌توان آن را به پزشک اختصاص داد.</span>
+	</div>
 }

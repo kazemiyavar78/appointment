@@ -71,12 +71,12 @@ func footerBookingURL(props FooterProps) string {
 	return "/doctors"
 }
 
-// footerClinicsURL آدرس فهرست مراکز را با پیش‌فرض /clinics برمی‌گرداند.
+// footerClinicsURL آدرس فهرست مراکز را با پیش‌فرض لنگر بخش مراکز صفحه اصلی برمی‌گرداند.
 func footerClinicsURL(props FooterProps) string {
 	if props.ClinicsListURL != "" {
 		return props.ClinicsListURL
 	}
-	return "/clinics"
+	return "/#clinics"
 }
 
 // footerShellClass کلاس پوسته بیرونی فوتر را برای هر variant برمی‌گرداند.

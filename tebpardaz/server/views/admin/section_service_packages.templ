@@ -1,0 +1,210 @@
+package admin
+
+import (
+	"strconv"
+	"strings"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// ClinicSectionOption یک بخش مرکز درمانی در فرم انتصاب بسته است.
+type ClinicSectionOption struct {
+	ID       uint
+	Title    string
+	Selected bool
+}
+
+// SectionPackageAssignView مدل داده صفحه انتصاب بسته خدمات به بخش‌های مرکز است.
+type SectionPackageAssignView struct {
+	Nav               layouts.AdminLayoutView
+	Message           string
+	Clinics           []ClinicOption
+	SelectedClinicID  uint
+	Sections          []ClinicSectionOption
+	SelectedSectionID uint
+	Packages          []ServicePackageOption
+}
+
+// SectionServicePackages صفحه انتخاب مرکز، بخش و بسته‌های خدمات آن بخش را رندر می‌کند.
+// ورودی: view مدل داده صفحه انتصاب. خروجی: کامپوننت templ صفحه ادمین.
+templ SectionServicePackages(view SectionPackageAssignView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">انتصاب بسته خدمات به بخش‌ها</h1>
+					<p class="mt-1 text-xs text-ink-muted">
+						بسته‌های انتخاب‌شده، فهرست خدمات همان بخش را در صفحه عمومی مرکز نشان می‌دهند. بسته‌های خالی نمایش داده نمی‌شوند.
+					</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/packages">بسته‌های خدمات</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services">
+						<i class="fa-solid fa-arrow-right ml-1"></i>
+						بازگشت به لیست خدمات
+					</a>
+				</div>
+			</div>
+			if view.Message != "" {
+				<div class="ui-panel mb-4 text-sm font-medium text-brand-dark bg-brand/5 border border-brand/20">
+					{ view.Message }
+				</div>
+			}
+
+			<div class="mb-6 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+				<form class="flex flex-wrap items-end gap-3" method="get" action="/admin/services/section-packages">
+					<label class="block text-xs font-semibold text-ink-muted">
+						مرکز درمانی
+						<select class="ui-field mt-1.5 min-w-[14rem] text-sm" name="clinic_id" onchange="this.form.submit()" required>
+							<option value="">-- انتخاب مرکز درمانی --</option>
+							for _, clinic := range view.Clinics {
+								<option value={ formatUint(clinic.ID) } selected?={ clinic.Selected }>{ clinic.Name }</option>
+							}
+						</select>
+					</label>
+					if view.SelectedClinicID > 0 {
+						<label class="block text-xs font-semibold text-ink-muted">
+							بخش مرکز
+							<select class="ui-field mt-1.5 min-w-[14rem] text-sm" name="section_id" onchange="this.form.submit()">
+								<option value="">-- انتخاب بخش --</option>
+								for _, section := range view.Sections {
+									<option value={ formatUint(section.ID) } selected?={ section.Selected }>{ section.Title }</option>
+								}
+							</select>
+						</label>
+					}
+					<noscript>
+						<button class="ui-btn ui-btn-ghost text-xs" type="submit">نمایش</button>
+					</noscript>
+				</form>
+			</div>
+
+			if view.SelectedClinicID == 0 {
+				<div class="ui-panel text-center py-10 text-sm text-ink-muted">
+					<i class="fa-solid fa-hospital text-3xl mb-2 text-gray-300 block"></i>
+					برای انتصاب بسته‌ها، ابتدا یک مرکز درمانی را انتخاب کنید.
+				</div>
+			} else if len(view.Sections) == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-layer-group text-3xl mb-2 text-gray-300 block"></i>
+					برای این مرکز هنوز بخشی تعریف نشده است.
+				</div>
+			} else if view.SelectedSectionID == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-sitemap text-3xl mb-2 text-gray-300 block"></i>
+					بخش مورد نظر را انتخاب کنید تا بسته‌های آن را مشخص کنید.
+				</div>
+			} else if len(view.Packages) == 0 {
+				<div class="ui-panel text-center py-8 text-sm text-ink-muted">
+					<i class="fa-solid fa-box-open text-3xl mb-2 text-gray-300 block"></i>
+					هنوز بسته‌ای در کاتالوگ ثبت نشده است.
+					<a class="mt-3 inline-block text-brand hover:underline" href="/admin/services/packages">ایجاد بسته خدمات</a>
+				</div>
+			} else {
+				<form method="post" action="/admin/services/section-packages" id="section-package-form">
+					<input type="hidden" name="clinic_id" value={ formatUint(view.SelectedClinicID) }/>
+					<input type="hidden" name="section_id" value={ formatUint(view.SelectedSectionID) }/>
+					<div class="rounded-xl border border-surface-border bg-white p-4">
+						<div class="flex items-center justify-between pb-3 border-b border-gray-100">
+							<div class="flex items-center gap-2">
+								<i class="fa-solid fa-box-open text-brand text-sm"></i>
+								<h2 class="text-sm font-bold text-ink">بسته‌های این بخش</h2>
+							</div>
+							<span id="sec-pkg-badge" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">۰ بسته انتخاب شده</span>
+						</div>
+						<div class="mt-3 relative">
+							<input
+								type="search"
+								id="sec-pkg-search"
+								placeholder="جستجوی بسته بر اساس نام یا توضیحات..."
+								oninput="filterSectionPkgItems()"
+								class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+							/>
+							<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+						</div>
+						<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+							<button type="button" onclick="toggleAllSectionPkgs(true)" class="text-white hover:underline font-medium">انتخاب همه</button>
+							<button type="button" onclick="toggleAllSectionPkgs(false)" class="text-ink-muted hover:underline">لغو انتخاب همه</button>
+						</div>
+						<div id="sec-pkg-list" class="mt-2 max-h-[360px] overflow-y-auto space-y-1.5 pr-1">
+							for _, item := range view.Packages {
+								<label class="sec-pkg-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ strings.ToLower(item.Name) }>
+									<input
+										type="checkbox"
+										name="package_ids"
+										value={ formatUint(item.ID) }
+										onchange="updateSectionPkgCount()"
+										class="sec-pkg-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+										checked?={ item.Selected }
+									/>
+									<div class="min-w-0 flex-1">
+										<span class="text-xs font-semibold text-ink block">{ item.Name }</span>
+										if item.Count == 0 {
+											<span class="text-[11px] text-amber-700 block mt-0.5">بدون خدمت — در صفحه عمومی نمایش داده نمی‌شود</span>
+										} else {
+											<span class="text-[11px] text-ink-muted block mt-0.5">{ strconv.Itoa(item.Count) } خدمت</span>
+										}
+									</div>
+								</label>
+							}
+							<p id="sec-pkg-empty" class="hidden text-center text-xs text-ink-muted py-8">بسته‌ای مطابق جستجو یافت نشد.</p>
+						</div>
+					</div>
+					<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+						<div class="text-xs text-ink-muted leading-relaxed">
+							<i class="fa-solid fa-circle-info text-brand ml-1"></i>
+							با ذخیره، بسته‌های علامت‌خورده به این بخش اختصاص داده می‌شوند و خدمات آن‌ها در صفحه عمومی بخش دیده می‌شود.
+						</div>
+						<button class="ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold" type="submit">
+							<i class="fa-solid fa-floppy-disk ml-1.5"></i>
+							ذخیره انتصاب بسته‌ها
+						</button>
+					</div>
+					<script>
+						function toPersianDigitsSecPkg(n) {
+							var id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+							return String(n).replace(/[0-9]/g, function(w){ return id[+w]; });
+						}
+						function updateSectionPkgCount() {
+							var checked = document.querySelectorAll('.sec-pkg-checkbox:checked').length;
+							var badge = document.getElementById('sec-pkg-badge');
+							if (badge) {
+								badge.textContent = toPersianDigitsSecPkg(checked) + ' بسته انتخاب شده';
+							}
+						}
+						function filterSectionPkgItems() {
+							var input = document.getElementById('sec-pkg-search');
+							var q = ((input && input.value) || '').trim().toLowerCase();
+							var items = document.querySelectorAll('.sec-pkg-item');
+							var visibleCount = 0;
+							items.forEach(function(item) {
+								var text = item.getAttribute('data-search') || '';
+								if (!q || text.indexOf(q) !== -1) {
+									item.style.display = '';
+									visibleCount++;
+								} else {
+									item.style.display = 'none';
+								}
+							});
+							var emptyMsg = document.getElementById('sec-pkg-empty');
+							if (emptyMsg) {
+								emptyMsg.classList.toggle('hidden', visibleCount > 0);
+							}
+						}
+						function toggleAllSectionPkgs(checked) {
+							document.querySelectorAll('.sec-pkg-item').forEach(function(item) {
+								if (item.style.display !== 'none') {
+									var cb = item.querySelector('.sec-pkg-checkbox');
+									if (cb) cb.checked = checked;
+								}
+							});
+							updateSectionPkgCount();
+						}
+						document.addEventListener('DOMContentLoaded', updateSectionPkgCount);
+						updateSectionPkgCount();
+					</script>
+				</form>
+			}
+		</div>
+	}
+}

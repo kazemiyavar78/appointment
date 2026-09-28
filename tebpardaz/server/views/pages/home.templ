@@ -17,23 +17,7 @@ templ Home(view HomeView) {
 				</a>
 			</div>
 		</section>
-		if len(view.Doctors) > 0 {
-			<section class="ui-section">
-				<div class="mb-4 flex items-end justify-between gap-3">
-					<div class="ui-section-head mb-0 min-w-0">
-						<h2 class="ui-section-title">پزشکان</h2>
-						<p class="ui-section-desc">برای رزرو، روی کارت پزشک بزنید.</p>
-					</div>
-					<a class="ui-link shrink-0 text-sm" href="/doctors">مشاهده همه</a>
-				</div>
-				@components.DoctorCardAssets()
-				<div class="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					for _, doc := range view.Doctors {
-						@components.DoctorCard(doc)
-					}
-				</div>
-			</section>
-		}
+	
 		if len(view.Specialties) > 0 {
 			<section class="ui-section">
 				<div class="ui-section-head">
@@ -58,7 +42,7 @@ templ Home(view HomeView) {
 		}
 		if view.ShowClinicCards {
 			if len(view.Clinics) > 0 {
-				<section class="ui-section">
+				<section id="clinics" class="ui-section" style="scroll-margin-top: 5.5rem;">
 					<div class="ui-section-head">
 						<h2 class="ui-section-title">مراکز درمانی</h2>
 						<p class="ui-section-desc">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>

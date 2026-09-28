@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"tebpardaz/server/internal/text"
 	"tebpardaz/shared/protocol"
 )
 
@@ -72,16 +73,18 @@ func (c *DoctorCache) ReplacePending(clinicID uint, doctors []protocol.DoctorDTO
 		if nid == "" {
 			continue
 		}
-		name := dto.Name
+		firstName := text.NormalizePersianText(dto.FirstName)
+		lastName := text.NormalizePersianText(dto.LastName)
+		name := text.NormalizePersianText(dto.Name)
 		if name == "" {
-			name = strings.TrimSpace(dto.FirstName + " " + dto.LastName)
+			name = strings.TrimSpace(firstName + " " + lastName)
 		}
 		bag.ByNationalID[nid] = PendingDoctor{
 			ClinicID:       clinicID,
 			LocalCode:      dto.LocalCode,
 			NationalID:     nid,
-			FirstName:      dto.FirstName,
-			LastName:       dto.LastName,
+			FirstName:      firstName,
+			LastName:       lastName,
 			Name:           name,
 			Mobile:         dto.Mobile,
 			DoctorSystemID: dto.DoctorSystemID,

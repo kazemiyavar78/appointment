@@ -1,0 +1,282 @@
+package admin
+
+import (
+	"strconv"
+	"time"
+
+	"tebpardaz/server/internal/websocket"
+	"tebpardaz/server/views/layouts"
+	"github.com/yaa110/go-persian-calendar"
+)
+
+// ClinicLogRow یک ردیف لاگ برای جدول ادمین است.
+type ClinicLogRow struct {
+	ID         uint      `json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	ClinicID   uint      `json:"clinic_id"`
+	ClinicName string    `json:"clinic_name"`
+	Action     string    `json:"action"`
+	MsgType    string    `json:"msg_type"`
+	RequestID  string    `json:"request_id"`
+	Detail     string    `json:"detail"`
+	Error      string    `json:"error"`
+}
+
+// ClinicLogActionOption یک گزینه فیلتر نوع رفتار است.
+type ClinicLogActionOption struct {
+	Value string
+	Label string
+}
+
+// ClinicLogsView مدل صفحه لاگ کلاینت‌های مرکز است.
+type ClinicLogsView struct {
+	Nav          layouts.AdminLayoutView
+	ClinicID     uint
+	Clinics      []ClinicOption
+	Rows         []ClinicLogRow
+	Total        int64
+	Page         int
+	PerPage      int
+	Action       string
+	MsgType      string
+	RequestID    string
+	SearchQuery  string
+	FromDate     string
+	ToDate       string
+	Message      string
+	ActionLabels []ClinicLogActionOption
+}
+
+// ClinicLogActionOptions گزینه‌های فیلتر نوع رفتار را برمی‌گرداند.
+func ClinicLogActionOptions() []ClinicLogActionOption {
+	return []ClinicLogActionOption{
+		{Value: websocket.ActionConnect, Label: "اتصال"},
+		{Value: websocket.ActionDisconnect, Label: "قطع اتصال"},
+		{Value: websocket.ActionAuthFail, Label: "خطای احراز هویت"},
+		{Value: websocket.ActionUpgradeFail, Label: "خطای Upgrade"},
+		{Value: websocket.ActionRecv, Label: "دریافت پیام"},
+		{Value: websocket.ActionSend, Label: "ارسال پیام"},
+		{Value: websocket.ActionReply, Label: "پاسخ"},
+		{Value: websocket.ActionTimeout, Label: "اتمام مهلت"},
+		{Value: websocket.ActionError, Label: "خطا"},
+	}
+}
+
+func actionLabel(action string, options []ClinicLogActionOption) string {
+	for _, opt := range options {
+		if opt.Value == action {
+			return opt.Label
+		}
+	}
+	return action
+}
+
+func formatLogDateTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return ptime.New(t).Format("yyyy/MM/dd HH:mm:ss")
+}
+
+func formatInt64(v int64) string {
+	return strconv.FormatInt(v, 10)
+}
+
+// ClinicLogs صفحه لاگ رفتار کلاینت‌های مرکز را رندر می‌کند.
+templ ClinicLogs(view ClinicLogsView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+				<div>
+					<h1 class="ui-page-title">لاگ کلاینت‌های مرکز</h1>
+					<p class="mt-1 text-sm text-ink-muted">رفتار WebSocket مراکز — با فیلتر و بروزرسانی زنده.</p>
+				</div>
+				<span id="ws-status" class="rounded-full bg-surface-soft px-3 py-1 text-xs text-ink-muted">در حال اتصال...</span>
+			</div>
+			if view.Message != "" {
+				<p class="mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			<form id="log-filter-form" class="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-2 xl:grid-cols-4" method="get" action="/admin/logs">
+				<label class="block text-sm text-ink-muted">
+					مرکز
+					<select class="ui-field mt-1 w-full" name="clinic_id">
+						for _, clinic := range view.Clinics {
+							if clinic.Selected {
+								<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }</option>
+							} else {
+								<option value={ formatUint(clinic.ID) }>{ clinic.Name }</option>
+							}
+						}
+					</select>
+				</label>
+				<label class="block text-sm text-ink-muted">
+					نوع رفتار
+					<select class="ui-field mt-1 w-full" name="action">
+						<option value="">همه</option>
+						for _, opt := range view.ActionLabels {
+							if view.Action == opt.Value {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</label>
+				<label class="block text-sm text-ink-muted">
+					نوع پیام
+					<input class="ui-field mt-1 w-full" type="text" name="msg_type" value={ view.MsgType } placeholder="doctor.list.push"/>
+				</label>
+				<label class="block text-sm text-ink-muted">
+					شناسه درخواست
+					<input class="ui-field mt-1 w-full" type="text" name="request_id" value={ view.RequestID }/>
+				</label>
+				<label class="block text-sm text-ink-muted">
+					از تاریخ
+					<input class="ui-field mt-1 w-full" type="date" name="from" value={ view.FromDate }/>
+				</label>
+				<label class="block text-sm text-ink-muted">
+					تا تاریخ
+					<input class="ui-field mt-1 w-full" type="date" name="to" value={ view.ToDate }/>
+				</label>
+				<label class="block text-sm text-ink-muted md:col-span-2">
+					جستجو در جزئیات/خطا
+					<input class="ui-field mt-1 w-full" type="search" name="q" value={ view.SearchQuery } placeholder="متن جزئیات یا خطا"/>
+				</label>
+				<div class="flex items-end gap-2 md:col-span-2 xl:col-span-4">
+					<button class="ui-btn ui-btn-primary" type="submit">اعمال فیلتر</button>
+					<a class="ui-btn" href="/admin/logs">پاک کردن فیلتر</a>
+				</div>
+			</form>
+			<p class="mb-2 text-sm text-ink-muted">
+				تعداد کل: { formatInt64(view.Total) } — صفحه { formatInt(view.Page) }
+			</p>
+			<div class="overflow-x-auto ui-panel !p-0">
+				<table class="min-w-full text-sm">
+					<thead class="border-b border-border bg-surface-soft text-ink-muted">
+						<tr>
+							<th class="px-3 py-2 text-right">#</th>
+							<th class="px-3 py-2 text-right">زمان</th>
+							<th class="px-3 py-2 text-right">مرکز</th>
+							<th class="px-3 py-2 text-right">رفتار</th>
+							<th class="px-3 py-2 text-right">نوع پیام</th>
+							<th class="px-3 py-2 text-right">Request ID</th>
+							<th class="px-3 py-2 text-right">جزئیات</th>
+							<th class="px-3 py-2 text-right">خطا</th>
+						</tr>
+					</thead>
+					<tbody id="log-table-body">
+						if len(view.Rows) == 0 {
+							<tr>
+								<td class="px-3 py-4 text-ink-muted" colspan="8">موردی برای نمایش نیست.</td>
+							</tr>
+						}
+						for _, row := range view.Rows {
+							@logTableRow(row, view.ActionLabels)
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<script>
+			(function () {
+				const tbody = document.getElementById("log-table-body");
+				const statusEl = document.getElementById("ws-status");
+				const form = document.getElementById("log-filter-form");
+				if (!tbody || !statusEl || !form) return;
+
+				let lastID = 0;
+				tbody.querySelectorAll("tr[data-log-id]").forEach(function (tr) {
+					const id = parseInt(tr.getAttribute("data-log-id") || "0", 10);
+					if (id > lastID) lastID = id;
+				});
+
+				const params = new URLSearchParams(new FormData(form));
+				params.set("since_id", String(lastID));
+				const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+				const wsURL = wsProto + "//" + location.host + "/admin/logs/ws?" + params.toString();
+				const ws = new WebSocket(wsURL);
+
+				const actionLabels = {
+					connect: "اتصال",
+					disconnect: "قطع اتصال",
+					auth_fail: "خطای احراز هویت",
+					upgrade_fail: "خطای Upgrade",
+					recv: "دریافت پیام",
+					send: "ارسال پیام",
+					reply: "پاسخ",
+					timeout: "اتمام مهلت",
+					error: "خطا"
+				};
+
+				function esc(s) {
+					return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+				}
+
+				function formatShamsi(iso) {
+					try {
+						const d = new Date(iso);
+						return d.toLocaleString("fa-IR");
+					} catch (_) {
+						return iso || "—";
+					}
+				}
+
+				function prependRow(row) {
+					const empty = tbody.querySelector("tr:not([data-log-id])");
+					if (empty) empty.remove();
+					const tr = document.createElement("tr");
+					tr.setAttribute("data-log-id", String(row.id));
+					tr.className = "border-b border-border hover:bg-surface-soft";
+					tr.innerHTML =
+						'<td class="px-3 py-2">' + esc(row.id) + '</td>' +
+						'<td class="px-3 py-2 whitespace-nowrap">' + esc(formatShamsi(row.created_at)) + '</td>' +
+						'<td class="px-3 py-2">' + esc(row.clinic_name) + '</td>' +
+						'<td class="px-3 py-2"><span class="rounded bg-brand/10 px-2 py-0.5 text-xs">' + esc(actionLabels[row.action] || row.action) + '</span></td>' +
+						'<td class="px-3 py-2 font-mono text-xs">' + esc(row.msg_type) + '</td>' +
+						'<td class="px-3 py-2 font-mono text-xs">' + esc(row.request_id) + '</td>' +
+						'<td class="px-3 py-2 max-w-xs truncate" title="' + esc(row.detail) + '">' + esc(row.detail) + '</td>' +
+						'<td class="px-3 py-2 max-w-xs truncate text-red-600" title="' + esc(row.error) + '">' + esc(row.error) + '</td>';
+					tbody.insertBefore(tr, tbody.firstChild);
+					while (tbody.children.length > 200) {
+						tbody.removeChild(tbody.lastChild);
+					}
+				}
+
+				ws.onopen = function () {
+					statusEl.textContent = "بروزرسانی زنده فعال";
+					statusEl.className = "rounded-full bg-green-100 px-3 py-1 text-xs text-green-700";
+				};
+				ws.onclose = function () {
+					statusEl.textContent = "اتصال WebSocket قطع شد";
+					statusEl.className = "rounded-full bg-red-100 px-3 py-1 text-xs text-red-700";
+				};
+				ws.onerror = function () {
+					statusEl.textContent = "خطا در WebSocket";
+					statusEl.className = "rounded-full bg-red-100 px-3 py-1 text-xs text-red-700";
+				};
+				ws.onmessage = function (ev) {
+					try {
+						const row = JSON.parse(ev.data);
+						if (row.id > lastID) lastID = row.id;
+						prependRow(row);
+					} catch (_) {}
+				};
+			})();
+		</script>
+	}
+}
+
+templ logTableRow(row ClinicLogRow, actionLabels []ClinicLogActionOption) {
+	<tr class="border-b border-border hover:bg-surface-soft" data-log-id={ formatUint(row.ID) }>
+		<td class="px-3 py-2">{ formatUint(row.ID) }</td>
+		<td class="px-3 py-2 whitespace-nowrap">{ formatLogDateTime(row.CreatedAt) }</td>
+		<td class="px-3 py-2">{ row.ClinicName }</td>
+		<td class="px-3 py-2">
+			<span class="rounded bg-brand/10 px-2 py-0.5 text-xs">{ actionLabel(row.Action, actionLabels) }</span>
+		</td>
+		<td class="px-3 py-2 font-mono text-xs">{ row.MsgType }</td>
+		<td class="px-3 py-2 font-mono text-xs">{ row.RequestID }</td>
+		<td class="px-3 py-2 max-w-xs truncate" title={ row.Detail }>{ row.Detail }</td>
+		<td class="px-3 py-2 max-w-xs truncate text-red-600" title={ row.Error }>{ row.Error }</td>
+	</tr>
+}

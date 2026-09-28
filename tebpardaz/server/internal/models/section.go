@@ -7,8 +7,8 @@ import (
 )
 
 // ClinicSection represents an independent department or section defined by a clinic/center.
-// Each section has its own dedicated public route and 4 fixed sub-sections:
-// Banner, Working Hours, Messages to Patients, and Equipment Introductions.
+// Each section has its own dedicated public route and sub-sections:
+// Banner, Working Hours, Assigned Doctors, Messages to Patients, and Equipment Introductions.
 type AppointmentClinicSection struct {
 	gorm.Model
 	ClinicID  uint   `gorm:"index;not null" json:"clinic_id"`
@@ -21,6 +21,7 @@ type AppointmentClinicSection struct {
 	Schedules []SectionSchedule  `gorm:"foreignKey:SectionID" json:"schedules,omitempty"`
 	Messages  []SectionMessage   `gorm:"foreignKey:SectionID" json:"messages,omitempty"`
 	Equipment []SectionEquipment `gorm:"foreignKey:SectionID" json:"equipment,omitempty"`
+	Doctors   []SectionDoctor    `gorm:"foreignKey:SectionID" json:"doctors,omitempty"`
 }
 
 // TableName specifies the database table name for ClinicSection.
@@ -37,6 +38,14 @@ type SectionBanner struct {
 	Services        string `gorm:"type:nvarchar(1000);not null;default:''" json:"services"`
 	BackgroundColor string `gorm:"type:nvarchar(50);not null;default:'#0a2e2e'" json:"background_color"`
 	ImageURL        string `gorm:"type:nvarchar(500);not null;default:''" json:"image_url"`
+
+	BackgroundColorEnd    string `gorm:"type:nvarchar(50);not null;default:''" json:"background_color_end"`
+	UseBackgroundGradient bool   `gorm:"type:bit;not null;default:false" json:"use_background_gradient"`
+	BackgroundGradientDir string `gorm:"type:nvarchar(40);not null;default:'to left'" json:"background_gradient_dir"`
+	OverlayColor          string `gorm:"type:nvarchar(50);not null;default:'#0a2e2e'" json:"overlay_color"`
+	UseOverlayGradient    bool   `gorm:"type:bit;not null;default:true" json:"use_overlay_gradient"`
+	OverlayOpacityLeft    int    `gorm:"type:int;not null;default:85" json:"overlay_opacity_left"`
+	OverlayOpacityBottom  int    `gorm:"type:int;not null;default:60" json:"overlay_opacity_bottom"`
 }
 
 // TableName specifies the database table name for SectionBanner.
@@ -48,10 +57,10 @@ func (SectionBanner) TableName() string {
 // Days are indexed 0 (شنبه) to 6 (جمعه).
 type SectionSchedule struct {
 	gorm.Model
-	SectionID  uint   `gorm:"index;not null" json:"section_id"`
-	DayOfWeek  int    `gorm:"type:int;not null" json:"day_of_week"`
-	DayName    string `gorm:"type:nvarchar(20);not null" json:"day_name"`
-	IsOpen     bool   `gorm:"type:bit;not null;default:true" json:"is_open"`
+	SectionID   uint   `gorm:"index;not null" json:"section_id"`
+	DayOfWeek   int    `gorm:"type:int;not null" json:"day_of_week"`
+	DayName     string `gorm:"type:nvarchar(20);not null" json:"day_name"`
+	IsOpen      bool   `gorm:"type:bit;not null;default:true" json:"is_open"`
 	Shift1Start string `gorm:"type:nvarchar(10);not null;default:'08:00'" json:"shift1_start"`
 	Shift1End   string `gorm:"type:nvarchar(10);not null;default:'14:00'" json:"shift1_end"`
 	Shift2Start string `gorm:"type:nvarchar(10);not null;default:'16:00'" json:"shift2_start"`
@@ -104,14 +113,25 @@ func (SectionEquipment) TableName() string {
 	return "section_equipments"
 }
 
+// SectionDoctor links an approved doctor to a clinic section for public listing.
+type SectionDoctor struct {
+	gorm.Model
+	SectionID uint `gorm:"not null;uniqueIndex:ux_section_doctors_pair" json:"section_id"`
+	DoctorID  uint `gorm:"not null;uniqueIndex:ux_section_doctors_pair;index" json:"doctor_id"`
+	SortOrder int  `gorm:"type:int;not null;default:0" json:"sort_order"`
 
+	Doctor Doctor `gorm:"foreignKey:DoctorID" json:"doctor,omitempty"`
+}
 
+// TableName specifies the database table name for SectionDoctor.
+func (SectionDoctor) TableName() string {
+	return "section_doctors"
+}
 
 type Section struct {
 	gorm.Model
-	ID      uint     `gorm:"primaryKey"`
-	Name    string   `gorm:"type:nvarchar(100);not null"`
-	
+	ID   uint   `gorm:"primaryKey"`
+	Name string `gorm:"type:nvarchar(100);not null"`
 
 	// ✅ رابطه صحیح
 	ClinicSections []ClinicSection `gorm:"foreignKey:SectionID"`
@@ -143,4 +163,3 @@ type ClinicSectionQuota struct {
 func (ClinicSectionQuota) TableName() string {
 	return "clinic_section_quotas"
 }
-

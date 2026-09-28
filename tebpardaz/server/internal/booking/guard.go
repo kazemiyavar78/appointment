@@ -23,11 +23,23 @@ type Guard struct {
 	bans     map[string]time.Time
 	every    rate.Limit
 	burst    int
+	onBan    func(ip, reason string, until time.Time)
 }
 
 type strikeEntry struct {
 	Count   int
 	Expires time.Time
+}
+
+// SetBanPersister تابعی را نگه می‌دارد که هنگام بلاک تازه آی‌پی صدا زده می‌شود.
+// ورودی: fn؛ nil یعنی ذخیره بلاک خاموش است. خروجی: ندارد.
+func (g *Guard) SetBanPersister(fn func(ip, reason string, until time.Time)) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	g.onBan = fn
+	g.mu.Unlock()
 }
 
 // NewGuard constructs a booking Guard with default limits.
@@ -43,10 +55,9 @@ func NewGuard() *Guard {
 	}
 }
 
-// Allow reports whether the IP may attempt a booking right now.
-// Inputs: client IP.
-// Output: allowed flag and Persian reason when blocked.
-// After one duplicate-NID strike, the next request from the same IP is banned.
+// Allow مشخص می‌کند این آی‌پی الان اجازه ثبت نوبت دارد یا نه.
+// ورودی: آی‌پی کلاینت. خروجی: مجاز بودن و دلیل فارسی در صورت رد.
+// بعد از یک تلاش تکراری کد ملی، درخواست بعدی همان آی‌پی بلاک می‌شود.
 func (g *Guard) Allow(ip string) (bool, string) {
 	if g == nil {
 		return true, ""
@@ -54,22 +65,33 @@ func (g *Guard) Allow(ip string) (bool, string) {
 	ip = normalizeIP(ip)
 	now := time.Now()
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	allowed, msg, banFn, banUntil := g.allowLocked(ip, now)
+	g.mu.Unlock()
+	if banFn != nil {
+		banFn(ip, "تلاش تکراری ثبت نوبت", banUntil)
+	}
+	return allowed, msg
+}
+
+// allowLocked تصمیم درخواست نوبت را در حالی که قفل نگه داشته شده می‌گیرد.
+// ورودی: ip و now. خروجی: مجاز بودن، پیام فارسی، تابع بلاک اختیاری، زمان پایان بلاک.
+func (g *Guard) allowLocked(ip string, now time.Time) (bool, string, func(string, string, time.Time), time.Time) {
 	g.cleanupLocked(now)
 
 	if until, banned := g.bans[ip]; banned && now.Before(until) {
-		return false, "دسترسی این IP به ثبت نوبت مسدود شده است"
+		return false, "دسترسی این IP به ثبت نوبت مسدود شده است", nil, time.Time{}
 	}
 	if entry, ok := g.strikes[ip]; ok && entry.Count >= 1 && now.Before(entry.Expires) {
-		g.bans[ip] = now.Add(banTTL)
+		until := now.Add(banTTL)
+		g.bans[ip] = until
 		delete(g.strikes, ip)
-		return false, "دسترسی این IP به ثبت نوبت مسدود شده است"
+		return false, "دسترسی این IP به ثبت نوبت مسدود شده است", g.onBan, until
 	}
 	lim := g.limiterLocked(ip)
 	if !lim.Allow() {
-		return false, "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید"
+		return false, "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید", nil, time.Time{}
 	}
-	return true, ""
+	return true, "", nil, time.Time{}
 }
 
 // RecordDuplicateAttempt records that this IP tried to book with a national ID that already has a booking.

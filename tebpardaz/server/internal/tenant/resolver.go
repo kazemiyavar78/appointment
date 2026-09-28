@@ -5,6 +5,7 @@ import (
 
 	"strings"
 
+	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
 	"tebpardaz/shared/constants"
@@ -12,10 +13,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// ErrTenantNotFound is returned when host/slug does not map to any tenant.
+// ErrTenantNotFound وقتی هاست یا اسلاگ به هیچ مستأجری نخورد برمی‌گردد.
 var ErrTenantNotFound = errors.New("tenant not found")
 
-// Context holds resolved tenant identity for the current request.
+// Context هویت مستأجر حل‌شده برای درخواست جاری را نگه می‌دارد.
 type Context struct {
 	Host           string
 	Slug           string
@@ -27,34 +28,49 @@ type Context struct {
 	Organization   *models.Organization
 }
 
-// Resolver maps hostnames/slugs to a tenant Context and layout.
+// Resolver هاست و اسلاگ را به Context و چیدمان مستأجر نگاشت می‌کند.
 type Resolver struct {
 	BaseDomain string
 	Clinics    *repository.ClinicRepo
 	Orgs       *repository.OrganizationRepo
+	Lookup     *LookupService
 }
 
-// NewResolver constructs a tenant Resolver.
-// Inputs: baseDomain (platform host), clinics repo, orgs repo.
-// Output: pointer to Resolver.
+// NewResolver یک Resolver مستأجر می‌سازد.
+// ورودی: baseDomain (هاست پلتفرم)، مخزن کلینیک، مخزن سازمان.
+// خروجی: اشاره‌گر به Resolver.
 func NewResolver(baseDomain string, clinics *repository.ClinicRepo, orgs *repository.OrganizationRepo) *Resolver {
 	return &Resolver{
 		BaseDomain: strings.ToLower(strings.TrimSpace(baseDomain)),
 		Clinics:    clinics,
 		Orgs:       orgs,
+		Lookup:     NewLookupService(clinics, orgs, nil),
 	}
 }
 
-// Resolve returns the tenant for the given host and URL path.
-// Inputs: host (may include port), path (request URL path for optional /{slug} routing).
-// Output: Context with Layout set, or ErrTenantNotFound / DB error.
+// UseCache کش مستأجر را وصل می‌کند تا جستجوی دامنه و اسلاگ از حافظه خوانده شود.
+// ورودی: tenantCache. اگر nil باشد هر Resolve مستقیم به دیتابیس می‌رود.
+// خروجی: ندارد.
+func (r *Resolver) UseCache(tenantCache *cache.TenantCache) {
+	if r == nil {
+		return
+	}
+	if r.Lookup == nil {
+		r.Lookup = NewLookupService(r.Clinics, r.Orgs, tenantCache)
+		return
+	}
+	r.Lookup.Cache = tenantCache
+}
+
+// Resolve مستأجر هاست و مسیر را برمی‌گرداند.
+// ورودی: host (ممکن است پورت داشته باشد)، path برای مسیر اختیاری /{slug}.
+// خروجی: Context با Layout، یا ErrTenantNotFound / خطای دیتابیس.
 func (r *Resolver) Resolve(host, path string) (*Context, error) {
 	normalized := normalizeHost(host)
-	
+
 	base := r.BaseDomain
 
 	ctx := &Context{Host: normalized}
-	
 
 	// 1) Platform apex (tebpardaz.ir / www) — path slug or marketing home.
 	if base != "" && (normalized == base || normalized == "www."+base) {
@@ -80,55 +96,96 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 			return r.resolveSlug(ctx, slug)
 		}
 	}
-	
+
 	// 3) Custom clinic domain.
-	if r.Clinics != nil {
-		
-		clinic, err := r.Clinics.GetByDomain(normalized)
-		if err == nil && clinic != nil {
-			return r.contextFromClinic(ctx, clinic), nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	clinic, err := r.lookupClinicByDomain(normalized)
+	if err == nil && clinic != nil {
+		return r.contextFromClinic(ctx, clinic), nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
 	}
 	// 4) Custom organization domain.
-	if r.Orgs != nil {	
-		org, err := r.Orgs.GetByDomain(normalized)
-		if err == nil && org != nil {
-			return r.contextFromOrg(ctx, org), nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	org, err := r.lookupOrgByDomain(normalized)
+	if err == nil && org != nil {
+		return r.contextFromOrg(ctx, org), nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
 	}
 	return nil, ErrTenantNotFound
 }
 
-// resolveSlug looks up clinic then organization by slug.
+// resolveSlug اول کلینیک و بعد سازمان را با اسلاگ پیدا می‌کند.
+// ورودی: ctx و slug. خروجی: Context یا خطا.
 func (r *Resolver) resolveSlug(ctx *Context, slug string) (*Context, error) {
-	if r.Clinics != nil {
-		clinic, err := r.Clinics.GetBySlug(slug)
-		if err == nil && clinic != nil {
-			return r.contextFromClinic(ctx, clinic), nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	clinic, err := r.lookupClinicBySlug(slug)
+	if err == nil && clinic != nil {
+		return r.contextFromClinic(ctx, clinic), nil
 	}
-	if r.Orgs != nil {
-		org, err := r.Orgs.GetBySlug(slug)
-		if err == nil && org != nil {
-			return r.contextFromOrg(ctx, org), nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	org, err := r.lookupOrgBySlug(slug)
+	if err == nil && org != nil {
+		return r.contextFromOrg(ctx, org), nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
 	}
 	return nil, ErrTenantNotFound
 }
 
-// contextFromClinic fills Context fields and selects private layout.
+// lookupClinicByDomain کلینیک را از کش می‌خواند و در صورت نبود، کش را از دیتابیس پر می‌کند.
+// ورودی: domain. خروجی: کلینیک یا خطای نبودن / دیتابیس.
+func (r *Resolver) lookupClinicByDomain(domain string) (*models.Clinic, error) {
+	if r != nil && r.Lookup != nil {
+		return r.Lookup.ClinicByDomain(domain)
+	}
+	if r == nil || r.Clinics == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return r.Clinics.GetByDomain(domain)
+}
+
+// lookupClinicBySlug کلینیک را از کش می‌خواند و در صورت نبود، کش را از دیتابیس پر می‌کند.
+// ورودی: slug. خروجی: کلینیک یا خطای نبودن / دیتابیس.
+func (r *Resolver) lookupClinicBySlug(slug string) (*models.Clinic, error) {
+	if r != nil && r.Lookup != nil {
+		return r.Lookup.ClinicBySlug(slug)
+	}
+	if r == nil || r.Clinics == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return r.Clinics.GetBySlug(slug)
+}
+
+// lookupOrgByDomain سازمان را از کش می‌خواند و در صورت نبود، کش را از دیتابیس پر می‌کند.
+// ورودی: domain. خروجی: سازمان یا خطای نبودن / دیتابیس.
+func (r *Resolver) lookupOrgByDomain(domain string) (*models.Organization, error) {
+	if r != nil && r.Lookup != nil {
+		return r.Lookup.OrgByDomain(domain)
+	}
+	if r == nil || r.Orgs == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return r.Orgs.GetByDomain(domain)
+}
+
+// lookupOrgBySlug سازمان را از کش می‌خواند و در صورت نبود، کش را از دیتابیس پر می‌کند.
+// ورودی: slug. خروجی: سازمان یا خطای نبودن / دیتابیس.
+func (r *Resolver) lookupOrgBySlug(slug string) (*models.Organization, error) {
+	if r != nil && r.Lookup != nil {
+		return r.Lookup.OrgBySlug(slug)
+	}
+	if r == nil || r.Orgs == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return r.Orgs.GetBySlug(slug)
+}
+
+// contextFromClinic فیلدهای Context را پر می‌کند و چیدمان خصوصی را انتخاب می‌کند.
+// ورودی: ctx و clinic. خروجی: همان Context.
 func (r *Resolver) contextFromClinic(ctx *Context, clinic *models.Clinic) *Context {
 	id := clinic.ID
 	orgID := clinic.OrganizationID
@@ -147,7 +204,8 @@ func (r *Resolver) contextFromClinic(ctx *Context, clinic *models.Clinic) *Conte
 	return ctx
 }
 
-// contextFromOrg fills Context fields and selects organ layout.
+// contextFromOrg فیلدهای Context را پر می‌کند و چیدمان سازمان را انتخاب می‌کند.
+// ورودی: ctx و org. خروجی: همان Context.
 func (r *Resolver) contextFromOrg(ctx *Context, org *models.Organization) *Context {
 	id := org.ID
 	ctx.Organization = org
@@ -159,7 +217,8 @@ func (r *Resolver) contextFromOrg(ctx *Context, org *models.Organization) *Conte
 	return ctx
 }
 
-// normalizeHost lowercases host and strips port.
+// normalizeHost هاست را کوچک می‌کند و پورت را حذف می‌کند.
+// ورودی: host. خروجی: هاست نرمال‌شده.
 func normalizeHost(host string) string {
 	h := strings.ToLower(strings.TrimSpace(host))
 	if i := strings.Index(h, ":"); i >= 0 {
@@ -168,7 +227,9 @@ func normalizeHost(host string) string {
 	return h
 }
 
-// firstPathSegment returns the first non-empty path segment without leading slash.
+// firstPathSegment اولین بخش غیرخالی مسیر را بدون اسلش اول برمی‌گرداند.
+// مسیرهای ثابت سامانه را اسلاگ مستأجر حساب نمی‌کند.
+// ورودی: path. خروجی: اسلاگ یا رشته خالی.
 func firstPathSegment(path string) string {
 	p := strings.Trim(path, "/")
 	if p == "" {
@@ -181,12 +242,12 @@ func firstPathSegment(path string) string {
 	seg := strings.ToLower(parts[0])
 	switch seg {
 	case "static", "api", "ws", "admin", "favicon.ico",
-		"doctors", "booking", "news", "clinics", "specialties",
+		"doctors", "booking", "news", "clinics", "sections", "specialties",
 		"about", "contact", "terms", "reviews", "otp", "patient",
 		"test-results", "weekly-schedule", "waiting-queue", "healthz",
 		"working-hours", "message-to-visitors", "equipment", "section",
 		"ساعات-کاری", "پیام-به-مراجعین", "تجهیزات", "برنامه-هفتگی-پزشکان", "معرفی",
-		"sitemap.xml", "robots.txt":
+		"sitemap.xml", "robots.txt", "sw.js", "manifest.webmanifest":
 		return ""
 	}
 	return seg
@@ -199,5 +260,5 @@ func isWaitingQueueDeepLink(path string) bool {
 	if p == "waiting-queue" {
 		return true
 	}
-	return strings.HasSuffix(p, "/waiting-queue") || strings.HasSuffix(p, "/ws/waiting-queue")
+	return strings.HasSuffix(p, "/waiting-queue") || strings.HasSuffix(p, "/ws/waiting-queue") || strings.HasSuffix(p, "/push-subscribe")
 }

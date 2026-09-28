@@ -11,6 +11,7 @@ type SectionCardView struct {
 	Services        []string
 	ImageURL        string
 	BackgroundColor string
+	BackgroundStyle string
 	URL             string
 	WorkingHoursURL string
 	EquipmentURL    string
@@ -20,6 +21,14 @@ type SectionCardView struct {
 	HasMessages     bool
 }
 
+// sectionCardBackgroundStyle رنگ یا گرادیان پس‌زمینه کارت بنر را برمی‌گرداند.
+// ورودی: مدل کارت بخش. خروجی: رشته CSS ایمن برای ویژگی style.
+func sectionCardBackgroundStyle(view SectionCardView) string {
+	if view.BackgroundStyle != "" {
+		return view.BackgroundStyle
+	}
+	return "background-color: " + sectionCardBgColor(view.BackgroundColor) + ";"
+}
 // sectionCardBgColor رنگ پس‌زمینه کارت بنر را اعتبارسنجی و برمی‌گرداند.
 // ورودی: رشته کد رنگ هگزادسیمال. خروجی: رنگ معتبر یا رنگ پیش‌فرض سازمانی.
 func sectionCardBgColor(bg string) string {
@@ -36,7 +45,7 @@ templ SectionCard(view SectionCardView) {
 		<!-- بخش بالایی بنری کارت با تصویر و عنوان -->
 		<div
 			class="relative flex min-h-[160px] flex-col justify-between overflow-hidden p-5 text-white"
-			style={ "background-color: " + sectionCardBgColor(view.BackgroundColor) + ";" }
+			style={ templ.SafeCSS(sectionCardBackgroundStyle(view)) }
 		>
 			if view.ImageURL != "" {
 				<img

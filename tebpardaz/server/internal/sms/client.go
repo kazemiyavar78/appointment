@@ -11,23 +11,28 @@ import (
 	"time"
 )
 
+// iranLocation is IRST (UTC+03:30). Slot times arrive as Unix/UTC; scheduled_at must use this offset.
+var iranLocation = time.FixedZone("IRST", 3*3600+30*60)
+
 // PatientRelation is one recipient for an outbound message.
 type PatientRelation struct {
 	Phone      string `json:"phone"`
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	NationalID string `json:"national_id"`
+	FirstName  string `json:"first_name,omitempty"`
+	LastName   string `json:"last_name,omitempty"`
+	NationalID string `json:"national_id,omitempty"`
 }
 
 // SendRequest is the body for POST /api/v1/outbound/send.
 type SendRequest struct {
 	PatientRelations []PatientRelation `json:"patient_relations"`
-	ClinicCode       int               `json:"clinic_code"`
+	ClinicCode       int               `json:"clinic_code,omitempty"`
 	PatientCode      int               `json:"patient_code"`
 	MessageText      string            `json:"message_text"`
 	Messenger        string            `json:"messenger"` // SMS | Bale | BaleANDSMS | BaleORSMS
-	Operator         string            `json:"operator"`
-	IP               string            `json:"ip"`
+	Operator         string            `json:"operator,omitempty"`
+	IP               string            `json:"ip,omitempty"`
+	// ScheduledAt is RFC3339 with Iran offset, e.g. 2026-09-15T10:30:00+03:30.
+	ScheduledAt string `json:"scheduled_at,omitempty"`
 }
 
 // Config holds outbound messaging API settings.
@@ -126,6 +131,8 @@ type SendParams struct {
 	MessageText string
 	Messenger   string // optional override; empty uses client default
 	IP          string
+	// ScheduledAt when non-nil schedules delivery at that instant.
+	ScheduledAt *time.Time
 }
 
 // Send posts one outbound message to the messaging API.
@@ -149,20 +156,7 @@ func (c *Client) Send(ctx context.Context, params SendParams) error {
 		return err
 	}
 
-	body := SendRequest{
-		PatientRelations: []PatientRelation{{
-			Phone:      strings.TrimSpace(params.Phone),
-			FirstName:  strings.TrimSpace(params.FirstName),
-			LastName:   strings.TrimSpace(params.LastName),
-			NationalID: strings.TrimSpace(params.NationalID),
-		}},
-		ClinicCode:  params.ClinicCode,
-		PatientCode: params.PatientCode,
-		MessageText: params.MessageText,
-		Messenger:   messenger,
-		Operator:    c.operator,
-		IP:          ip,
-	}
+	body := buildSendRequest(c, params, messenger, ip)
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -185,4 +179,39 @@ func (c *Client) Send(ctx context.Context, params SendParams) error {
 		return fmt.Errorf("messaging API status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
 	return nil
+}
+
+// buildSendRequest maps SendParams to the outbound JSON body.
+// Inputs: client (for default operator), params, resolved messenger, and IP.
+// Output: send body; scheduled reminders add scheduled_at and keep clinic/package fields.
+func buildSendRequest(c *Client, params SendParams, messenger, ip string) SendRequest {
+	operator := ""
+	if c != nil {
+		operator = c.operator
+	}
+	body := SendRequest{
+		PatientRelations: []PatientRelation{{
+			Phone:      strings.TrimSpace(params.Phone),
+			FirstName:  strings.TrimSpace(params.FirstName),
+			LastName:   strings.TrimSpace(params.LastName),
+			NationalID: strings.TrimSpace(params.NationalID),
+		}},
+		ClinicCode:  params.ClinicCode,
+		PatientCode: params.PatientCode,
+		MessageText: params.MessageText,
+		Messenger:   messenger,
+		Operator:    operator,
+		IP:          ip,
+	}
+	if params.ScheduledAt != nil {
+		body.ScheduledAt = formatScheduledAt(*params.ScheduledAt)
+	}
+	return body
+}
+
+// formatScheduledAt renders t as RFC3339 in Iran Standard Time (+03:30).
+// Inputs: t (any location; Unix/UTC slot times are converted).
+// Output: string like 2026-09-15T10:30:00+03:30.
+func formatScheduledAt(t time.Time) string {
+	return t.In(iranLocation).Format(time.RFC3339)
 }

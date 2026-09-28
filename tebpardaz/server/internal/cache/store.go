@@ -81,6 +81,26 @@ func (s *Store) Get(key string) (any, bool) {
 	return s.c.Get(key)
 }
 
+// ReplaceKeepTTL مقدار را عوض می‌کند ولی زمان انقضای قبلی کلید را نگه می‌دارد.
+// ورودی: key، value، fallback (اگر کلید نبود یا منقضی شده بود).
+// خروجی: ندارد.
+func (s *Store) ReplaceKeepTTL(key string, value any, fallback time.Duration) {
+	if s == nil || s.c == nil {
+		return
+	}
+	_, exp, found := s.c.GetWithExpiration(key)
+	if !found {
+		s.c.Set(key, value, fallback)
+		return
+	}
+	ttl := time.Until(exp)
+	if ttl <= 0 {
+		s.c.Set(key, value, fallback)
+		return
+	}
+	s.c.Set(key, value, ttl)
+}
+
 // GetTyped retrieves key and asserts it to T.
 // Inputs: store and key.
 // Output: typed value and true when present and of type T; otherwise zero value and false.

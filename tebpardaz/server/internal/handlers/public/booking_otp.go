@@ -21,6 +21,8 @@ type otpSendBody struct {
 	LastName   string `json:"last_name"`
 	NationalID string `json:"national_id"`
 	ClinicPath string `json:"clinic_path"`
+	// Resend فقط وقتی true است که بیمار دکمه «ارسال مجدد کد» را زده باشد.
+	Resend bool `json:"resend"`
 }
 
 type otpVerifyBody struct {
@@ -69,7 +71,7 @@ func (h *BookingHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	_, clinicCode, err := h.resolveOTPClinic(tc, body.ClinicPath)
+	clinicID, clinicCode, clinicName, err := h.resolveOTPClinic(tc, body.ClinicPath)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"ok": false, "message": "مرکز یافت نشد"})
 		return
@@ -93,7 +95,38 @@ func (h *BookingHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	result, retryAfter, err := h.OTP.CreateAndStore(mobile, firstName, lastName, nationalID)
+	patientID, err := h.persistOTPPatient(nationalID, firstName, lastName, mobile)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "message": "خطا در ذخیره اطلاعات بیمار"})
+		return
+	}
+
+	// بازگشت به فرم نباید کد جدید بسازد؛ فقط درخواست صریح «ارسال مجدد» پیامک تازه می‌فرستد.
+	if !body.Resend {
+		if wait, _, pending := h.OTP.PendingCode(mobile, nationalID); pending {
+			sec := int(wait.Seconds())
+			if sec < 0 {
+				sec = 0
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"ok":              true,
+				"code_pending":    true,
+				"message":         "کد تأیید قبلاً ارسال شده؛ همان کد را وارد کنید",
+				"retry_after_sec": sec,
+			})
+			return
+		}
+	}
+
+	result, retryAfter, err := h.OTP.CreateAndStore(booking.OTPCreateInput{
+		Mobile:     mobile,
+		FirstName:  firstName,
+		LastName:   lastName,
+		NationalID: nationalID,
+		ClinicID:   clinicID,
+		PatientID:  patientID,
+		IPAddress:  c.ClientIP(),
+	})
 	if err != nil {
 		if errors.Is(err, booking.ErrOTPRateLimited) {
 			sec := int(retryAfter.Seconds())
@@ -117,10 +150,17 @@ func (h *BookingHandler) SendOTP(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"ok": false, "message": "ارسال پیامک ناموفق بود؛ دوباره تلاش کنید"})
 		return
 	}
+	if err := h.OTP.MarkDelivered(mobile, patientID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "message": "کد ارسال شد اما ثبت پیگیری بیمار ناموفق بود؛ چند دقیقه بعد دوباره تلاش کنید"})
+		return
+	}
+	if h.Status != nil {
+		h.Status.NotifyOTPRequested(clinicID, clinicCode, clinicName, firstName, lastName, nationalID, mobile, c.ClientIP())
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"ok":              true,
-		"message":         "کد تایید به موبایل شما ارسال شد",
+		"message":         "کد تأیید از طریق پیامک یا پیام‌رسان بله ارسال شد؛ لطفاً بله یا پیامک‌هایتان را بررسی کنید",
 		"sends_remaining": result.SendsRemaining,
 	})
 }
@@ -183,37 +223,53 @@ func (h *BookingHandler) VerifyOTP(c *gin.Context) {
 	})
 }
 
-// resolveOTPClinic شناسه و کد HIS مرکز را برای tenant فعلی resolve می‌کند.
-func (h *BookingHandler) resolveOTPClinic(tc *tenant.Context, clinicPath string) (clinicID uint, clinicCode int, err error) {
+// persistOTPPatient بیمار را با همان هویت فرم OTP ذخیره می‌کند تا بدون نوبت هم قابل پیگیری باشد.
+// ورودی: کد ملی، نام، نام خانوادگی، موبایل. خروجی: شناسه بیمار یا خطا.
+func (h *BookingHandler) persistOTPPatient(nationalID, firstName, lastName, mobile string) (uint, error) {
+	if h.Bookings == nil || h.Bookings.Appointments == nil {
+		return 0, errors.New("appointment repo missing")
+	}
+	saved, err := h.Bookings.Appointments.UpsertPatientIdentity(nationalID, firstName, lastName, mobile)
+	if err != nil || saved == nil {
+		if err == nil {
+			err = errors.New("patient not saved")
+		}
+		return 0, err
+	}
+	return saved.ID, nil
+}
+
+// resolveOTPClinic شناسه، کد HIS و نام مرکز را برای tenant فعلی resolve می‌کند.
+func (h *BookingHandler) resolveOTPClinic(tc *tenant.Context, clinicPath string) (clinicID uint, clinicCode int, clinicName string, err error) {
 	clinicPath = strings.TrimSpace(clinicPath)
 	switch {
 	case tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil:
 		clinic, e := h.Clinics.GetByID(*tc.ClinicID)
 		if e != nil || clinic == nil {
-			return 0, 0, e
+			return 0, 0, "", e
 		}
-		return clinic.ID, clinic.Code, nil
+		return clinic.ID, clinic.Code, clinic.Name, nil
 	case tc.Layout == constants.LayoutOrgan && clinicPath != "":
 		clinic, e := h.resolveOrganClinic(tc, clinicPath)
 		if e != nil || clinic == nil {
-			return 0, 0, e
+			return 0, 0, "", e
 		}
-		return clinic.ID, clinic.Code, nil
+		return clinic.ID, clinic.Code, clinic.Name, nil
 	case tc.Layout == constants.LayoutPlatform && clinicPath != "":
 		clinic, e := h.Clinics.GetBySlug(clinicPath)
 		if e != nil || clinic == nil {
-			return 0, 0, e
+			return 0, 0, "", e
 		}
-		return clinic.ID, clinic.Code, nil
+		return clinic.ID, clinic.Code, clinic.Name, nil
 	default:
 		if tc.ClinicID != nil {
 			clinic, e := h.Clinics.GetByID(*tc.ClinicID)
 			if e != nil || clinic == nil {
-				return 0, 0, e
+				return 0, 0, "", e
 			}
-			return clinic.ID, clinic.Code, nil
+			return clinic.ID, clinic.Code, clinic.Name, nil
 		}
-		return 0, 0, errors.New("clinic unresolved")
+		return 0, 0, "", errors.New("clinic unresolved")
 	}
 }
 

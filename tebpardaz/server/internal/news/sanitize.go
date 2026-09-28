@@ -86,7 +86,8 @@ func sanitizeImgTag(tag string) string {
 		return ""
 	}
 	alt := attrValue(tag, "alt")
-	return `<img src="` + htmlEscapeAttr(src) + `" alt="` + htmlEscapeAttr(alt) + `">`
+	// Block layout keeps each image in document order on RTL pages.
+	return `<img src="` + htmlEscapeAttr(src) + `" alt="` + htmlEscapeAttr(alt) + `" style="display:block;max-width:100%;height:auto;margin:0.75rem 0;">`
 }
 
 func sanitizeAnchorTag(tag string) string {
@@ -130,7 +131,11 @@ func filterStyle(style string) string {
 		if strings.HasPrefix(lp, "color:") ||
 			strings.HasPrefix(lp, "font-size:") ||
 			strings.HasPrefix(lp, "font-weight:") ||
-			strings.HasPrefix(lp, "text-decoration:") {
+			strings.HasPrefix(lp, "text-decoration:") ||
+			strings.HasPrefix(lp, "display:") ||
+			strings.HasPrefix(lp, "max-width:") ||
+			strings.HasPrefix(lp, "height:") ||
+			strings.HasPrefix(lp, "margin:") {
 			keep = append(keep, p)
 		}
 	}

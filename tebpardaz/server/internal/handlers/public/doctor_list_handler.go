@@ -1,15 +1,15 @@
 package public
 
 import (
-	
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"tebpardaz/server/internal/booking"
+	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/pages"
@@ -36,7 +36,7 @@ func NewDoctorListHandler(listing *booking.ListingService, clinics *repository.C
 }
 
 // Get لیست فیلتر‌شده پزشکان را برای مستأجر فعلی رندر می‌کند.
-// ورودی: queryهای q، specialty_id، clinic_id، date (شمسی یا میلادی)، page.
+// ورودی: queryهای q، specialty_id، clinic (slug مرکز)، date (شمسی یا میلادی)، page.
 // خروجی: HTML صفحه لیست؛ نوبت‌ها از کش (TTL چهار ساعته، بروزرسانی هر ۱ دقیقه توسط کلاینت).
 func (h *DoctorListHandler) Get(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
@@ -45,7 +45,7 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		return
 	}
 	if tc.Layout != constants.LayoutOrgan && tc.Layout != constants.LayoutPrivate && tc.Layout != constants.LayoutPlatform {
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 
@@ -55,11 +55,12 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		return
 	}
 
+	clinicID, clinicSlug := resolveClinicFilter(h.Clinics, c.Query("clinic"), clinicIDs)
 	filter := booking.ListFilter{
 		ClinicIDs:   clinicIDs,
 		Query:       strings.TrimSpace(c.Query("q")),
 		SpecialtyID: parseUintQuery(c.Query("specialty_id")),
-		ClinicID:    parseUintQuery(c.Query("clinic_id")),
+		ClinicID:    clinicID,
 		Date:        parseDateQuery(c.Query("date")),
 		Layout:      tc.Layout,
 	}
@@ -80,7 +81,8 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		Query:            filter.Query,
 		Date:             formatShamsiDateQuery(filter.Date),
 		SpecialtyID:      filter.SpecialtyID,
-		ClinicID:         filter.ClinicID,
+		ClinicID:         clinicID,
+		ClinicSlug:       clinicSlug,
 		FormAction:       "/doctors",
 		EmptyMessage:     "پزشکی با این فیلترها یافت نشد.",
 		Page:             page,
@@ -90,8 +92,36 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 	}
 	returnURL := pages.DoctorListURL(view, page)
 	view.Doctors = toDoctorCards(pageDoctors, returnURL)
-	fmt.Println(result.Doctors)
-	renderPublicLayout(c, tc, pages.DoctorList(view), "doctors")
+	kind, place := publicSite(tc)
+	meta := seo.DoctorsMeta(kind, place, publicBaseURL(c), seo.DoctorListQuery{
+		Q:           c.Query("q"),
+		Date:        c.Query("date"),
+		SpecialtyID: c.Query("specialty_id"),
+		Clinic:      c.Query("clinic"),
+		Page:        page,
+	})
+	head := headFromMeta(meta)
+	head.JSONLD = doctorsJSONLD(c, pageDoctors, page, meta.Robots == seo.RobotsIndexFollow, len(result.Doctors))
+	RenderPublicLayoutWithHead(c, tc, pages.DoctorList(view), "doctors", head)
+}
+
+// doctorsJSONLD مسیر و در صورت ایندکس بودن ItemList همان صفحه را می‌سازد.
+// ورودی: درخواست، کارت‌های همین صفحه، شماره صفحه، مجاز بودن فهرست، و تعداد کل listing از قبل بارگذاری‌شده. خروجی: JSON-LD.
+func doctorsJSONLD(c *gin.Context, cards []booking.DoctorCard, page int, includeList bool, total int) string {
+	items := make([]seo.ItemListElementDTO, 0, len(cards))
+	if includeList {
+		for i, card := range cards {
+			if strings.TrimSpace(card.Name) == "" || strings.TrimSpace(card.BookingURL) == "" {
+				continue
+			}
+			items = append(items, seo.ItemListElementDTO{
+				Position: seo.ListPosition(page, doctorListPageSize, i),
+				Name:     card.Name,
+				URL:      absolutePublicURL(c, card.BookingURL),
+			})
+		}
+	}
+	return seo.DoctorsPageGraph(absolutePublicURL(c, "/"), absolutePublicURL(c, "/doctors"), items, includeList && len(items) > 0, total)
 }
 
 // paginateDoctorCards slices doctors for the requested page.
@@ -163,9 +193,43 @@ func toFilterOptions(items []booking.SpecialtyOption) []pages.DoctorListFilterOp
 func toClinicFilterOptions(items []booking.ClinicOption) []pages.DoctorListFilterOption {
 	out := make([]pages.DoctorListFilterOption, 0, len(items))
 	for _, item := range items {
-		out = append(out, pages.DoctorListFilterOption{ID: item.ID, Name: item.Name})
+		out = append(out, pages.DoctorListFilterOption{ID: item.ID, Name: item.Name, Slug: item.Slug})
 	}
 	return out
+}
+
+// resolveClinicFilter شناسه و slug عمومی مرکز را از query clinic می‌خواند.
+// ورودی: ریپوی مراکز، مقدار خام query، شناسه‌های مجاز مستأجر.
+// خروجی: شناسه و slug وقتی مرکز پیدا و در محدوده مستأجر باشد؛ وگرنه صفر و رشته خالی.
+func resolveClinicFilter(clinics *repository.ClinicRepo, raw string, allowed []uint) (uint, string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || clinics == nil {
+		return 0, ""
+	}
+	clinic, err := lookupClinicByPublicKey(clinics, raw)
+	if err != nil || clinic == nil || !clinicFilterIDAllowed(allowed, clinic.ID) {
+		return 0, ""
+	}
+	return clinic.ID, booking.ClinicPathKey(clinic)
+}
+
+// lookupClinicByPublicKey مرکز را با slug یا کلید جایگزین c{id} پیدا می‌کند.
+// ورودی: ریپوی مراکز و کلید عمومی. خروجی: مرکز یا خطا.
+func lookupClinicByPublicKey(clinics *repository.ClinicRepo, key string) (*models.Clinic, error) {
+	if id := booking.ParseClinicPathKey(key); id > 0 {
+		return clinics.GetByID(id)
+	}
+	return clinics.GetBySlug(key)
+}
+
+// clinicFilterIDAllowed گزارش می‌دهد که شناسه مرکز در فهرست مجاز هست یا نه.
+func clinicFilterIDAllowed(ids []uint, id uint) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+	return false
 }
 
 func parseUintQuery(raw string) uint {

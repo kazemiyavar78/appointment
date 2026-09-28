@@ -37,7 +37,7 @@ func BookingOTPPanel(view BookingOTPPanelView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"bk-otp bk-hidden\" id=\"booking-otp-panel\" aria-hidden=\"true\"><div class=\"bk-otp__card\"><h2 class=\"bk-otp__title\">کد تایید موبایل</h2><p class=\"bk-otp__desc\">کد ۵ رقمی به شماره <strong id=\"bk-otp-mobile-mask\"></strong> ارسال شد.</p><div class=\"bk-otp__boxes\" id=\"bk-otp-boxes\" data-length=\"5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"bk-otp bk-hidden\" id=\"booking-otp-panel\" aria-hidden=\"true\"><div class=\"bk-otp__card\"><h2 class=\"bk-otp__title\">کد تایید موبایل</h2><div class=\"bk-otp__channel-badge\" id=\"bk-otp-channel-notice\" role=\"status\"><div class=\"bk-otp__channel-icons\" aria-hidden=\"true\"><span class=\"bk-otp__channel-icon bk-otp__channel-icon--bale\"><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 1000 999.72\"><defs><linearGradient id=\"bk-bale-gradient\" x1=\"800.4\" y1=\"93.39\" x2=\"93.57\" y2=\"800.23\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#4cebb4\"></stop> <stop offset=\"1\" stop-color=\"#2e2e74\"></stop></linearGradient></defs> <g><path d=\"M1010.36,547.36c-.73,17.77-2.6,36-6.85,53.41-1.54,16.48-6.36,32.54-10.76,48.52-5.14,19.5-12.48,38.33-19.9,57.17-6.77,15.66-14.35,30.91-22.26,46.08C942.92,766,934.93,779.2,926.29,792q-14.32,21-30.5,40.45c-11.18,13.13-22.68,26.09-35.15,37.92a503.68,503.68,0,0,1-51.3,43.55,453.44,453.44,0,0,1-48.44,31.56C742.06,956.74,722.16,966,702,974.6a548,548,0,0,1-65.89,21.86c-19.49,4.32-39,9.21-58.88,10.76-37,5.71-74.86,5.79-112.13,2.2-33.6-2.61-66.87-9.78-99.25-19.32l-.08-.58C210.19,944.18,82.32,816.07,34.94,661.2c-10.36-33.35-17.62-67.93-20.31-102.83-3.83-33.85-2-68-2.2-102q-.37-40.74-.08-81.64-.26-41.83,0-83.83c-.17-24-.08-47.95-.08-71.93s-.17-48.19.16-72.25c-.33-23.82-.08-47.63-.16-71.44-1.64-17.94,4.24-36.7,17.86-48.85C44.48,13.44,65.68,8.55,84,14.91c11.09,3.75,20.71,10.6,30.58,16.72,36,23.4,70.54,48.85,104.71,74.78a86.74,86.74,0,0,0,10.68-6.77A426.86,426.86,0,0,1,272.58,73.3a483.59,483.59,0,0,1,45.75-22.1c16.39-6.85,33.19-12.8,50.15-18.1,18.1-5,36.29-10.11,55-12.72a392.65,392.65,0,0,1,61.82-7.26,451.46,451.46,0,0,1,76.41,1.71A413.36,413.36,0,0,1,619,24c128.53,27,244.08,108.3,314.46,219a493,493,0,0,1,66.47,159.76c4.73,20.95,8.48,42.32,9.7,63.77A411.89,411.89,0,0,1,1010.36,547.36Z\" transform=\"translate(-12 -12.14)\" fill=\"url(#bk-bale-gradient)\"></path> <path d=\"M705.69,273.2a107.59,107.59,0,0,1,62.37,1.3c25.62,9.82,46.29,29.94,57.5,54.9,8.34,22.86,9.31,48.42.91,71.44-6.06,16.2-16.76,30.09-29.4,41.74q-16.7,16.49-33.21,33.14c-11.79,11.79-23.64,23.5-35.33,35.35-11.3,11.28-22.62,22.49-33.85,33.81-12.32,12.34-24.68,24.61-36.95,37-14,14-28.06,27.94-42,42-13.24,13.29-26.55,26.49-39.8,39.78s-26.77,26.71-40.1,40.11c-12.27,11.85-23.51,24.94-37.35,35.06a106.69,106.69,0,0,1-57.95,16C417,753.28,393.79,744,376.87,727.33q-78.53-78.44-157-156.94c-12.82-12.66-21.38-29.07-26-46.38-4.75-23.86-1.94-49.51,10.31-70.75,9.37-16.54,23.79-29.65,40.19-39a107.52,107.52,0,0,1,57.86-9.73c21.38,3.21,42,13,56.91,28.76Q401.7,476,444.37,518.5c8.63-8.18,16.9-16.73,25.19-25.27q18-17.31,35.24-35.35c11.36-10.68,22.33-21.82,33.07-33.12,7.74-6.88,14.75-14.51,22.07-21.8,12-11.68,23.75-23.59,35.49-35.51,11.21-10.83,22.11-21.95,33.07-33,11.79-11.5,23.28-23.28,35-34.87a105.75,105.75,0,0,1,42.21-26.37Z\" transform=\"translate(-12 -12.14)\" fill=\"#fff\"></path></g></svg></span> <span class=\"bk-otp__channel-icon bk-otp__channel-icon--sms\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\"><path d=\"M156.4 329.1C69.9 329.1 0 255.4 0 164.6S69.9 0 156.4 0h162.7c86.4 0 156.4 73.8 156.4 164.6s-69.9 164.6-156.4 164.6z\" fill=\"#86a9ff\"></path> <path d=\"M261.8 395.6V496c0 8.7-7 16-15.5 16-4.1 0-8.1-1.7-10.9-4.7L83 350.2c-29.9-30.5-46.4-72.3-46.4-115.6 0-89.1 69.9-161.4 156.4-161.4h162.7c86.4 0 156.4 72.4 156.4 161.4S442.1 396 355.6 396h-93.8z\" fill=\"#578cff\"></path> <path d=\"M155.6 329.1h163.1c86.6 0 156.7-75.5 156.7-168.4 0-11-1.1-21.6-2.8-32.2-28.5-34.1-70.1-55.4-116.2-55.4H193.3c-86.6 0-156.7 75.5-156.7 168.4 0 11 1.1 21.6 2.8 31.9 28.5 34.1 70.1 55.7 116.2 55.7\" fill=\"#0057cc\"></path></svg></span></div><span class=\"bk-otp__channel-text\">کد تأیید از طریق <strong>پیامک</strong> یا پیام\u200cرسان <strong>بله</strong> برای شما ارسال شده است.</span></div><p class=\"bk-otp__desc\">کد ۵ رقمی به شماره <strong id=\"bk-otp-mobile-mask\"></strong> ارسال شد.</p><div class=\"bk-otp__boxes\" id=\"bk-otp-boxes\" data-length=\"5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -49,7 +49,7 @@ func BookingOTPPanel(view BookingOTPPanelView) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue("رقم " + strconv.Itoa(i+1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/booking_otp_panel.templ`, Line: 26, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/booking_otp_panel.templ`, Line: 56, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -68,4 +68,43 @@ func BookingOTPPanel(view BookingOTPPanelView) templ.Component {
 	})
 }
 
+// // BookingOTPPanel پنل مینیمال ورود کد ۵ رقمی OTP.
+// templ BookingOTPPanel(view BookingOTPPanelView) {
+// 	<div class="bk-otp bk-hidden" id="booking-otp-panel" aria-hidden="true">
+// 		<div class="bk-otp__card">
+// 			<h2 class="bk-otp__title">کد تایید موبایل</h2>
+// 			<p class="bk-otp__notice" id="bk-otp-channel-notice" role="status">
+// 				<strong>کد تأیید از طریق پیامک یا پیام‌رسان بله برای شما ارسال شده است. لطفاً بله یا پیامک‌هایتان را بررسی کنید و سپس کد را وارد کنید.</strong>
+// 			</p>
+// 			<p class="bk-otp__desc">کد ۵ رقمی به شماره <strong id="bk-otp-mobile-mask"></strong> ارسال شد.</p>
+
+// 			<div class="bk-otp__boxes" id="bk-otp-boxes" data-length="5">
+// 				for i := 0; i < 5; i++ {
+// 					<input
+// 						type="text"
+// 						inputmode="numeric"
+// 						maxlength="1"
+// 						class="bk-otp__box"
+// 						dir="ltr"
+// 						autocomplete="one-time-code"
+// 						aria-label={ "رقم " + strconv.Itoa(i+1) }
+// 					/>
+// 				}
+// 			</div>
+// 			<input type="hidden" id="otp_code" name="otp_code" value=""/>
+
+// 			<p class="bk-otp__timer" id="bk-otp-timer" aria-live="polite"></p>
+// 			<button type="button" id="booking-otp-resend" class="bk-link bk-hidden">ارسال مجدد کد</button>
+
+//				<div class="bk-otp__actions">
+//					<button type="button" id="booking-otp-back" class="bk-btn bk-btn--ghost">بازگشت</button>
+//					<button type="button" id="booking-otp-verify" class="bk-btn bk-btn--primary" disabled>
+//						<span class="bk-btn__text">تایید و ثبت نوبت</span>
+//						<span class="bk-btn__spinner bk-hidden" aria-hidden="true"></span>
+//					</button>
+//				</div>
+//				<p id="booking-otp-status" class="bk-otp__status" aria-live="polite"></p>
+//			</div>
+//		</div>
+//	}
 var _ = templruntime.GeneratedTemplate

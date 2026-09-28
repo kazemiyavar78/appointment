@@ -1,0 +1,98 @@
+package admin
+
+import "tebpardaz/server/views/layouts"
+
+// AdminLoginView مدل صفحه ورود ادمین است.
+type AdminLoginView struct {
+	ErrorMessage string
+	OTPRequired  bool
+	Username     string
+}
+
+// AdminLogin صفحه ورود پنل ادمین را با طراحی Glassmorphism رندر می‌کند.
+// ورودی: view شامل پیام خطای اختیاری. خروجی: کامپوننت templ.
+templ AdminLogin(view AdminLoginView) {
+	@layouts.Document(layouts.PageHead{
+		Title:  "ورود ادمین | طب‌پرداز",
+		Robots: "noindex, nofollow",
+	}) {
+		<div class="admin-shell admin-login-shell">
+			<div class="glass-orbs-container" aria-hidden="true">
+				<div class="glass-orb glass-orb-1"></div>
+				<div class="glass-orb glass-orb-2"></div>
+				<div class="glass-orb glass-orb-3"></div>
+			</div>
+
+			<main class="admin-login-main">
+				<div class="admin-login-card">
+					<div class="admin-login-brand">
+						<div class="admin-login-brand-icon">
+							<i class="fa-solid fa-shield-halved"></i>
+						</div>
+						<div>
+							<h1 class="admin-login-title">ورود به پنل مدیریت</h1>
+							<p class="admin-login-subtitle">سامانه یکپارچه نوبت‌دهی طب‌پرداز</p>
+						</div>
+					</div>
+
+					if view.ErrorMessage != "" {
+						<div class="admin-login-error" role="alert">
+							<i class="fa-solid fa-circle-exclamation"></i>
+							<span>{ view.ErrorMessage }</span>
+						</div>
+					}
+
+					<form method="post" action="/admin/login" class="admin-login-form">
+						if view.OTPRequired {
+							<input type="hidden" name="username" value={ view.Username }/>
+							<p class="admin-login-subtitle mb-3">کد تایید به شماره‌های مجاز ارسال شد.</p>
+							<label class="admin-login-label" for="admin-otp">کد تایید</label>
+							<input
+								id="admin-otp"
+								class="ui-field w-full"
+								type="text"
+								name="otp_code"
+								required
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								maxlength="8"
+								placeholder="کد ۵ رقمی را وارد کنید"
+							/>
+							<button class="ui-btn ui-btn-primary ui-btn-block mt-2" type="submit">
+								<i class="fa-solid fa-shield-halved ml-1.5"></i>
+								<span>تایید و ورود</span>
+							</button>
+						} else {
+							<label class="admin-login-label" for="admin-username">نام کاربری</label>
+							<input
+								id="admin-username"
+								class="ui-field w-full"
+								type="text"
+								name="username"
+								required
+								autocomplete="username"
+								placeholder="نام کاربری خود را وارد کنید"
+							/>
+
+							<label class="admin-login-label" for="admin-password">رمز عبور</label>
+							<input
+								id="admin-password"
+								class="ui-field w-full"
+								type="password"
+								name="password"
+								required
+								autocomplete="current-password"
+								placeholder="رمز عبور خود را وارد کنید"
+							/>
+
+							<button class="ui-btn ui-btn-primary ui-btn-block mt-2" type="submit">
+								<i class="fa-solid fa-right-to-bracket ml-1.5"></i>
+								<span>دریافت کد ورود</span>
+							</button>
+						}
+					</form>
+				</div>
+			</main>
+		</div>
+	}
+}

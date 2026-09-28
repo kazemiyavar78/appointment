@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"tebpardaz/server/internal/auth"
+	"tebpardaz/server/internal/branding"
 	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
@@ -110,15 +111,16 @@ func (h *ApprovalHandler) ListPending(c *gin.Context) {
 
 	specs, _ := h.Specialties.ListAll()
 	view := adminviews.DoctorApprovalView{
-		Nav:         adminviews.BuildAdminNav(adminviews.NavApprovals, user.Role),
-		ClinicID:    clinicID,
-		Clinics:     h.clinicOptions(allowed, onlineSet, clinicID),
-		Specialties: toSpecialtyOptions(specs),
-		SearchQuery: search,
-		Page:        page,
-		PerPage:     perPage,
-		FetchLive:   fetchLive,
-		Tab:         tab,
+		Nav:           adminviews.BuildAdminNav(adminviews.NavApprovals, user.Role),
+		ClinicID:      clinicID,
+		Clinics:       h.clinicOptions(allowed, onlineSet, clinicID),
+		Specialties:   toSpecialtyOptions(specs),
+		SearchQuery:   search,
+		Page:          page,
+		PerPage:       perPage,
+		FetchLive:     fetchLive,
+		Tab:           tab,
+		ClinicLogoURL: h.clinicLogoURL(clinicID),
 	}
 
 	if fetchLive {
@@ -209,40 +211,51 @@ func (h *ApprovalHandler) Decide(c *gin.Context) {
 		c.String(http.StatusBadRequest, "انتخاب تخصص الزامی است")
 		return
 	}
-	photoURL, err := h.resolvePhotoURL(c, pending.PhotoURL)
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo300, err := h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo600, err := h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo900, err := h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo1200, err := h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	if photo1200 == "" && photoURL != "" {
-		photo1200 = photoURL
-	}
-	if photoURL == "" && photo1200 != "" {
-		photoURL = photo1200
-	}
-	if strings.TrimSpace(photoURL) == "" && strings.TrimSpace(photo1200) == "" {
-		c.String(http.StatusBadRequest, "آپلود یا وارد کردن عکس پزشک قبل از تأیید الزامی است")
-		return
+	useLogo := formUseClinicLogo(c)
+	var photoURL, photo300, photo600, photo900, photo1200 string
+	if useLogo {
+		logo := h.clinicLogoURL(uint(clinicID))
+		if logo == "" {
+			c.String(http.StatusBadRequest, "لوگوی مرکز بارگذاری نشده است. ابتدا لوگو را در برندینگ مرکز آپلود کنید")
+			return
+		}
+		photoURL, photo300, photo600, photo900, photo1200 = logo, logo, logo, logo, logo
+	} else {
+		photoURL, err = h.resolvePhotoURL(c, "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo300, err = h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo600, err = h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo900, err = h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo1200, err = h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		if photo1200 == "" && photoURL != "" {
+			photo1200 = photoURL
+		}
+		if photoURL == "" && photo1200 != "" {
+			photoURL = photo1200
+		}
+		if strings.TrimSpace(photoURL) == "" && strings.TrimSpace(photo1200) == "" {
+			c.String(http.StatusBadRequest, "آپلود عکس پزشک قبل از تأیید الزامی است")
+			return
+		}
 	}
 
 	req, err := h.Doctors.CreateApproved(repository.ApproveInput{
@@ -261,6 +274,7 @@ func (h *ApprovalHandler) Decide(c *gin.Context) {
 		Photo600:       photo600,
 		Photo900:       photo900,
 		Photo1200:      photo1200,
+		UseClinicLogo:  useLogo,
 		IsActive:       pending.IsActive,
 		ReviewerID:     user.ID,
 		Note:           note,
@@ -293,40 +307,60 @@ func (h *ApprovalHandler) UpdateApproved(c *gin.Context) {
 	if sid, err := strconv.ParseUint(c.PostForm("specialty_id"), 10, 64); err == nil {
 		specialtyID = uint(sid)
 	}
-	photoURL, err := h.resolvePhotoURL(c, "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
+	if specialtyID > 0 {
+		if _, err := h.Specialties.GetByID(specialtyID); err != nil {
+			c.String(http.StatusBadRequest, "تخصص انتخاب‌شده معتبر نیست")
+			return
+		}
 	}
-	photo300, err := h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo600, err := h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo900, err := h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-	photo1200, err := h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
+	useLogo := formUseClinicLogo(c)
+	photos := repository.DoctorPhotosUpdate{UseClinicLogo: &useLogo}
+	if useLogo {
+		logo := h.clinicLogoURL(doc.ClinicID)
+		if logo == "" {
+			c.String(http.StatusBadRequest, "لوگوی مرکز بارگذاری نشده است. ابتدا لوگو را در برندینگ مرکز آپلود کنید")
+			return
+		}
+		photos.LogoURL = logo
+	} else {
+		photoURL, err := h.resolvePhotoURL(c, "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo300, err := h.resolvePhotoFile(c, "photo_300", "photo_300_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo600, err := h.resolvePhotoFile(c, "photo_600", "photo_600_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo900, err := h.resolvePhotoFile(c, "photo_900", "photo_900_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		photo1200, err := h.resolvePhotoFile(c, "photo_1200", "photo_1200_url", "")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		if strings.TrimSpace(photoURL) == "" && strings.TrimSpace(photo1200) == "" && (doc.UseClinicLogo || !doctorHasStoredPhoto(doc)) {
+			c.String(http.StatusBadRequest, "آپلود عکس پزشک الزامی است")
+			return
+		}
+		photos.PhotoURL = photoURL
+		photos.Photo300 = photo300
+		photos.Photo600 = photo600
+		photos.Photo900 = photo900
+		photos.Photo1200 = photo1200
+		photos.ReplacePhotos = doc.UseClinicLogo
 	}
 	shortDesc := c.PostForm("short_desc")
 	longDesc := c.PostForm("long_desc")
-	photos := repository.DoctorPhotosUpdate{
-		PhotoURL:  photoURL,
-		Photo300:  photo300,
-		Photo600:  photo600,
-		Photo900:  photo900,
-		Photo1200: photo1200,
-	}
 	if _, err := h.Doctors.UpdateApprovedProfile(doc.ID, specialtyID, photos, shortDesc, longDesc, true); err != nil {
 		c.String(http.StatusInternalServerError, "بروزرسانی ناموفق بود")
 		return
@@ -407,6 +441,41 @@ func (h *ApprovalHandler) loadApprovedDoctorForAction(
 		clinicIDStr = strconv.FormatUint(uint64(doc.ClinicID), 10)
 	}
 	return doc, clinicIDStr, true
+}
+
+// formUseClinicLogo reports whether the admin chose the clinic logo instead of a personal photo.
+// Inputs: gin context. Output: true when use_clinic_logo is posted as "1".
+func formUseClinicLogo(c *gin.Context) bool {
+	return c.PostForm("use_clinic_logo") == "1"
+}
+
+// clinicLogoURL returns the clinic logo URL, preferring the uploaded LogoURL.
+// Inputs: clinicID. Output: public logo URL, or empty when the clinic has none.
+func (h *ApprovalHandler) clinicLogoURL(clinicID uint) string {
+	if h == nil || h.Clinics == nil || clinicID == 0 {
+		return ""
+	}
+	clinic, err := h.Clinics.GetByIDForAdmin(clinicID)
+	if err != nil || clinic == nil {
+		return ""
+	}
+	if logo := strings.TrimSpace(clinic.LogoURL); logo != "" {
+		return logo
+	}
+	return branding.ClinicLogoURL(clinic)
+}
+
+// doctorHasStoredPhoto reports whether any personal photo URL is already stored.
+// Inputs: doctor pointer. Output: true when at least one photo column is non-empty.
+func doctorHasStoredPhoto(doc *models.Doctor) bool {
+	if doc == nil {
+		return false
+	}
+	return strings.TrimSpace(doc.PhotoURL) != "" ||
+		strings.TrimSpace(doc.Photo300) != "" ||
+		strings.TrimSpace(doc.Photo600) != "" ||
+		strings.TrimSpace(doc.Photo900) != "" ||
+		strings.TrimSpace(doc.Photo1200) != ""
 }
 
 // resolvePhotoFile returns uploaded file URL, form URL, or fallback for a specific form field name.
@@ -575,6 +644,7 @@ func (h *ApprovalHandler) approvedItems(clinicID uint) ([]adminviews.ApprovalIte
 			Photo600:       doc.Photo600,
 			Photo900:       doc.Photo900,
 			Photo1200:      doc.Photo1200,
+			UseClinicLogo:  doc.UseClinicLogo,
 			ExternalID:     doc.ExternalID,
 			ShortDesc:      doc.ShortDesc,
 			LongDesc:       doc.LongDesc,

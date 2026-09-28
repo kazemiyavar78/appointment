@@ -1,0 +1,213 @@
+package admin
+
+import (
+	"strconv"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// ServicePackageRow یک ردیف جدول بسته‌های خدمات در پنل ادمین است.
+type ServicePackageRow struct {
+	ID           uint
+	Name         string
+	Description  string
+	ServiceCount int
+}
+
+// ServicePackagePageView مدل داده صفحه مدیریت بسته‌های خدمات است.
+type ServicePackagePageView struct {
+	Nav             layouts.AdminLayoutView
+	Items           []ServicePackageRow
+	Message         string
+	EditID          uint
+	EditName        string
+	EditDescription string
+	Services        []ServiceAssignOption
+}
+
+// ServicePackages صفحه ایجاد، ویرایش و انتصاب خدمات به بسته‌ها را رندر می‌کند.
+// ورودی: view مدل داده صفحه بسته‌های خدمات. خروجی: کامپوننت templ صفحه ادمین.
+templ ServicePackages(view ServicePackagePageView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h1 class="ui-page-title">بسته‌های خدمات</h1>
+					<p class="mt-1 text-xs text-ink-muted">
+						خدمات را در بسته‌ها گروه‌بندی کنید؛ هر خدمت می‌تواند در چند بسته حضور داشته باشد.
+					</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services">بازگشت به لیست خدمات</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/section-packages">انتصاب به بخش‌ها</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href="/admin/services/doctor-services">انتصاب به پزشکان</a>
+				</div>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			}
+			<section class="ui-panel mb-6">
+				if view.EditID > 0 {
+					<h2 class="mb-3 text-lg text-ink">بروزرسانی بسته</h2>
+					<form class="grid gap-3" method="post" action={ templ.SafeURL("/admin/services/packages/" + formatUint(view.EditID) + "/update") } id="service-package-form">
+						@servicePackageFormFields(view.EditName, view.EditDescription, view.Services)
+						<div class="flex flex-wrap items-center gap-3">
+							<button class="ui-btn ui-btn-primary" type="submit">ذخیره تغییرات</button>
+							<a class="ui-btn ui-btn-ghost" href="/admin/services/packages">انصراف</a>
+						</div>
+					</form>
+				} else {
+					<h2 class="mb-3 text-lg text-ink">ایجاد بسته جدید</h2>
+					<form class="grid gap-3" method="post" action="/admin/services/packages" id="service-package-form">
+						@servicePackageFormFields("", "", view.Services)
+						<div>
+							<button class="ui-btn ui-btn-primary" type="submit">ایجاد بسته</button>
+						</div>
+					</form>
+				}
+			</section>
+			<section>
+				<h2 class="mb-3 text-lg text-ink">لیست بسته‌ها</h2>
+				<div class="ui-table-wrap">
+					<table class="ui-table min-w-[640px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-2">ردیف</th>
+								<th class="p-2">نام بسته</th>
+								<th class="p-2">توضیحات</th>
+								<th class="p-2">تعداد خدمات</th>
+								<th class="p-2">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Items) == 0 {
+								<tr>
+									<td class="p-3 text-ink-muted" colspan="5">بسته‌ای ثبت نشده است.</td>
+								</tr>
+							}
+							for index, item := range view.Items {
+								<tr class="border-b border-gray-100">
+									<td class="p-2">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-2 font-medium">{ item.Name }</td>
+									<td class="p-2 text-ink-muted">{ item.Description }</td>
+									<td class="p-2">{ strconv.Itoa(item.ServiceCount) }</td>
+									<td class="p-2 whitespace-nowrap">
+										<a
+											class="ml-2 rounded border border-gray-300 px-2 py-1 text-xs"
+											href={ templ.SafeURL("/admin/services/packages?edit=" + formatUint(item.ID)) }
+										>ویرایش</a>
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/services/packages/" + formatUint(item.ID) + "/delete") } onsubmit="return confirm('این بسته حذف شود؟ خدمات کاتالوگ باقی می‌مانند.');">
+											<button class="rounded border border-red-300 px-2 py-1 text-xs text-red-700" type="submit">حذف</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// servicePackageFormFields فیلدهای نام، توضیحات و لیست انتخاب خدمات بسته را رندر می‌کند.
+// ورودی: name نام بسته، description توضیحات، services گزینه‌های خدمت. خروجی: کامپوننت فرم.
+templ servicePackageFormFields(name, description string, services []ServiceAssignOption) {
+	<label class="block text-sm text-ink-muted">
+		نام بسته
+		<input class="ui-field mt-1 w-full" type="text" name="name" value={ name } required maxlength="150" placeholder="مثال: خدمات قلب، چکاپ عمومی، جراحی سرپایی"/>
+	</label>
+	<label class="block text-sm text-ink-muted">
+		توضیحات بسته
+		<textarea class="ui-field mt-1 w-full min-h-[80px]" name="description" rows="3" maxlength="1000" placeholder="توضیحات تکمیلی پیرامون این بسته...">{ description }</textarea>
+	</label>
+	<div class="rounded-xl border border-surface-border bg-white p-4">
+		<div class="flex items-center justify-between pb-3 border-b border-gray-100">
+			<div class="flex items-center gap-2">
+				<i class="fa-solid fa-list-check text-brand text-sm"></i>
+				<h3 class="text-sm font-bold text-ink">خدمات این بسته</h3>
+			</div>
+			<span id="pkg-srv-badge" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+				۰ خدمت انتخاب شده
+			</span>
+		</div>
+		if len(services) == 0 {
+			<p class="mt-3 text-xs text-ink-muted">هنوز هیچ خدمتی در کاتالوگ ثبت نشده است. ابتدا خدمت ایجاد کنید.</p>
+		} else {
+			<div class="mt-3 relative">
+				<input
+					type="search"
+					id="pkg-srv-search"
+					placeholder="جستجوی خدمت بر اساس عنوان یا شرح..."
+					oninput="filterPackageSrvItems()"
+					class="ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white"
+				/>
+				<i class="fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+			</div>
+			<div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+				<button type="button" onclick="toggleAllPackageSrvs(true)" class="text-white hover:underline font-medium">انتخاب همه</button>
+				<button type="button" onclick="toggleAllPackageSrvs(false)" class="text-ink-muted hover:underline">لغو انتخاب همه</button>
+			</div>
+			<div id="pkg-srv-list" class="mt-2 max-h-[280px] overflow-y-auto space-y-1.5 pr-1">
+				for _, item := range services {
+					<label class="pkg-srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors" data-search={ serviceAssignSearchText(item) }>
+						<input
+							type="checkbox"
+							name="service_ids"
+							value={ formatUint(item.ID) }
+							onchange="updatePackageSrvCount()"
+							class="pkg-srv-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+							checked?={ item.Selected }
+						/>
+						@serviceAssignLabel(item)
+					</label>
+				}
+				<p id="pkg-srv-empty" class="hidden text-center text-xs text-ink-muted py-8">
+					خدمتی مطابق با عبارت جستجو یافت نشد.
+				</p>
+			</div>
+			<script>
+				function toPersianDigitsPkg(n) {
+					var id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+					return String(n).replace(/[0-9]/g, function(w){ return id[+w]; });
+				}
+				function updatePackageSrvCount() {
+					var checked = document.querySelectorAll('.pkg-srv-checkbox:checked').length;
+					var badge = document.getElementById('pkg-srv-badge');
+					if (badge) {
+						badge.textContent = toPersianDigitsPkg(checked) + ' خدمت انتخاب شده';
+					}
+				}
+				function filterPackageSrvItems() {
+					var q = (document.getElementById('pkg-srv-search').value || '').trim().toLowerCase();
+					var items = document.querySelectorAll('.pkg-srv-item');
+					var visibleCount = 0;
+					items.forEach(function(item) {
+						var text = item.getAttribute('data-search') || '';
+						if (!q || text.indexOf(q) !== -1) {
+							item.style.display = '';
+							visibleCount++;
+						} else {
+							item.style.display = 'none';
+						}
+					});
+					var emptyMsg = document.getElementById('pkg-srv-empty');
+					if (emptyMsg) {
+						emptyMsg.classList.toggle('hidden', visibleCount > 0);
+					}
+				}
+				function toggleAllPackageSrvs(checked) {
+					document.querySelectorAll('.pkg-srv-item').forEach(function(item) {
+						if (item.style.display !== 'none') {
+							var cb = item.querySelector('.pkg-srv-checkbox');
+							if (cb) cb.checked = checked;
+						}
+					});
+					updatePackageSrvCount();
+				}
+				document.addEventListener('DOMContentLoaded', updatePackageSrvCount);
+				updatePackageSrvCount();
+			</script>
+		}
+	</div>
+}

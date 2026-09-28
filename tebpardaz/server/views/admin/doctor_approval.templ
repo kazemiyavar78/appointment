@@ -41,6 +41,7 @@ type ApprovalItem struct {
 	Photo600       string
 	Photo900       string
 	Photo1200      string
+	UseClinicLogo  bool
 	ExternalID     string
 	ShortDesc      string
 	LongDesc       string
@@ -63,12 +64,26 @@ type DoctorApprovalView struct {
 	PerPage     int
 	TotalPages  int
 	TotalItems  int
-	FetchLive   bool
-	Tab         string
+	FetchLive     bool
+	Tab           string
+	ClinicLogoURL string
 }
 
 func formatUint(v uint) string {
 	return strconv.FormatUint(uint64(v), 10)
+}
+
+// joinUintIDs شناسه‌های عددی را با ویرگول به رشته تبدیل می‌کند.
+// ورودی: ids اسلایس شناسه. خروجی: رشته مثل "1,2,3".
+func joinUintIDs(ids []uint) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		parts = append(parts, strconv.FormatUint(uint64(id), 10))
+	}
+	return strings.Join(parts, ",")
 }
 
 func formatInt(v int) string {
@@ -119,6 +134,38 @@ func specialtySelected(current, option uint) bool {
 
 func approvalItemHasPhoto(item ApprovalItem) bool {
 	return item.PhotoURL != "" || item.Photo1200 != "" || item.Photo900 != "" || item.Photo600 != "" || item.Photo300 != ""
+}
+
+// approvalPhotoRequired گزارش می‌دهد وقتی تیک لوگوی مرکز خاموش است، آپلود عکس اصلی اجباری باشد.
+// ورودی: ردیف پزشک. خروجی: true اگر عکس شخصی ذخیره‌شده‌ای وجود نداشته باشد یا الان از لوگو استفاده شود.
+func approvalPhotoRequired(item ApprovalItem) bool {
+	return item.UseClinicLogo || !approvalItemHasPhoto(item)
+}
+
+// photoRequiredFlag مقدار ویژگی data-photo-required را برمی‌گرداند.
+// ورودی: required. خروجی: "1" یا "0".
+func photoRequiredFlag(required bool) string {
+	if required {
+		return "1"
+	}
+	return "0"
+}
+
+// clinicLogoChoice تیک استفاده از لوگوی مرکز به‌جای عکس شخصی را رندر می‌کند.
+// ورودی: checked وضعیت فعلی تیک، logoURL آدرس لوگوی مرکز. خروجی: ندارد (مارک‌آپ فرم).
+templ clinicLogoChoice(checked bool, logoURL string) {
+	<label class="flex items-start gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-ink">
+		<input class="use-clinic-logo mt-0.5" type="checkbox" name="use_clinic_logo" value="1" checked?={ checked }/>
+		<span>بدون عکس شخصی — از لوگوی مرکز استفاده شود</span>
+	</label>
+	<div class={ "clinic-logo-preview flex items-center gap-2 rounded-md border border-dashed border-gray-200 bg-white px-2 py-1.5", templ.KV("hidden", !checked) }>
+		if logoURL != "" {
+			<img class="h-8 w-8 shrink-0 rounded object-contain ring-1 ring-gray-200" src={ logoURL } alt="لوگوی مرکز"/>
+			<span class="text-[11px] text-ink-muted">به‌جای عکس پزشک، لوگوی مرکز نمایش داده می‌شود.</span>
+		} else {
+			<span class="text-[11px] text-rose-700">لوگوی مرکز هنوز بارگذاری نشده است.</span>
+		}
+	</div>
 }
 
 func approvalItemAvatar(item ApprovalItem) string {
@@ -253,6 +300,9 @@ templ DoctorApproval(view DoctorApprovalView) {
 												if item.SpecialtyName != "" {
 													<p class="mt-0.5 text-xs text-brand">{ item.SpecialtyName }</p>
 												}
+												if item.UseClinicLogo {
+													<p class="mt-0.5 text-[11px] text-ink-muted">نمایش با لوگوی مرکز</p>
+												}
 											</div>
 										</div>
 									</td>
@@ -285,11 +335,12 @@ templ DoctorApproval(view DoctorApprovalView) {
 															<option value={ formatUint(sp.ID) }>{ sp.Name }</option>
 														}
 													</select>
-													<div class="rounded-lg border border-gray-200 bg-white p-2 text-xs space-y-1.5">
+													@clinicLogoChoice(false, view.ClinicLogoURL)
+													<div class="doctor-photo-fields rounded-lg border border-gray-200 bg-white p-2 text-xs space-y-1.5">
 														<div class="font-medium text-ink">تصاویر پزشک:</div>
 														<div>
 															<label class="block text-[11px] text-ink-muted mb-0.5">عکس اصلی / ۱۲۰۰ (الزامی) *</label>
-															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo" accept="image/*" required/>
+															<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo" accept="image/*" required data-photo-required="1"/>
 														</div>
 														<div>
 															<label class="block text-[11px] text-ink-muted mb-0.5">عکس ۳۰۰ (موبایل)</label>
@@ -323,7 +374,7 @@ templ DoctorApproval(view DoctorApprovalView) {
 													<input type="hidden" name="clinic_id" value={ formatUint(item.ClinicID) }/>
 													<input type="hidden" name="q" value={ view.SearchQuery }/>
 													<input type="hidden" name="page" value={ formatInt(view.Page) }/>
-													<select class="rounded-md border border-gray-300 bg-white p-1.5 text-xs" name="specialty_id">
+													<select class="rounded-md border border-gray-300 bg-white p-1.5 text-xs" name="specialty_id" required>
 														<option value="">تغییر تخصص</option>
 														for _, sp := range view.Specialties {
 															<option value={ formatUint(sp.ID) } selected?={ specialtySelected(item.SpecialtyID, sp.ID) }>{ sp.Name }</option>
@@ -338,7 +389,8 @@ templ DoctorApproval(view DoctorApprovalView) {
 														<textarea class="ui-field mt-1 min-h-[5rem] text-xs" name="long_desc" rows="3">{ item.LongDesc }</textarea>
 													</label>
 
-													<div class="rounded-lg border border-gray-200 bg-white p-2.5 text-xs shadow-sm">
+													@clinicLogoChoice(item.UseClinicLogo, view.ClinicLogoURL)
+													<div class={ "doctor-photo-fields rounded-lg border border-gray-200 bg-white p-2.5 text-xs shadow-sm", templ.KV("hidden", item.UseClinicLogo) }>
 														<div class="mb-2 font-medium text-ink">تصاویر پزشک (۴ سایز):</div>
 														<div class="space-y-2.5">
 															<div>
@@ -372,7 +424,12 @@ templ DoctorApproval(view DoctorApprovalView) {
 																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_900" accept="image/*"/>
 															</div>
 															<div>
-																<label class="block font-medium text-ink-muted text-[11px] mb-1">عکس ۱۲۰۰ (دسکتاپ/اصلی)</label>
+																<label class="block font-medium text-ink-muted text-[11px] mb-1">
+																	عکس ۱۲۰۰ (دسکتاپ/اصلی)
+																	if approvalPhotoRequired(item) {
+																		<span> *</span>
+																	}
+																</label>
 																if item.Photo1200 != "" {
 																	<div class="flex items-center gap-2 mb-1">
 																		<img class="h-8 w-8 rounded-md object-cover ring-1 ring-gray-200" src={ item.Photo1200 } alt="1200px"/>
@@ -384,7 +441,13 @@ templ DoctorApproval(view DoctorApprovalView) {
 																		<a href={ templ.SafeURL(item.PhotoURL) } target="_blank" class="text-[11px] text-brand hover:underline truncate max-w-[130px]">مشاهده تصویر اصلی</a>
 																	</div>
 																}
-																<input class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand" type="file" name="photo_1200" accept="image/*"/>
+																<input
+																	class="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-brand/10 file:px-2 file:py-1 file:text-xs file:text-brand"
+																	type="file"
+																	name="photo_1200"
+																	accept="image/*"
+																	data-photo-required={ photoRequiredFlag(approvalPhotoRequired(item)) }
+																/>
 															</div>
 														</div>
 													</div>
@@ -455,6 +518,31 @@ templ DoctorApproval(view DoctorApprovalView) {
 						overlay.classList.remove("hidden");
 						overlay.classList.add("flex");
 					});
+				}
+				function syncClinicLogo(box) {
+					var photoForm = box.closest("form");
+					if (!photoForm) return;
+					var on = box.checked;
+					var fields = photoForm.querySelector(".doctor-photo-fields");
+					var preview = photoForm.querySelector(".clinic-logo-preview");
+					if (fields) fields.classList.toggle("hidden", on);
+					if (preview) preview.classList.toggle("hidden", !on);
+					var files = photoForm.querySelectorAll(".doctor-photo-fields input[type=file]");
+					for (var i = 0; i < files.length; i++) {
+						var input = files[i];
+						if (on) {
+							input.required = false;
+						} else if (input.getAttribute("data-photo-required") === "1") {
+							input.required = true;
+						}
+					}
+				}
+				var boxes = document.querySelectorAll(".use-clinic-logo");
+				for (var j = 0; j < boxes.length; j++) {
+					(function (box) {
+						box.addEventListener("change", function () { syncClinicLogo(box); });
+						syncClinicLogo(box);
+					})(boxes[j]);
 				}
 			})();
 		</script>

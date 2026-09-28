@@ -6,6 +6,7 @@ import (
 
 	"tebpardaz/server/internal/news"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/pages"
@@ -48,7 +49,10 @@ func (h *NewsHandler) List(c *gin.Context) {
 		ShowClinicBadge: showClinic,
 		EmptyMessage:    "خبری برای نمایش وجود ندارد.",
 	}
-	renderPublicLayout(c, tc, pages.NewsList(view), "news")
+	kind, place := publicSite(tc)
+	head := headFromMeta(seo.NewsListMeta(kind, place, requestCanonical(c)))
+	head.JSONLD = seo.NewsBreadcrumbGraph(absolutePublicURL(c, "/"), absolutePublicURL(c, "/news"), "", "")
+	RenderPublicLayoutWithHead(c, tc, pages.NewsList(view), "news", head)
 }
 
 // GetDetail renders a single published news article.
@@ -60,7 +64,7 @@ func (h *NewsHandler) GetDetail(c *gin.Context) {
 	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
-		c.Status(http.StatusBadRequest)
+		NotFound(c)
 		return
 	}
 	ids, showClinic, err := resolveTenantClinicIDs(tc, h.Clinics)
@@ -71,7 +75,7 @@ func (h *NewsHandler) GetDetail(c *gin.Context) {
 	item, err := h.News.GetPublished(uint(id), ids)
 	if err != nil {
 		if err == news.ErrForbidden || err == news.ErrNotFound {
-			c.Status(http.StatusNotFound)
+			NotFound(c)
 			return
 		}
 		c.Status(http.StatusInternalServerError)
@@ -86,7 +90,19 @@ func (h *NewsHandler) GetDetail(c *gin.Context) {
 		ShowClinicBadge: showClinic,
 		BackURL:         "/news",
 	}
-	renderPublicLayout(c, tc, pages.NewsDetail(view), "news")
+	kind, place := publicSite(tc)
+	brand := seo.BrandName(kind, place)
+	if kind == seo.SitePlatform && item.ClinicName != "" {
+		brand = item.ClinicName
+	}
+	meta := seo.NewsDetailMeta(item.Title, item.Excerpt, brand, requestCanonical(c))
+	head := headFromMeta(meta)
+	title := seo.PlainText(item.Title)
+	if title == "" {
+		title = "خبر"
+	}
+	head.JSONLD = seo.NewsBreadcrumbGraph(absolutePublicURL(c, "/"), absolutePublicURL(c, "/news"), title, meta.Canonical)
+	RenderPublicLayoutWithHead(c, tc, pages.NewsDetail(view), "news", head)
 }
 
 func toPublicCards(items []news.Item, showClinic bool) []components.NewsCardView {

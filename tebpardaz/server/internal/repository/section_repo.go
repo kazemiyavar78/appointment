@@ -49,14 +49,7 @@ func (r *SectionRepo) CreateSection(section *models.AppointmentClinicSection) er
 		}
 
 		// 1. Auto-create default banner
-		banner := models.SectionBanner{
-			SectionID:       section.ID,
-			Slogan:          "ارائه خدمات تخصصی با بالاترین استانداردهای پزشکی",
-			Description:     fmt.Sprintf("بخش %s با بهره‌گیری از کادر مجرب و پیشرفته‌ترین امکانات تشخیصی و درمانی آماده خدمت‌رسانی به مراجعین گرامی است.", section.Title),
-			Services:        "پوشش کامل بیمه‌ها\nنوبت‌دهی آنلاین\nکادر تخصصی و مجرب\nپاسخگویی سریع",
-			BackgroundColor: "#0a2e2e",
-			ImageURL:        "",
-		}
+		banner := models.DefaultSectionBanner(section.ID, section.Title)
 		if err := tx.Create(&banner).Error; err != nil {
 			return err
 		}
@@ -64,7 +57,7 @@ func (r *SectionRepo) CreateSection(section *models.AppointmentClinicSection) er
 		// 2. Auto-create 7-day schedule
 		for dayIdx := 0; dayIdx < 7; dayIdx++ {
 			dayName := defaultDayNames[dayIdx]
-			isOpen := dayIdx != 6 // Friday is closed by default
+			isOpen := dayIdx != 6   // Friday is closed by default
 			hasShift2 := dayIdx < 5 // Saturday through Wednesday have 2 shifts by default
 			schedule := models.SectionSchedule{
 				SectionID:   section.ID,
@@ -101,7 +94,7 @@ func (r *SectionRepo) UpdateSection(section *models.AppointmentClinicSection) er
 	}).Error
 }
 
-// DeleteSection deletes a section and its associated banner, schedules, messages, and equipments.
+// DeleteSection deletes a section and its associated banner, schedules, doctors, messages, and equipments.
 // Input: section ID and clinic ID for security check.
 // Output: error if record not found or deletion fails.
 func (r *SectionRepo) DeleteSection(id uint, clinicID uint) error {
@@ -125,6 +118,12 @@ func (r *SectionRepo) DeleteSection(id uint, clinicID uint) error {
 			return err
 		}
 		if err := tx.Where("section_id = ?", id).Delete(&models.SectionEquipment{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("section_id = ?", id).Delete(&models.SectionDoctor{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("section_id = ?", id).Delete(&models.SectionServicePackage{}).Error; err != nil {
 			return err
 		}
 
@@ -196,14 +195,8 @@ func (r *SectionRepo) GetBannerBySectionID(sectionID uint) (*models.SectionBanne
 	var banner models.SectionBanner
 	err := r.db.Where("section_id = ?", sectionID).First(&banner).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// Return default banner if missing
-		return &models.SectionBanner{
-			SectionID:       sectionID,
-			Slogan:          "ارائه خدمات تخصصی با بالاترین استانداردهای پزشکی",
-			Description:     "ارائه خدمات تشخیصی و درمانی با کادر مجرب و پیشرفته‌ترین امکانات.",
-			Services:        "پوشش کامل بیمه‌ها\nنوبت‌دهی آنلاین\nکادر تخصصی و مجرب\nپاسخگویی سریع",
-			BackgroundColor: "#0a2e2e",
-		}, nil
+		fallback := models.DefaultSectionBanner(sectionID, "")
+		return &fallback, nil
 	}
 	return &banner, err
 }
@@ -224,12 +217,34 @@ func (r *SectionRepo) SaveBanner(banner *models.SectionBanner) error {
 		return err
 	}
 	return r.db.Model(&existing).Updates(map[string]interface{}{
-		"slogan":           banner.Slogan,
-		"description":      banner.Description,
-		"services":         banner.Services,
-		"background_color": banner.BackgroundColor,
-		"image_url":        banner.ImageURL,
+		"slogan":                  banner.Slogan,
+		"description":             banner.Description,
+		"services":                banner.Services,
+		"background_color":        banner.BackgroundColor,
+		"image_url":               banner.ImageURL,
+		"background_color_end":    banner.BackgroundColorEnd,
+		"use_background_gradient": banner.UseBackgroundGradient,
+		"background_gradient_dir": banner.BackgroundGradientDir,
+		"overlay_color":           banner.OverlayColor,
+		"use_overlay_gradient":    banner.UseOverlayGradient,
+		"overlay_opacity_left":    banner.OverlayOpacityLeft,
+		"overlay_opacity_bottom":  banner.OverlayOpacityBottom,
 	}).Error
+}
+
+// ListActiveSectionsWithBannerByClinic retrieves active sections with banner preloaded for public cards.
+// Input: clinic ID.
+// Output: slice of active ClinicSection including Banner, or error.
+func (r *SectionRepo) ListActiveSectionsWithBannerByClinic(clinicID uint) ([]models.AppointmentClinicSection, error) {
+	if r.db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var sections []models.AppointmentClinicSection
+	err := r.db.Preload("Banner").
+		Where("clinic_id = ? AND is_active = ?", clinicID, true).
+		Order("sort_order asc, id asc").
+		Find(&sections).Error
+	return sections, err
 }
 
 // GetScheduleBySectionID retrieves the 7-day schedule for a section, ordered by DayOfWeek.
@@ -291,13 +306,13 @@ func (r *SectionRepo) SaveSchedule(sectionID uint, schedules []models.SectionSch
 				return err
 			} else {
 				if err := tx.Model(&existing).Updates(map[string]interface{}{
-					"day_name":      s.DayName,
-					"is_open":       s.IsOpen,
-					"shift1_start":  s.Shift1Start,
-					"shift1_end":    s.Shift1End,
-					"shift2_start":  s.Shift2Start,
-					"shift2_end":    s.Shift2End,
-					"has_shift2":    s.HasShift2,
+					"day_name":     s.DayName,
+					"is_open":      s.IsOpen,
+					"shift1_start": s.Shift1Start,
+					"shift1_end":   s.Shift1End,
+					"shift2_start": s.Shift2Start,
+					"shift2_end":   s.Shift2End,
+					"has_shift2":   s.HasShift2,
 				}).Error; err != nil {
 					return err
 				}
@@ -559,6 +574,132 @@ func (r *SectionRepo) ListClinicIDsWithDoctorSite(clinicIDs []uint) ([]uint, err
 	return r.listClinicIDsWithSection(clinicIDs, "سایت پزشک")
 }
 
+// ErrSectionDoctorExists وقتی پزشک از قبل به بخش وصل شده باشد برمی‌گردد.
+var ErrSectionDoctorExists = errors.New("doctor already assigned to section")
+
+// ErrSectionDoctorNotEligible وقتی پزشک تأییدشدهٔ همان مرکز نباشد برمی‌گردد.
+var ErrSectionDoctorNotEligible = errors.New("doctor is not an approved clinic member")
+
+// ListSectionDoctorsBySectionID انتصاب‌های پزشک یک بخش را با پیش‌بارگذاری پزشک و تخصص برمی‌گرداند.
+// ورودی: شناسه بخش. خروجی: ردیف‌های SectionDoctor مرتب‌شده یا خطا.
+func (r *SectionRepo) ListSectionDoctorsBySectionID(sectionID uint) ([]models.SectionDoctor, error) {
+	if r.db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var links []models.SectionDoctor
+	err := r.db.Where("section_id = ?", sectionID).
+		Preload("Doctor").
+		Preload("Doctor.Specialty").
+		Order("sort_order asc, id asc").
+		Find(&links).Error
+	return links, err
+}
+
+// ListAssignedPublicDoctors پزشکان تأییدشده و فعال منتسب به بخش را برای صفحه عمومی برمی‌گرداند.
+// ورودی: شناسه بخش. خروجی: پزشکان مرتب‌شده یا خطا.
+func (r *SectionRepo) ListAssignedPublicDoctors(sectionID uint) ([]models.Doctor, error) {
+	if r.db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	links, err := r.ListSectionDoctorsBySectionID(sectionID)
+	if err != nil {
+		return nil, err
+	}
+	return filterPublicSectionDoctors(links), nil
+}
+
+// ListAssignableApprovedDoctors پزشکان تأییدشده مرکز را که هنوز به این بخش وصل نشده‌اند برمی‌گرداند.
+// ورودی: شناسه بخش و شناسه مرکز. خروجی: پزشکان قابل انتخاب یا خطا.
+func (r *SectionRepo) ListAssignableApprovedDoctors(sectionID, clinicID uint) ([]models.Doctor, error) {
+	if r.db == nil {
+		return nil, fmt.Errorf("db not initialized")
+	}
+	var assignedIDs []uint
+	if err := r.db.Model(&models.SectionDoctor{}).
+		Where("section_id = ?", sectionID).
+		Pluck("doctor_id", &assignedIDs).Error; err != nil {
+		return nil, err
+	}
+
+	q := r.db.Where("clinic_id = ? AND is_approved = ?", clinicID, true)
+	if len(assignedIDs) > 0 {
+		q = q.Where("id NOT IN ?", assignedIDs)
+	}
+	var doctors []models.Doctor
+	err := q.Preload("Specialty").Order("name asc").Find(&doctors).Error
+	return doctors, err
+}
+
+// AssignDoctorToSection پزشک تأییدشدهٔ همان مرکز را به بخش وصل می‌کند.
+// ورودی: شناسه بخش، شناسه مرکز، شناسه پزشک و ترتیب نمایش. خروجی: خطا در صورت تکرار یا عدم صلاحیت.
+func (r *SectionRepo) AssignDoctorToSection(sectionID, clinicID, doctorID uint, sortOrder int) error {
+	if r.db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	if sectionID == 0 || clinicID == 0 || doctorID == 0 {
+		return ErrSectionDoctorNotEligible
+	}
+
+	var doctor models.Doctor
+	if err := r.db.Where("id = ? AND clinic_id = ? AND is_approved = ?", doctorID, clinicID, true).
+		First(&doctor).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSectionDoctorNotEligible
+		}
+		return err
+	}
+
+	var existing models.SectionDoctor
+	err := r.db.Where("section_id = ? AND doctor_id = ?", sectionID, doctorID).First(&existing).Error
+	if err == nil {
+		return ErrSectionDoctorExists
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	if sortOrder <= 0 {
+		var maxOrder int
+		_ = r.db.Model(&models.SectionDoctor{}).
+			Where("section_id = ?", sectionID).
+			Select("COALESCE(MAX(sort_order), 0)").
+			Scan(&maxOrder).Error
+		sortOrder = maxOrder + 1
+	}
+
+	return r.db.Create(&models.SectionDoctor{
+		SectionID: sectionID,
+		DoctorID:  doctorID,
+		SortOrder: sortOrder,
+	}).Error
+}
+
+// UnassignDoctorFromSection پیوند پزشک و بخش را حذف می‌کند.
+// ورودی: شناسه بخش و شناسه پزشک. خروجی: خطای حذف در صورت بروز مشکل دیتابیس.
+func (r *SectionRepo) UnassignDoctorFromSection(sectionID, doctorID uint) error {
+	if r.db == nil {
+		return fmt.Errorf("db not initialized")
+	}
+	return r.db.Unscoped().Where("section_id = ? AND doctor_id = ?", sectionID, doctorID).
+		Delete(&models.SectionDoctor{}).Error
+}
+
+// filterPublicSectionDoctors پزشکان تأییدشده و فعال با تخصص قابل‌نمایش در نوبت‌دهی را جدا می‌کند.
+// ورودی: ردیف‌های SectionDoctor با پزشک و تخصص پیش‌بارگذاری‌شده. خروجی: اسلایس پزشکان قابل نمایش.
+func filterPublicSectionDoctors(links []models.SectionDoctor) []models.Doctor {
+	out := make([]models.Doctor, 0, len(links))
+	for _, link := range links {
+		if link.Doctor.ID == 0 || !link.Doctor.IsApproved || !link.Doctor.IsActive {
+			continue
+		}
+		if !link.Doctor.Specialty.IsVisibleInBooking() {
+			continue
+		}
+		out = append(out, link.Doctor)
+	}
+	return out
+}
+
 // listClinicIDsWithSection متد داخلی برای فیلتر مراکز بر اساس وجود بخش با الگوی نام مشخص است.
 // ورودی: آرایه شناسه‌های مراکز و الگوی نام بخش. خروجی: آرایه شناسه‌های منطبق و خطا.
 func (r *SectionRepo) listClinicIDsWithSection(clinicIDs []uint, namePattern string) ([]uint, error) {
@@ -575,4 +716,3 @@ func (r *SectionRepo) listClinicIDsWithSection(clinicIDs []uint, namePattern str
 	}
 	return matchedIDs, nil
 }
-

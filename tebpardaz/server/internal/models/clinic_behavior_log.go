@@ -3,9 +3,10 @@ package models
 import "time"
 
 // ClinicBehaviorLog لاگ رفتار مرکز روی WebSocket است (اتصال، پیام، رفت‌وبرگشت، خطا).
+// رکوردها حداکثر ۲ روز نگهداری می‌شوند و پس از آن کامل حذف می‌گردند.
 type ClinicBehaviorLog struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	CreatedAt time.Time `gorm:"type:datetime;not null;index" json:"created_at"` // زمان رویداد
+	CreatedAt time.Time `gorm:"type:datetime;not null;index" json:"created_at"` // زمان رویداد؛ مبنای نگهداری ۲ روزه
 	ClinicID  uint      `gorm:"not null;index;default:0" json:"clinic_id"`       // شناسه مرکز (۰ اگر هنوز مشخص نباشد)
 	Action    string    `gorm:"type:nvarchar(50);not null;index" json:"action"`  // نوع رفتار
 	MsgType   string    `gorm:"type:nvarchar(100);not null;default:''" json:"msg_type"` // نوع پیام پروتکل

@@ -8,18 +8,26 @@ import (
 )
 
 const (
+	NavDashboard               = "dashboard"
 	NavApprovals               = "approvals"
 	NavAppointments            = "appointments"
+	NavClinicLogs              = "clinic_logs"
 	NavSpecialties             = "specialties"
 	NavInsurances              = "insurances"
 	NavInsuranceAssign         = "insurance_assign"
 	NavServices                = "services"
+	NavServicePackages         = "service_packages"
 	NavClinicInsuranceServices = "clinic_insurance_services"
 	NavDoctorServices          = "doctor_services"
+	NavSectionServicePackages  = "section_service_packages"
 	NavNews                    = "news"
 	NavUsers                   = "users"
 	NavReviews                 = "reviews"
 	NavSections                = "sections"
+	NavClinicBranding          = "clinic_branding"
+	NavVisitorIPs              = "visitor_ips"
+	NavVisitorVisits           = "visitor_visits"
+	NavRegisteredAppointments  = "registered_appointments"
 )
 
 // SectionNavSummary holds minimal metadata of a section for admin sidebar navigation.
@@ -34,10 +42,15 @@ func BuildAdminNav(active string, role string) layouts.AdminLayoutView {
 	return BuildAdminNavWithSections(active, role, nil)
 }
 
-// BuildAdminNavWithSections آیتم‌های سایدبار را همراه با بخش‌های کلینیک و زیرمنوهای ۴ گانه برمی‌گرداند.
+// BuildAdminNavWithSections آیتم‌های سایدبار را همراه با بخش‌های کلینیک و زیرمنوهای بخش برمی‌گرداند.
 // ورودی: کلید صفحه فعال، نقش کاربر و لیست خلاصه بخش‌ها. خروجی: AdminLayoutView.
 func BuildAdminNavWithSections(active string, role string, sections []SectionNavSummary) layouts.AdminLayoutView {
 	items := []layouts.AdminNavItem{
+		{
+			Label:  "داشبورد",
+			Href:   "/admin",
+			Active: active == NavDashboard,
+		},
 		{
 			Label:  "لیست پزشکان",
 			Href:   "/admin/approvals",
@@ -46,7 +59,41 @@ func BuildAdminNavWithSections(active string, role string, sections []SectionNav
 		{
 			Label:  "لیست نوبت‌ها",
 			Href:   "/admin/appointments",
-			Active: active == NavAppointments,
+			Active: active == NavAppointments || active == NavRegisteredAppointments,
+			Children: []layouts.AdminNavItem{
+				{
+					Label:  "نوبت‌های زنده پزشکان",
+					Href:   "/admin/appointments",
+					Active: active == NavAppointments,
+				},
+				{
+					Label:  "نوبت‌های ثبت‌شده",
+					Href:   "/admin/bookings",
+					Active: active == NavRegisteredAppointments,
+				},
+			},
+		},
+		{
+			Label:  "لاگ کلاینت‌ها",
+			Href:   "/admin/logs",
+			Active: active == NavClinicLogs,
+		},
+		{
+			Label:  "بازدید کاربران",
+			Href:   "/admin/visitors",
+			Active: active == NavVisitorIPs || active == NavVisitorVisits,
+			Children: []layouts.AdminNavItem{
+				{
+					Label:  "لیست آی‌پی‌ها",
+					Href:   "/admin/visitors",
+					Active: active == NavVisitorIPs,
+				},
+				{
+					Label:  "بازدید صفحات",
+					Href:   "/admin/visitors/visits",
+					Active: active == NavVisitorVisits,
+				},
+			},
 		},
 		{
 			Label:  "اخبار",
@@ -83,6 +130,11 @@ func BuildAdminNavWithSections(active string, role string, sections []SectionNav
 						Active: active == fmt.Sprintf("section_%d_schedule", s.ID),
 					},
 					{
+						Label:  "پزشکان",
+						Href:   fmt.Sprintf("/admin/sections/%d/doctors", s.ID),
+						Active: active == fmt.Sprintf("section_%d_doctors", s.ID),
+					},
+					{
 						Label:  "پیام به بیماران",
 						Href:   fmt.Sprintf("/admin/sections/%d/messages", s.ID),
 						Active: active == fmt.Sprintf("section_%d_messages", s.ID),
@@ -105,6 +157,13 @@ func BuildAdminNavWithSections(active string, role string, sections []SectionNav
 			Active: active == NavInsuranceAssign,
 		})
 	}
+	if canManageClinicBranding(role) {
+		items = append(items, layouts.AdminNavItem{
+			Label:  "لوگو و آیکون مرکز",
+			Href:   "/admin/clinic/branding",
+			Active: active == NavClinicBranding,
+		})
+	}
 	if constants.UserRole(role) == constants.UserRoleSuperAdmin {
 		items = append(items,
 			layouts.AdminNavItem{
@@ -120,12 +179,22 @@ func BuildAdminNavWithSections(active string, role string, sections []SectionNav
 			layouts.AdminNavItem{
 				Label:  "خدمات",
 				Href:   "/admin/services",
-				Active: active == NavServices || active == NavClinicInsuranceServices || active == NavDoctorServices,
+				Active: active == NavServices || active == NavServicePackages || active == NavClinicInsuranceServices || active == NavDoctorServices || active == NavSectionServicePackages,
 				Children: []layouts.AdminNavItem{
 					{
 						Label:  "مدیریت خدمات",
 						Href:   "/admin/services",
 						Active: active == NavServices,
+					},
+					{
+						Label:  "بسته‌های خدمات",
+						Href:   "/admin/services/packages",
+						Active: active == NavServicePackages,
+					},
+					{
+						Label:  "انتصاب به بخش‌های مرکز",
+						Href:   "/admin/services/section-packages",
+						Active: active == NavSectionServicePackages,
 					},
 					{
 						Label:  "انتصاب به بیمه‌های مرکز",
@@ -152,6 +221,17 @@ func BuildAdminNavWithSections(active string, role string, sections []SectionNav
 // canManageSections مشخص می‌کند نقش مجاز به مدیریت بخش‌های مرکز است یا نه.
 // ورودی: رشته نقش کاربر. خروجی: بولین.
 func canManageSections(role string) bool {
+	switch constants.UserRole(role) {
+	case constants.UserRoleSuperAdmin, constants.UserRoleAdmin, constants.UserRoleClinicAdmin, constants.UserRoleOrganAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+// canManageClinicBranding مشخص می‌کند نقش مجاز به بارگذاری لوگو و favicon مرکز است یا نه.
+// ورودی: رشته نقش کاربر. خروجی: بولین.
+func canManageClinicBranding(role string) bool {
 	switch constants.UserRole(role) {
 	case constants.UserRoleSuperAdmin, constants.UserRoleAdmin, constants.UserRoleClinicAdmin, constants.UserRoleOrganAdmin:
 		return true

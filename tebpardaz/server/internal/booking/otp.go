@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 var (
@@ -38,6 +40,7 @@ type otpCodeEntry struct {
 	LastSentAt time.Time
 	SendCount  int
 	SendWindow time.Time
+	NationalID string
 }
 
 // otpSession نشست تاییدشده پس از وارد کردن صحیح کد.
@@ -49,24 +52,38 @@ type otpSession struct {
 	CreatedAt    time.Time
 }
 
-// OTPStore نگهداری درحافظه کدهای OTP و نشست‌های رزرو.
+// OTPStore نگهداری کدهای OTP و نشست‌های رزرو.
+// کد پیامکی در دیتابیس ذخیره می‌شود؛ نشست تاییدشده تا ری‌استارت سرور در حافظه می‌ماند.
 type OTPStore struct {
 	mu            sync.Mutex
+	db            *gorm.DB
 	codes         map[string]otpCodeEntry
 	sessions      map[string]otpSession
 	tickets       map[string]string
 	mobileSession map[string]string
 }
 
-// NewOTPStore یک مخزن OTP خالی می‌سازد.
-// ورودی: ندارد. خروجی: اشاره‌گر OTPStore.
-func NewOTPStore() *OTPStore {
+// NewOTPStore یک مخزن OTP می‌سازد.
+// ورودی: اتصال appointment (nil یعنی فقط حافظه، برای تست). خروجی: اشاره‌گر OTPStore.
+func NewOTPStore(db *gorm.DB) *OTPStore {
 	return &OTPStore{
+		db:            db,
 		codes:         make(map[string]otpCodeEntry),
 		sessions:      make(map[string]otpSession),
 		tickets:       make(map[string]string),
 		mobileSession: make(map[string]string),
 	}
+}
+
+// OTPCreateInput هویت بیمار و مرکز برای صدور کد تایید.
+type OTPCreateInput struct {
+	Mobile     string
+	FirstName  string
+	LastName   string
+	NationalID string
+	ClinicID   uint
+	PatientID  uint
+	IPAddress  string
 }
 
 // SendResult خروجی متد CreateAndStore شامل اطلاعات محدودیت ارسال.
@@ -75,27 +92,111 @@ type SendResult struct {
 	SendsRemaining int
 }
 
-// CreateAndStore کد OTP تولید و برای موبایل ذخیره می‌کند.
-// ورودی: موبایل و فیلدهای بیمار (برای پیامک). خروجی: نتیجه، زمان انتظار، خطا.
-func (s *OTPStore) CreateAndStore(mobile, firstName, lastName, nationalID string) (SendResult, time.Duration, error) {
-	_ = firstName
-	_ = lastName
-	_ = nationalID
-
+// CreateAndStore کد OTP تولید و هش آن را برای موبایل ذخیره می‌کند.
+// ورودی: هویت بیمار، مرکز و آی‌پی. خروجی: کد خام (فقط برای ارسال)، زمان انتظار، خطا.
+func (s *OTPStore) CreateAndStore(in OTPCreateInput) (SendResult, time.Duration, error) {
 	if s == nil {
 		return SendResult{}, 0, fmt.Errorf("otp store nil")
 	}
-	mobile = digitsOnly(mobile)
+	in.Mobile = digitsOnly(in.Mobile)
 	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.cleanupLocked(now)
+	if s.db != nil {
+		return s.createAndStoreDBLocked(in, now)
+	}
+	return s.createAndStoreMemoryLocked(in, now)
+}
 
-	entry := s.codes[mobile]
+// createAndStoreMemoryLocked کد را فقط در حافظه نگه می‌دارد. قفل باید گرفته شده باشد.
+// ورودی: هویت بیمار و زمان فعلی. خروجی: نتیجه ارسال یا خطای محدودیت.
+func (s *OTPStore) createAndStoreMemoryLocked(in OTPCreateInput, now time.Time) (SendResult, time.Duration, error) {
+	entry := s.codes[in.Mobile]
+	entry, retry, err := prepareOTPSend(entry, now)
+	if err != nil {
+		return SendResult{}, retry, err
+	}
+	code, err := generateOTPCode(otpLength)
+	if err != nil {
+		return SendResult{}, 0, err
+	}
+	entry.CodeHash = hashOTP(code)
+	entry.ExpiresAt = now.Add(otpCodeTTL)
+	entry.Attempts = 0
+	entry.LastSentAt = now
+	entry.SendCount++
+	entry.NationalID = digitsOnly(in.NationalID)
+	s.codes[in.Mobile] = entry
+	return SendResult{Code: code, SendsRemaining: sendsRemaining(entry.SendCount)}, 0, nil
+}
+
+// PendingCode می‌گوید آیا برای همین موبایل و کد ملی هنوز می‌توان کد قبلی را وارد کرد.
+// ورودی: موبایل و کد ملی. خروجی: مدت انتظار تا ارسال مجدد، زمان انقضای کد، و وجود کد قابل ورود.
+func (s *OTPStore) PendingCode(mobile, nationalID string) (resendAfter time.Duration, expiresAt time.Time, ok bool) {
+	if s == nil {
+		return 0, time.Time{}, false
+	}
+	mobile = digitsOnly(mobile)
+	nationalID = digitsOnly(nationalID)
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cleanupLocked(now)
+	if s.db != nil {
+		return s.pendingCodeDBLocked(mobile, nationalID, now)
+	}
+	entry, found := s.codes[mobile]
+	if !found || !codeStillEnterable(entry, now) || !sameOTPNationalID(entry.NationalID, nationalID) {
+		return 0, time.Time{}, false
+	}
+	return resendWait(entry, now), entry.ExpiresAt, true
+}
+
+// codeStillEnterable یعنی هش کد باقی است، منقضی نشده و تلاش اشتباه به سقف نرسیده.
+// ورودی: رکورد کد و زمان فعلی. خروجی: true وقتی بیمار هنوز می‌تواند همان کد را وارد کند.
+func codeStillEnterable(entry otpCodeEntry, now time.Time) bool {
+	return entry.CodeHash != "" && !now.After(entry.ExpiresAt) && entry.Attempts < otpMaxVerifyAttempts
+}
+
+// sameOTPNationalID کد ملی ذخیره‌شده را با درخواست فعلی مقایسه می‌کند.
+// ورودی: کد ملی رکورد و کد ملی درخواست. خروجی: true وقتی خالی است یا هر دو یکی هستند.
+func sameOTPNationalID(stored, got string) bool {
+	stored = digitsOnly(stored)
+	got = digitsOnly(got)
+	return stored == "" || stored == got
+}
+
+// resendWait فاصله باقی‌مانده تا ارسال مجدد مجاز را برمی‌گرداند.
+// ورودی: رکورد ارسال و زمان فعلی. خروجی: صفر یعنی ارسال مجدد همین حالا مجاز است.
+func resendWait(entry otpCodeEntry, now time.Time) time.Duration {
+	var cooldown time.Duration
 	if !entry.LastSentAt.IsZero() {
 		elapsed := now.Sub(entry.LastSentAt)
 		if elapsed < otpResendCooldown {
-			return SendResult{}, otpResendCooldown - elapsed, ErrOTPRateLimited
+			cooldown = otpResendCooldown - elapsed
+		}
+	}
+	if entry.SendWindow.IsZero() || now.Sub(entry.SendWindow) >= otpSendWindow || entry.SendCount < otpMaxSendsPerWindow {
+		return cooldown
+	}
+	windowLeft := otpSendWindow - now.Sub(entry.SendWindow)
+	if windowLeft < time.Second {
+		windowLeft = time.Second
+	}
+	if windowLeft > cooldown {
+		return windowLeft
+	}
+	return cooldown
+}
+
+// prepareOTPSend محدودیت فاصله و سقف ارسال را روی رکورد فعلی اعمال می‌کند.
+// ورودی: رکورد قبلی و زمان فعلی. خروجی: رکورد آماده‌شده، مدت انتظار، یا ErrOTPRateLimited.
+func prepareOTPSend(entry otpCodeEntry, now time.Time) (otpCodeEntry, time.Duration, error) {
+	if !entry.LastSentAt.IsZero() {
+		elapsed := now.Sub(entry.LastSentAt)
+		if elapsed < otpResendCooldown {
+			return entry, otpResendCooldown - elapsed, ErrOTPRateLimited
 		}
 	}
 	if entry.SendWindow.IsZero() || now.Sub(entry.SendWindow) >= otpSendWindow {
@@ -107,25 +208,19 @@ func (s *OTPStore) CreateAndStore(mobile, firstName, lastName, nationalID string
 		if retry < time.Second {
 			retry = time.Second
 		}
-		return SendResult{}, retry, ErrOTPRateLimited
+		return entry, retry, ErrOTPRateLimited
 	}
+	return entry, 0, nil
+}
 
-	code, err := generateOTPCode(otpLength)
-	if err != nil {
-		return SendResult{}, 0, err
-	}
-	entry.CodeHash = hashOTP(code)
-	entry.ExpiresAt = now.Add(otpCodeTTL)
-	entry.Attempts = 0
-	entry.LastSentAt = now
-	entry.SendCount++
-	s.codes[mobile] = entry
-
-	remaining := otpMaxSendsPerWindow - entry.SendCount
+// sendsRemaining تعداد ارسال باقی‌مانده در پنجره فعلی را برمی‌گرداند.
+// ورودی: تعداد ارسال انجام‌شده. خروجی: عدد صفر یا بیشتر.
+func sendsRemaining(sendCount int) int {
+	remaining := otpMaxSendsPerWindow - sendCount
 	if remaining < 0 {
-		remaining = 0
+		return 0
 	}
-	return SendResult{Code: code, SendsRemaining: remaining}, 0, nil
+	return remaining
 }
 
 // VerifyResult خروجی تایید OTP شامل بلیط نشست.
@@ -151,7 +246,15 @@ func (s *OTPStore) Verify(mobile, code string) (VerifyResult, error) {
 	if sess, ok := s.activeSessionLocked(mobile, now); ok {
 		return s.issueTicketLocked(sess)
 	}
+	if s.db != nil {
+		return s.verifyDBLocked(mobile, code, now)
+	}
+	return s.verifyMemoryLocked(mobile, code, now)
+}
 
+// verifyMemoryLocked کد حافظه‌ای را بررسی و نشست صادر می‌کند. قفل باید گرفته شده باشد.
+// ورودی: موبایل، کد و زمان فعلی. خروجی: بلیط نشست یا خطای OTP.
+func (s *OTPStore) verifyMemoryLocked(mobile, code string, now time.Time) (VerifyResult, error) {
 	entry, ok := s.codes[mobile]
 	if !ok {
 		return VerifyResult{}, ErrOTPNotFound

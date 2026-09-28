@@ -116,7 +116,7 @@ func organFooter(view OrganLayoutView) components.FooterProps {
 	nav := organNavbar(view)
 	clinicsURL := view.ClinicsListURL
 	if clinicsURL == "" {
-		clinicsURL = "/clinics"
+		clinicsURL = "/#clinics"
 	}
 	return components.FooterProps{
 		Variant:        components.FooterOrgan,

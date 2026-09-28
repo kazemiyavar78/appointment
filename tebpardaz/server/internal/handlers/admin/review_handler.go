@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"tebpardaz/server/internal/auth"
 	"tebpardaz/server/internal/models"
@@ -16,12 +17,14 @@ import (
 type ReviewAdminHandler struct {
 	Reviews *repository.ReviewRepo
 	Clinics *repository.ClinicRepo
+	Doctors *repository.DoctorRepo
 	Scope   *auth.ClinicScope
 }
 
 // NewReviewAdminHandler سازنده ReviewAdminHandler است.
-func NewReviewAdminHandler(reviews *repository.ReviewRepo, clinics *repository.ClinicRepo, scope *auth.ClinicScope) *ReviewAdminHandler {
-	return &ReviewAdminHandler{Reviews: reviews, Clinics: clinics, Scope: scope}
+// ورودی: مخزن نظرات، مراکز، پزشکان و محدوده دسترسی. خروجی: هندلر آماده.
+func NewReviewAdminHandler(reviews *repository.ReviewRepo, clinics *repository.ClinicRepo, doctors *repository.DoctorRepo, scope *auth.ClinicScope) *ReviewAdminHandler {
+	return &ReviewAdminHandler{Reviews: reviews, Clinics: clinics, Doctors: doctors, Scope: scope}
 }
 
 // List نظرات در انتظار تأیید را برای مراکز مجاز کاربر نشان می‌دهد.
@@ -37,16 +40,23 @@ func (h *ReviewAdminHandler) List(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "خطا در دریافت نظرات")
 		return
 	}
+	clinicNames := map[uint]string{}
+	doctorNames := map[uint]string{}
 	items := make([]adminviews.ReviewAdminItem, 0, len(rows))
 	for _, row := range rows {
+		ip := strings.TrimSpace(row.IPAddress)
+		if ip == "" {
+			ip = "—"
+		}
 		items = append(items, adminviews.ReviewAdminItem{
 			ID:         row.ID,
 			TargetType: row.TargetType,
-			TargetID:   row.TargetID,
-			ClinicID:   row.ClinicID,
-			AuthorName: row.AuthorName,
+			DoctorName: h.doctorLabel(row, doctorNames),
+			ClinicName: h.clinicLabel(row.ClinicID, clinicNames),
+			AuthorName: strings.TrimSpace(row.AuthorName),
 			Rating:     row.Rating,
 			Body:       row.Body,
+			IPAddress:  ip,
 		})
 	}
 	view := adminviews.ReviewAdminView{
@@ -105,4 +115,43 @@ func (h *ReviewAdminHandler) canManageClinic(user *models.AppointmentUser, clini
 		return false
 	}
 	return h.Scope.CanAccess(user, clinicID)
+}
+
+// clinicLabel نام مرکز را با کش برمی‌گرداند.
+// ورودی: شناسه مرکز و کش نام‌ها. خروجی: نام مرکز یا «نامشخص».
+func (h *ReviewAdminHandler) clinicLabel(id uint, cache map[uint]string) string {
+	if name, ok := cache[id]; ok {
+		return name
+	}
+	name := "نامشخص"
+	if h != nil && h.Clinics != nil && id != 0 {
+		if cl, err := h.Clinics.GetByIDForAdmin(id); err == nil && cl != nil {
+			if n := strings.TrimSpace(cl.Name); n != "" {
+				name = n
+			}
+		}
+	}
+	cache[id] = name
+	return name
+}
+
+// doctorLabel نام پزشک را فقط برای نظرهای پزشک برمی‌گرداند.
+// ورودی: ردیف نظر و کش نام پزشکان. خروجی: نام پزشک، یا خالی اگر هدف مرکز باشد.
+func (h *ReviewAdminHandler) doctorLabel(row models.Review, cache map[uint]string) string {
+	if row.TargetType != models.ReviewTargetDoctor {
+		return ""
+	}
+	if name, ok := cache[row.TargetID]; ok {
+		return name
+	}
+	name := "نامشخص"
+	if h != nil && h.Doctors != nil && row.TargetID != 0 {
+		if doc, err := h.Doctors.GetByID(row.TargetID); err == nil && doc != nil {
+			if n := strings.TrimSpace(doctorDisplayName(*doc)); n != "" {
+				name = n
+			}
+		}
+	}
+	cache[row.TargetID] = name
+	return name
 }

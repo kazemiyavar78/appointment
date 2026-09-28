@@ -25,13 +25,15 @@ type Clinic struct {
 	Domain        *string    `gorm:"type:nvarchar(100);default:null" json:"domain"`                              // دامنه شخصی - nullable, می‌تونه خالی باشه
 	Slug          *string    `gorm:"type:nvarchar(100);default:null" json:"slug"`                                // {clinic_name} در URL - یکتا در کل سیستم
 	TenantType    string     `gorm:"type:nvarchar(100);not null;default:'private_tebpardaz'" json:"tenant_type"` // "private_own_domain" | "private_tebpardaz" | "organ_subsidiary"
-	WSClientKey   string     `gorm:"type:nvarchar(100);not null;default:''" json:"ws_client_key"`                // شناسه یکتای کلاینت وب‌سوکت این مرکز (برای احراز هویت اتصال)
-	EncryptionKey string     `gorm:"type:nvarchar(100);not null;default:''" json:"encryption_key"`               // کلید متقارن رمزنگاری پیام بین این کلینیک و سرور (باید encrypted at rest باشه، نه plain)
+	WSClientKey   string     `gorm:"type:nvarchar(255);not null;default:''" json:"-"`                            // ciphertext کلید وب‌سوکت (همان رمز clinic backend)
+	EncryptionKey string     `gorm:"type:nvarchar(255);not null;default:''" json:"-"`                            // ciphertext کلید رمز پیام
 	IsOnline      bool       `gorm:"type:bit;not null;default:false" json:"is_online"`                           // وضعیت آخرین اتصال (برای تصمیم‌گیری real-time نوبت‌دهی)
 	LastSyncAt    *time.Time `gorm:"type:datetime;not null;default:GETDATE()" json:"last_sync_at"`               // آخرین sync موفق نوبت‌ها
 
 	IsActiveOnWebsite bool `gorm:"type:bit;not null;default:false" json:"is_active_on_website"`
 
+	LogoURL    string `gorm:"type:nvarchar(500);not null;default:''" json:"logo_url"`
+	FaviconURL string `gorm:"type:nvarchar(500);not null;default:''" json:"favicon_url"`
+
 	Organization Organization `gorm:"foreignKey:OrganizationID;references:ID"`
 }
-

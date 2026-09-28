@@ -65,6 +65,9 @@ func LogClinicBehavior(clinicID uint, action, msgType, requestID, detail string,
 	go func(row models.ClinicBehaviorLog) {
 		if dbErr := clinicLogDB.Create(&row).Error; dbErr != nil {
 			log.Printf("clinic-ws | db save failed: %v", dbErr)
+			return
 		}
+		// انتشار برای WebSocket زنده پنل ادمین
+		ClinicLogHubInstance().Publish(row)
 	}(entry)
 }

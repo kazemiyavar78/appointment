@@ -106,7 +106,7 @@ templ NewsEditor(view NewsEditorView) {
 					@richToolbar("body")
 					<div
 						id="body_editor"
-						class="min-h-[16rem] rounded border border-gray-300 p-3 prose max-w-none"
+						class="news-rich-editor min-h-[16rem] rounded border border-gray-300 p-3 prose max-w-none"
 						contenteditable="true"
 						data-placeholder="متن کامل خبر — می‌توانید متن و چند تصویر اضافه کنید"
 					>
@@ -213,15 +213,74 @@ templ NewsEditor(view NewsEditorView) {
 					});
 				}
 
+				var bodyEditor = document.getElementById('body_editor');
+				var bodyField = document.getElementById('body');
+				var lastGoodBody = '';
+				var savedRange = null;
+
+				function cloneEditorHTML(editor) {
+					var clone = editor.cloneNode(true);
+					var imgs = clone.querySelectorAll('img');
+					for (var i = 0; i < imgs.length; i++) {
+						var img = imgs[i];
+						var parent = img.parentNode;
+						var alreadyWrapped = parent && parent !== clone && parent.tagName === 'DIV' && parent.childNodes.length === 1;
+						if (alreadyWrapped) {
+							continue;
+						}
+						var wrap = clone.ownerDocument.createElement('div');
+						wrap.className = 'news-body-image';
+						parent.insertBefore(wrap, img);
+						wrap.appendChild(img);
+					}
+					return clone.innerHTML;
+				}
+
+				function snapshotBody() {
+					if (!bodyEditor || !bodyField) return;
+					lastGoodBody = cloneEditorHTML(bodyEditor);
+					bodyField.value = lastGoodBody;
+				}
+
+				function saveBodySelection() {
+					var sel = window.getSelection();
+					if (!sel || sel.rangeCount === 0 || !bodyEditor) return;
+					var range = sel.getRangeAt(0);
+					if (bodyEditor.contains(range.commonAncestorContainer)) {
+						savedRange = range.cloneRange();
+					}
+				}
+
+				function restoreBodySelection() {
+					if (!bodyEditor) return;
+					bodyEditor.focus();
+					if (!savedRange) return;
+					var sel = window.getSelection();
+					sel.removeAllRanges();
+					sel.addRange(savedRange);
+				}
+
+				if (bodyEditor) {
+					bodyEditor.addEventListener('input', snapshotBody);
+					bodyEditor.addEventListener('keyup', saveBodySelection);
+					bodyEditor.addEventListener('mouseup', saveBodySelection);
+					snapshotBody();
+				}
+
 				var bodyImage = document.getElementById('body_image_file');
 				if (bodyImage) {
+					var bodyImageLabel = bodyImage.closest('label');
+					if (bodyImageLabel) {
+						bodyImageLabel.addEventListener('mousedown', saveBodySelection);
+					}
+					bodyImage.addEventListener('mousedown', saveBodySelection);
 					bodyImage.addEventListener('change', async function () {
 						if (!bodyImage.files || !bodyImage.files[0]) return;
 						try {
 							var url = await uploadFile(bodyImage.files[0]);
-							var editor = document.getElementById('body_editor');
-							if (editor) editor.focus();
-							exec('insertHTML', '<img src="' + url + '" alt="" style="max-width:100%;height:auto;margin:0.75rem 0;">');
+							restoreBodySelection();
+							exec('insertHTML', '<div class="news-body-image"><img src="' + url + '" alt=""></div>');
+							snapshotBody();
 						} catch (err) {
 							alert(err.message || 'آپلود تصویر ناموفق بود.');
 						}
@@ -234,7 +293,11 @@ templ NewsEditor(view NewsEditorView) {
 					form.addEventListener('submit', function () {
 						document.getElementById('title').value = document.getElementById('title_editor').innerHTML;
 						document.getElementById('excerpt').value = document.getElementById('excerpt_editor').innerHTML;
-						document.getElementById('body').value = document.getElementById('body_editor').innerHTML;
+						if (lastGoodBody) {
+							document.getElementById('body').value = lastGoodBody;
+						} else {
+							snapshotBody();
+						}
 					});
 				}
 			})();

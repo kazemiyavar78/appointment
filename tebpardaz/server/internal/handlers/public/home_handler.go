@@ -3,11 +3,14 @@ package public
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"tebpardaz/server/internal/booking"
+	"tebpardaz/server/internal/branding"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/news"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/pages"
@@ -78,7 +81,7 @@ func (h *HomeHandler) Get(c *gin.Context) {
 			clinicRows = loadHomeClinics(tc, h.Clinics)
 		}
 	default:
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 
@@ -91,12 +94,44 @@ func (h *HomeHandler) Get(c *gin.Context) {
 		ShowSpecialtiesLink: false,
 		Insurances:          loadHomeInsurances(tc, h.Clinics, h.Insurances),
 		Clinics:             toHomeClinicCards(clinicRows),
-		Doctors:             loadHomeDoctors(h.Listing, tc, h.Clinics, showClinic),
 		ShowClinicCards:     showClinic,
 		ShowClinicBadge:     showClinic,
 		NewsListURL:         "/news",
 	}
-	renderPublicLayout(c, tc, pages.Home(homeView), "home")
+	kind, place := publicSite(tc)
+	head := headFromMeta(seo.HomeMeta(kind, place, requestCanonical(c)))
+	head.JSONLD = homeJSONLD(c, tc)
+	RenderPublicLayoutWithHead(c, tc, pages.Home(homeView), "home", head)
+}
+
+// homeJSONLD گراف موجودیت صفحهٔ اصلی را از دادهٔ همان مستأجر می‌سازد.
+// ورودی: درخواست و مستأجر. خروجی: JSON-LD یا خالی. پلتفرم و مرکز دامنهٔ اختصاصی جدا هستند.
+func homeJSONLD(c *gin.Context, tc *tenant.Context) string {
+	kind, _ := publicSite(tc)
+	base := publicBaseURL(c)
+	pageURL := absolutePublicURL(c, "/")
+	switch kind {
+	case seo.SitePlatform:
+		return seo.PlatformHomeGraph(base, pageURL)
+	case seo.SiteClinic:
+		if tc == nil || tc.Clinic == nil || strings.TrimSpace(tc.Clinic.Name) == "" {
+			return ""
+		}
+		cl := tc.Clinic
+		return seo.TenantHomeGraph(seo.TenantHomeInput{
+			Origin:      seo.ClinicSchemaOrigin(base, cl.Domain, cl.IsActiveOnWebsite),
+			PageURL:     pageURL,
+			Name:        cl.Name,
+			Description: cl.Description,
+			Phone:       cl.Phone,
+			LogoURL:     seo.AbsoluteSchemaURL(base, branding.ClinicLogoURL(cl)),
+			Street:      cl.Address,
+			City:        cl.City.Name,
+			Province:    cl.City.Province,
+		})
+	default:
+		return ""
+	}
 }
 
 // loadHomeDoctors حداکثر ۱۰ پزشک برای صفحه اول را بارگذاری می‌کند.
@@ -203,6 +238,7 @@ func toHomeClinicCards(rows []models.Clinic) []components.ClinicCardView {
 		out = append(out, components.ClinicCardView{
 			ID:       row.ID,
 			Name:     row.Name,
+			Slug:     booking.ClinicPathKey(&row),
 			Address:  row.Address,
 			Phone:    row.Phone,
 			Province: row.City.Province,

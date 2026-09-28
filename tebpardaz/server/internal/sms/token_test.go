@@ -2,7 +2,12 @@ package sms
 
 import (
 	"encoding/base64"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
+
+	"tebpardaz/server/internal/config"
 )
 
 func TestEncryptPayload_roundTripFormat(t *testing.T) {
@@ -92,4 +97,39 @@ func TestClient_authHeader_dynamic(t *testing.T) {
 	if auth == "" {
 		t.Fatal("expected dynamic token")
 	}
+}
+
+// TestGenerateAuthToken_forClinicCode builds a live Authorization token for Postman.
+// Set LIVE_SMS_CLINIC_CODE (required). Optional: LIVE_SMS_IP (default 127.0.0.1).
+func TestGenerateAuthToken_forClinicCode(t *testing.T) {
+	raw := strings.TrimSpace(os.Getenv("LIVE_SMS_CLINIC_CODE"))
+	if raw == "" {
+		t.Fatal("set LIVE_SMS_CLINIC_CODE to the clinic HIS code, e.g. $env:LIVE_SMS_CLINIC_CODE=\"1001\"")
+	}
+	clinicCode, err := strconv.Atoi(raw)
+	if err != nil || clinicCode <= 0 {
+		t.Fatalf("LIVE_SMS_CLINIC_CODE=%q is not a positive int", raw)
+	}
+	ip := strings.TrimSpace(os.Getenv("LIVE_SMS_IP"))
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	gen, err := NewTokenGenerator(cfg.MessagingAESKey, cfg.MessagingHMACKey, cfg.MessagingUserCode)
+	if err != nil {
+		t.Fatalf("NewTokenGenerator: %v", err)
+	}
+	token, err := gen.Generate(clinicCode, ip)
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+
+	t.Logf("clinic_code=%d ip=%s user_code=%s", clinicCode, ip, cfg.MessagingUserCode)
+	t.Logf("POST %s/api/v1/outbound/send", strings.Replace(cfg.MessagingBaseURL, "localhost", "192.168.1.100", 1))
+	t.Logf("Content-Type: application/json")
+	t.Logf("Authorization: %s", token)
 }

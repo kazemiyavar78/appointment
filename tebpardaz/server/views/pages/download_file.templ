@@ -1,0 +1,494 @@
+package pages
+
+templ DownloadFile(data DownloadPageData) {
+	<!DOCTYPE html>
+	<html lang="fa-IR" dir="rtl">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ data.PageTitle }</title>
+		</head>
+		<body>
+		<style>
+
+:root{
+
+--color-background-primary:#fff;
+
+--color-background-secondary:#f3f4f6;
+
+--color-background-tertiary:#f9fafb;
+
+--color-border-tertiary:#e5e7eb;
+
+--color-border-secondary:#d1d5db;
+
+--color-text-primary:#111827;
+
+--color-text-secondary:#6b7280;
+
+--color-text-tertiary:#9ca3af;
+
+--border-radius-lg:12px;
+
+--border-radius-md:8px;
+
+--border-radius-xl:16px;
+
+--brand:#4f46e5;
+
+--brand-dark:#4338ca;
+
+--brand-light:#eef2ff;
+
+}
+
+*,*::before,*::after{box-sizing:border-box}
+
+body{margin:0;font-family:Tahoma,"Segoe UI",Arial,sans-serif;background:var(--color-background-tertiary)}
+
+.page{direction:rtl;background:var(--color-background-tertiary);min-height:100vh;position:relative}
+
+.header{background:var(--color-background-primary);border-bottom:1px solid var(--color-border-tertiary);padding:1rem}
+
+.container{max-width:480px;margin:0 auto;padding:0 1rem}
+
+.header-label{margin:0 0 0.2rem;font-size:12px;color:var(--brand);font-weight:500}
+
+.header-title{margin:0;font-size:1.25rem;font-weight:500;color:var(--color-text-primary)}
+
+.header-sub{margin:0.2rem 0 0;font-size:12px;color:var(--color-text-secondary)}
+
+.main{padding:1rem 0 2rem}
+
+.stack>*+*{margin-top:1rem}
+
+.card{background:var(--color-background-primary);border:1px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem}
+
+.card-title{margin:0 0 0.2rem;font-size:15px;font-weight:500;color:var(--color-text-primary)}
+
+.card-sub{margin:0;font-size:13px;color:var(--color-text-secondary);word-break:break-word}
+
+.status-box{text-align:center;padding:0.75rem 0}
+
+.status-box p{margin:0;font-size:13px;color:var(--color-text-secondary);line-height:1.7}
+
+.status-num{font-size:18px;font-weight:600;color:var(--brand)}
+
+.progress{margin-top:0.75rem;height:6px;background:var(--color-background-secondary);border-radius:999px;overflow:hidden}
+
+.progress-bar{height:100%;width:0%;background:var(--brand);border-radius:999px;transition:width 1s linear}
+
+.btn-dl{display:flex;align-items:center;justify-content:center;gap:0.4rem;width:100%;padding:0.75rem 1rem;border:none;border-radius:var(--border-radius-lg);background:#d1d5db;color:#6b7280;font-size:15px;font-weight:500;text-align:center;text-decoration:none;cursor:not-allowed;pointer-events:none;font-family:inherit}
+
+.btn-dl.active{background:var(--brand);color:#fff;cursor:pointer;pointer-events:auto}
+
+.btn-dl.active:hover{background:var(--brand-dark)}
+
+.btn-dl-icon{font-size:17px;line-height:1}
+
+.not-ready{padding:0.75rem;text-align:center;font-size:13px;color:#92400e;background:#fef3c7;border-radius:var(--border-radius-md);border:1px solid #fde68a}
+
+
+
+.overlay-backdrop{position:fixed;inset:0;background:rgba(17,24,39,0.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+
+.overlay-card{background:var(--color-background-primary);border-radius:var(--border-radius-xl);border:1px solid var(--color-border-tertiary);width:100%;max-width:380px;overflow:hidden;position:relative;box-shadow:0 20px 40px rgba(0,0,0,0.18)}
+
+.overlay-close{position:absolute;top:10px;left:10px;width:36px;height:36px;border:none;background:rgba(0,0,0,0.45);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:18px;line-height:1;z-index:10}
+
+.overlay-close:hover{background:rgba(0,0,0,0.65)}
+
+.overlay-img{width:100%;aspect-ratio:16/9;background:var(--brand-light);overflow:hidden;position:relative}
+
+.overlay-img img{display:block;width:100%;height:100%;object-fit:cover}
+
+.slide-dots{display:flex;justify-content:center;gap:6px;padding:0.65rem 0 0}
+
+.slide-dot{width:7px;height:7px;border-radius:50%;border:none;padding:0;background:#c7d2fe;cursor:pointer}
+
+.slide-dot.active{background:var(--brand);transform:scale(1.15)}
+
+.overlay-body{padding:1.1rem 1.25rem 1rem}
+
+.overlay-badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:var(--brand-light);color:var(--brand-dark);margin-bottom:0.6rem}
+
+.overlay-title{margin:0 0 0.35rem;font-size:17px;font-weight:500;color:var(--color-text-primary)}
+
+.overlay-desc{margin:0 0 1rem;font-size:13px;color:var(--color-text-secondary);line-height:1.65;min-height:2.6em}
+
+.overlay-actions{display:flex;gap:0.65rem}
+
+.btn-cta{flex:1;padding:0.65rem 0.75rem;border:none;border-radius:var(--border-radius-md);background:var(--brand);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+
+.btn-cta:hover{background:var(--brand-dark)}
+
+.btn-skip{flex:1;padding:0.65rem 0.75rem;border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;color:var(--color-text-secondary);font-size:14px;cursor:pointer;font-family:inherit}
+
+.btn-skip:hover{background:var(--color-background-secondary)}
+
+.btn-skip:disabled,.overlay-close:disabled{opacity:0.55;cursor:not-allowed}
+
+.overlay-img.has-link{cursor:pointer}
+
+.overlay-link{display:inline-block;margin:-0.35rem 0 0.9rem;font-size:12px;color:var(--brand);word-break:break-all;text-decoration:none}
+
+.overlay-hint{text-align:center;padding:0.5rem 1.25rem 1rem;font-size:12px;color:var(--color-text-tertiary);line-height:1.6}
+
+.overlay-step{display:inline-block;margin-top:0.25rem;font-size:11px;color:var(--color-text-secondary)}
+
+.hidden{display:none!important}
+
+.fade-in{animation:fadeIn 0.35s ease}
+@@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+</style>
+		<div class="page" id="page">
+			<header class="header">
+				<div class="container">
+					<p class="header-label">درمانگاه</p>
+					<h1 class="header-title">{ data.ClinicName }</h1>
+					if data.ClinicPhone != "" {
+						<p class="header-sub">تلفن: { data.ClinicPhone }</p>
+					}
+				</div>
+			</header>
+			<main class="container main">
+				<div class="stack">
+					<section class="card">
+						<h2 class="card-title">{ data.CategoryLabel }</h2>
+						<p class="card-sub">{ data.Filename }</p>
+					</section>
+					<section class="card stack">
+						if !data.FileReady {
+							<p class="not-ready">فایل هنوز آماده نیست. لطفاً چند دقیقه دیگر دوباره تلاش کنید.</p>
+						} else {
+							<div class="status-box hidden" id="countdownBox">
+								<p>دانلود تا <span class="status-num" id="cdNum">۵</span> ثانیه دیگر فعال می‌شود</p>
+								<div class="progress"><div class="progress-bar" id="cdBar"></div></div>
+							</div>
+							<div class="status-box hidden" id="readyBox">
+								<p>فایل آماده دانلود است</p>
+							</div>
+							<a
+								class="btn-dl"
+								id="dlBtn"
+								href={ data.DownloadURL }
+								download
+								aria-disabled="true"
+							>
+								<span class="btn-dl-icon" aria-hidden="true">↓</span>
+								دانلود فایل
+							</a>
+						}
+					</section>
+				</div>
+			</main>
+			if data.FileReady {
+				<div id="adRoot"></div>
+			}
+		</div>
+		if data.FileReady {
+			<script>
+
+(function(){
+  var persianNums=['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+  function toPersian(n){return String(n).split('').map(function(c){return persianNums[c]||c}).join('')}
+
+  var countdownSeconds=5;
+  var dlActivated=false;
+  var countdownStarted=false;
+  var countdownTimer=null;
+  var slideTimer=null;
+  var skipTimer=null;
+  var slideIndex=0;
+  var slides=[];
+  var skipLocked=false;
+  var overlay=null;
+
+  var countdownBox=document.getElementById('countdownBox');
+  var readyBox=document.getElementById('readyBox');
+  var dlBtn=document.getElementById('dlBtn');
+  var cdNum=document.getElementById('cdNum');
+  var cdBar=document.getElementById('cdBar');
+
+  function pagePath(){return window.location.pathname.replace(/\/+$/,'')}
+
+  function safeLink(url){
+    url=String(url||'').trim();
+    if(!url||/\s/.test(url))return '';
+    if(url.indexOf('/')===0&&url.indexOf('//')!==0&&url.indexOf('\\')<0)return url;
+    if(/^https?:\/\//i.test(url))return url;
+    return '';
+  }
+
+  function safeImage(url){
+    url=String(url||'');
+    if(url.indexOf('/file-ads/media/')!==0||url.indexOf('..')>=0)return '';
+    return url;
+  }
+
+  function activateDownload(){
+    if(dlActivated)return;
+    dlActivated=true;
+    if(countdownBox)countdownBox.classList.add('hidden');
+    if(readyBox){readyBox.classList.remove('hidden');readyBox.classList.add('fade-in');}
+    if(dlBtn){dlBtn.classList.add('active');dlBtn.removeAttribute('aria-disabled');}
+  }
+
+  function startCountdown(){
+    if(countdownStarted||dlActivated)return;
+    countdownStarted=true;
+    var remaining=countdownSeconds;
+    if(countdownBox){countdownBox.classList.remove('hidden');countdownBox.classList.add('fade-in');}
+    if(cdNum)cdNum.textContent=toPersian(remaining);
+    if(cdBar)cdBar.style.width='0%';
+    countdownTimer=setInterval(function(){
+      remaining-=1;
+      if(cdNum)cdNum.textContent=toPersian(Math.max(remaining,0));
+      if(cdBar)cdBar.style.width=String(((countdownSeconds-remaining)/countdownSeconds)*100)+'%';
+      if(remaining<=0){
+        clearInterval(countdownTimer);
+        countdownTimer=null;
+        activateDownload();
+      }
+    },1000);
+  }
+
+  function closeAd(force){
+    if(skipLocked&&force!==true)return;
+    if(overlay)overlay.classList.add('hidden');
+    if(slideTimer){clearTimeout(slideTimer);slideTimer=null;}
+    if(skipTimer){clearInterval(skipTimer);skipTimer=null;}
+    skipLocked=false;
+    startCountdown();
+  }
+
+  function paintSkip(left){
+    var skipBtn=document.getElementById('skipBtn');
+    var closeBtn=document.getElementById('closeBtn');
+    if(skipBtn){
+      skipBtn.disabled=left>0;
+      skipBtn.textContent=left>0?('ادامه تا '+toPersian(left)+' ثانیه'):'ادامه به دانلود';
+    }
+    if(closeBtn)closeBtn.disabled=left>0;
+  }
+
+  function armSkip(seconds){
+    if(skipTimer){clearInterval(skipTimer);skipTimer=null;}
+    var left=Number(seconds)||0;
+    if(left<0)left=0;
+    skipLocked=left>0;
+    paintSkip(left);
+    if(left<=0)return;
+    skipTimer=setInterval(function(){
+      left-=1;
+      if(left<=0){
+        clearInterval(skipTimer);
+        skipTimer=null;
+        skipLocked=false;
+        paintSkip(0);
+        return;
+      }
+      paintSkip(left);
+    },1000);
+  }
+
+  function scheduleAdvance(){
+    if(slideTimer){clearTimeout(slideTimer);slideTimer=null;}
+    if(slides.length<2)return;
+    var seconds=Number(slides[slideIndex].showSeconds)||5;
+    slideTimer=setTimeout(function(){renderSlide(slideIndex+1);},seconds*1000);
+  }
+
+  function trackClick(id){
+    if(!id)return;
+    var url=pagePath()+'/ads/'+encodeURIComponent(id)+'/click';
+    try{
+      if(navigator.sendBeacon){navigator.sendBeacon(url);return;}
+    }catch(e){}
+    fetch(url,{method:'POST',keepalive:true,cache:'no-store'});
+  }
+
+  function openCurrentLink(){
+    var slide=slides[slideIndex];
+    if(!slide)return;
+    var url=safeLink(slide.linkURL);
+    if(!url){closeAd(true);return;}
+    trackClick(slide.id);
+    if(slide.openInNewTab!==false){
+      window.open(url,'_blank','noopener,noreferrer');
+      closeAd(true);
+      return;
+    }
+    window.location.href=url;
+  }
+
+  function renderSlide(index){
+    if(!slides.length)return;
+    slideIndex=(index+slides.length)%slides.length;
+    var slide=slides[slideIndex];
+    var img=document.getElementById('adImage');
+    var wrap=document.getElementById('adImageWrap');
+    var title=document.getElementById('adTitle');
+    var desc=document.getElementById('adDesc');
+    var badge=document.getElementById('adBadge');
+    var cta=document.getElementById('ctaBtn');
+    var linkEl=document.getElementById('adLink');
+    var url=safeLink(slide.linkURL);
+    var image=safeImage(slide.imageURL);
+    if(img){img.src=image;img.alt=slide.title||'';}
+    if(wrap)wrap.classList.toggle('has-link',!!url);
+    if(title)title.textContent=slide.title||'';
+    if(desc)desc.textContent=slide.description||'';
+    if(badge)badge.textContent=slide.badgeText||'پیشنهاد ویژه';
+    if(cta){
+      cta.classList.toggle('hidden',!url);
+      cta.textContent=slide.buttonText||'مشاهده پیشنهاد';
+    }
+    if(linkEl){
+      linkEl.classList.toggle('hidden',!url);
+      linkEl.textContent=url;
+      linkEl.href=url||'#';
+    }
+    var dots=document.querySelectorAll('.slide-dot');
+    for(var i=0;i<dots.length;i++)dots[i].classList.toggle('active',i===slideIndex);
+    scheduleAdvance();
+  }
+
+  function mountOverlay(items){
+    slides=items.filter(function(s){return s&&safeImage(s.imageURL);});
+    if(!slides.length){startCountdown();return;}
+    var root=document.getElementById('adRoot');
+    if(!root){startCountdown();return;}
+    root.textContent='';
+    overlay=document.createElement('div');
+    overlay.className='overlay-backdrop';
+    overlay.id='overlay';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    overlay.setAttribute('aria-labelledby','adTitle');
+    var card=document.createElement('div');
+    card.className='overlay-card';
+    var closeBtn=document.createElement('button');
+    closeBtn.className='overlay-close';
+    closeBtn.id='closeBtn';
+    closeBtn.type='button';
+    closeBtn.setAttribute('aria-label','بستن تبلیغ');
+    closeBtn.textContent='×';
+    var imgWrap=document.createElement('div');
+    imgWrap.className='overlay-img';
+    imgWrap.id='adImageWrap';
+    var img=document.createElement('img');
+    img.id='adImage';
+    img.alt='';
+    imgWrap.appendChild(img);
+    var dotsWrap=document.createElement('div');
+    dotsWrap.className='slide-dots'+(slides.length<2?' hidden':'');
+    dotsWrap.id='slideDots';
+    var body=document.createElement('div');
+    body.className='overlay-body';
+    var badge=document.createElement('span');
+    badge.className='overlay-badge';
+    badge.id='adBadge';
+    var title=document.createElement('h3');
+    title.className='overlay-title';
+    title.id='adTitle';
+    var desc=document.createElement('p');
+    desc.className='overlay-desc';
+    desc.id='adDesc';
+    var linkEl=document.createElement('a');
+    linkEl.className='overlay-link hidden';
+    linkEl.id='adLink';
+    linkEl.dir='ltr';
+    linkEl.target='_blank';
+    linkEl.rel='noopener noreferrer';
+    var actions=document.createElement('div');
+    actions.className='overlay-actions';
+    var cta=document.createElement('button');
+    cta.className='btn-cta';
+    cta.id='ctaBtn';
+    cta.type='button';
+    var skip=document.createElement('button');
+    skip.className='btn-skip';
+    skip.id='skipBtn';
+    skip.type='button';
+    skip.textContent='ادامه به دانلود';
+    actions.appendChild(cta);
+    actions.appendChild(skip);
+    body.appendChild(badge);
+    body.appendChild(title);
+    body.appendChild(desc);
+    body.appendChild(linkEl);
+    body.appendChild(actions);
+    var hint=document.createElement('p');
+    hint.className='overlay-hint';
+    hint.appendChild(document.createTextNode('پس از بستن این پنجره، شمارش معکوس دانلود آغاز می‌شود.'));
+    var step=document.createElement('span');
+    step.className='overlay-step';
+    step.textContent='مرحله ۱ از ۲';
+    hint.appendChild(document.createElement('br'));
+    hint.appendChild(step);
+    card.appendChild(closeBtn);
+    card.appendChild(imgWrap);
+    card.appendChild(dotsWrap);
+    card.appendChild(body);
+    card.appendChild(hint);
+    overlay.appendChild(card);
+    root.appendChild(overlay);
+    if(slides.length>1){
+      for(var i=0;i<slides.length;i++){
+        (function(idx){
+          var dot=document.createElement('button');
+          dot.type='button';
+          dot.className='slide-dot'+(idx===0?' active':'');
+          dot.setAttribute('aria-label','اسلاید '+(idx+1));
+          dot.addEventListener('click',function(){renderSlide(idx);});
+          dotsWrap.appendChild(dot);
+        })(i);
+      }
+    }
+    closeBtn.addEventListener('click',function(){closeAd();});
+    skip.addEventListener('click',function(){closeAd();});
+    cta.addEventListener('click',openCurrentLink);
+    imgWrap.addEventListener('click',function(){if(safeLink(slides[slideIndex]&&slides[slideIndex].linkURL))openCurrentLink();});
+    linkEl.addEventListener('click',function(e){e.preventDefault();openCurrentLink();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay)closeAd();});
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&overlay&&!overlay.classList.contains('hidden'))closeAd();
+    });
+    var skipFor=0;
+    for(var s=0;s<slides.length;s++){
+      var n=Number(slides[s].skipAfterSeconds)||0;
+      if(n>skipFor)skipFor=n;
+    }
+    renderSlide(0);
+    armSkip(skipFor);
+  }
+
+  function loadAds(){
+    var url=pagePath()+'/ads?_='+Date.now();
+    fetch(url,{
+      method:'POST',
+      cache:'no-store',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json','Cache-Control':'no-cache','Pragma':'no-cache'},
+      body:'{}'
+    }).then(function(res){
+      if(!res.ok)throw new Error('ads');
+      return res.json();
+    }).then(function(data){
+      var items=data&&data.slides?data.slides:[];
+      if(!items.length){startCountdown();return;}
+      mountOverlay(items);
+    }).catch(function(){startCountdown();});
+  }
+
+  loadAds();
+})();
+
+			</script>
+		}
+		</body>
+	</html>
+}

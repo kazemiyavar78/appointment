@@ -8,6 +8,7 @@ import (
 	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/pages"
 	"tebpardaz/shared/constants"
@@ -40,7 +41,7 @@ func (h *WeeklyScheduleHandler) Get(c *gin.Context) {
 		return
 	}
 	if tc.Layout != constants.LayoutOrgan && tc.Layout != constants.LayoutPrivate && tc.Layout != constants.LayoutPlatform {
-		c.Status(http.StatusNotFound)
+		NotFound(c)
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *WeeklyScheduleHandler) Get(c *gin.Context) {
 		} else {
 			view.EmptyMessage = "مرکز مشخص نیست."
 		}
-		renderPublicLayout(c, tc, pages.WeeklySchedule(view), "weekly-schedule")
+		h.render(c, tc, view, clinicOptions)
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *WeeklyScheduleHandler) Get(c *gin.Context) {
 	if !clinicIDAllowed(selectedClinicID, clinicOptions, showClinicFilter, tc) {
 		view.ClinicID = 0
 		view.InfoMessage = "مرکز انتخاب‌شده معتبر نیست. لطفاً دوباره انتخاب کنید."
-		renderPublicLayout(c, tc, pages.WeeklySchedule(view), "weekly-schedule")
+		h.render(c, tc, view, clinicOptions)
 		return
 	}
 
@@ -97,7 +98,7 @@ func (h *WeeklyScheduleHandler) Get(c *gin.Context) {
 		if !bag.UpdatedAt.IsZero() {
 			view.UpdatedAt = bag.UpdatedAt.Format("15:04")
 		}
-		renderPublicLayout(c, tc, pages.WeeklySchedule(view), "weekly-schedule")
+		h.render(c, tc, view, clinicOptions)
 		return
 	}
 
@@ -116,7 +117,39 @@ func (h *WeeklyScheduleHandler) Get(c *gin.Context) {
 			view.EmptyMessage = "نوبتی برای نمایش وجود ندارد."
 		}
 	}
-	renderPublicLayout(c, tc, pages.WeeklySchedule(view), "weekly-schedule")
+	h.render(c, tc, view, clinicOptions)
+}
+
+// render برنامه هفتگی را با متادیتای همان میزبان رندر می‌کند.
+// ورودی: کانتکست، مستأجر، ویو و گزینه‌های مرکز. خروجی: ندارد.
+// نام مرکز فقط وقتی از داده واقعی انتخاب شده باشد در عنوان می‌آید. فیلتر query ایندکس نمی‌شود.
+func (h *WeeklyScheduleHandler) render(c *gin.Context, tc *tenant.Context, view pages.WeeklyScheduleView, options []pages.WeeklyScheduleClinicOption) {
+	kind, siteName := publicSite(tc)
+	place := weeklyPlaceName(kind, siteName, view.ClinicID, options)
+	filtered := seo.WeeklyFiltered(seo.WeeklyQuery{
+		Q:        c.Query("q"),
+		Date:     c.Query("date"),
+		Shift:    c.Query("shift"),
+		ClinicID: c.Query("clinic_id"),
+	})
+	meta := seo.WeeklyMeta(kind, place, requestCanonical(c), filtered)
+	RenderPublicLayoutWithHead(c, tc, pages.WeeklySchedule(view), "weekly-schedule", headFromMeta(meta))
+}
+
+// weeklyPlaceName نام مرکز انتخاب‌شده یا برند مستأجر را برای عنوان برمی‌گرداند.
+// ورودی: نوع سایت، نام برند، شناسه مرکز انتخاب‌شده، گزینه‌ها. خروجی: نام، یا خالی برای پلتفرم بدون انتخاب مرکز.
+func weeklyPlaceName(kind seo.SiteKind, siteName string, clinicID uint, options []pages.WeeklyScheduleClinicOption) string {
+	if clinicID != 0 {
+		for _, opt := range options {
+			if opt.ID == clinicID && strings.TrimSpace(opt.Name) != "" {
+				return opt.Name
+			}
+		}
+	}
+	if kind == seo.SitePlatform {
+		return ""
+	}
+	return siteName
 }
 
 // clinicOptionsForTenant گزینه‌های انتخاب مرکز را برای لایه فعلی می‌سازد.

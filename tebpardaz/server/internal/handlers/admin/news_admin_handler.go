@@ -111,6 +111,7 @@ func (h *NewsAdminHandler) Create(c *gin.Context) {
 		return
 	}
 	if _, err := h.News.Create(in, clinicIDs(allowed)); err != nil {
+		fmt.Println(err)
 		msg := "خطا در ایجاد خبر."
 		if err == news.ErrInvalidInput {
 			msg = "عنوان الزامی است و خلاصه نباید بیش از ۱۲۰ کاراکتر باشد."

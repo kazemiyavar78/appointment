@@ -787,7 +787,7 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 1.25rem 1rem 3rem;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 @media (min-width: 768px) {
@@ -857,35 +857,33 @@
 }
 
 /* جداول شیشه‌ای (Glass Tables) */
-.admin-shell .ui-table {
+.admin-shell .ui-table,
+.admin-shell table {
   width: 100%;
   border-collapse: collapse;
   color: #f1f5f9;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .admin-shell .ui-table thead,
 .admin-shell .ui-table tr.bg-surface-soft,
-.admin-shell .ui-table th {
+.admin-shell .ui-table th,
+.admin-shell table thead,
+.admin-shell table th {
   background-color: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
   font-weight: 600 !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
-  padding: 0.85rem 1rem;
 }
 
-.admin-shell .ui-table td {
+.admin-shell .ui-table td,
+.admin-shell table td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
   color: #e2e8f0 !important;
-  padding: 0.85rem 1rem;
 }
 
-.admin-shell .ui-table tbody tr:hover td,
-.admin-shell .ui-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  color: #ffffff !important;
-}
-
-.admin-shell .ui-table tr:last-child td {
+.admin-shell .ui-table tr:last-child td,
+.admin-shell table tr:last-child td {
   border-bottom: 0 !important;
 }
 
@@ -1141,6 +1139,109 @@
   border-color: rgba(110, 231, 183, 0.4);
 }
 
+/* ==========================================================================
+   صفحه ورود ادمین (Admin Login Glassmorphism)
+   ========================================================================== */
+.admin-login-shell {
+  min-height: 100vh;
+}
+
+.admin-login-main {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.25rem 1rem;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 30px rgba(139, 92, 246, 0.15);
+}
+
+@media (min-width: 640px) {
+  .admin-login-card {
+    padding: 2rem 1.75rem;
+  }
+}
+
+.admin-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-login-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(236, 72, 153, 0.35) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.35);
+  color: #ffffff;
+  font-size: 1.25rem;
+}
+
+.admin-login-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.admin-login-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 300;
+  color: #cbd5e1;
+}
+
+.admin-login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.65rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.admin-login-error i {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.admin-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-login-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
 /* فیلتر لیست پزشکان: موبایل جمع‌شو، دسکتاپ همیشه باز */
 .doctor-list-filters-mobile {
   display: block;
@@ -1195,6 +1296,171 @@
 
 .ui-table tbody tr:hover td {
   background: rgba(232, 245, 240, 0.45);
+}
+
+/* پنل ادمین: هاور/فوکوس جدول نباید ردیف را سفید کند */
+.admin-shell table tbody tr:hover,
+.admin-shell table tbody tr:hover > td,
+.admin-shell table tbody tr:focus,
+.admin-shell table tbody tr:focus > td,
+.admin-shell table tbody tr:focus-within,
+.admin-shell table tbody tr:focus-within > td,
+.admin-shell table tbody tr:active,
+.admin-shell table tbody tr:active > td,
+.admin-shell .ui-table tbody tr:hover,
+.admin-shell .ui-table tbody tr:hover td,
+.admin-shell .ui-table tbody tr:focus-within,
+.admin-shell .ui-table tbody tr:focus-within td,
+.admin-modal table tbody tr:hover,
+.admin-modal table tbody tr:hover > td,
+.admin-modal table tbody tr:focus-within,
+.admin-modal table tbody tr:focus-within > td {
+  background-color: rgba(139, 92, 246, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell .hover\:bg-surface-soft:hover,
+.admin-shell .hover\:bg-surface-soft\/50:hover,
+.admin-shell .hover\:bg-surface-soft\/60:hover,
+.admin-shell .hover\:bg-gray-50:hover,
+.admin-shell .hover\:bg-gray-100:hover,
+.admin-shell summary:hover,
+.admin-shell summary:focus,
+.admin-shell summary:focus-visible {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell table button:hover,
+.admin-shell table a:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell table button:focus,
+.admin-shell table button:focus-visible,
+.admin-shell table a:focus,
+.admin-shell table a:focus-visible {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  outline: 2px solid rgba(167, 139, 250, 0.65);
+  outline-offset: 1px;
+}
+
+/* مودال ادمین: overlay روی viewport با اسکرول داخلی */
+.admin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.admin-modal.hidden {
+  display: none !important;
+}
+
+.admin-modal-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 56rem;
+  max-height: 90vh;
+  margin: auto;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 0.85rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  color: #f1f5f9;
+}
+
+.admin-shell .admin-modal .bg-white,
+.admin-shell .admin-modal-dialog,
+.admin-modal .bg-white {
+  background: rgba(15, 23, 42, 0.96) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: #f1f5f9;
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-modal .ui-btn,
+.admin-modal .ui-btn-ghost {
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #f1f5f9 !important;
+}
+
+.admin-modal .ui-btn:hover,
+.admin-modal .ui-btn-ghost:hover,
+.admin-modal .ui-btn:focus,
+.admin-modal .ui-btn-ghost:focus {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.admin-modal a {
+  color: #c4b5fd;
+}
+
+.admin-modal-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1rem;
+  max-height: calc(90vh - 4.5rem);
+  color: #e2e8f0;
+}
+
+.admin-modal-table-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+}
+
+.admin-modal table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #e2e8f0;
+}
+
+.admin-modal table th,
+.admin-modal table td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.admin-modal table th {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+body.admin-modal-open {
+  overflow: hidden;
 }
 
 /* احترام به کاهش حرکت */
@@ -1271,6 +1537,37 @@
   display: block;
   max-height: 2.7em;
   overflow: hidden;
+}
+
+/*
+  News body images must stay in DOM order on RTL pages.
+  In the editor, override Tailwind preflight (img { display:block }) so the
+  contenteditable host does not hoist block images above the surrounding text.
+*/
+.news-rich-body {
+  unicode-bidi: isolate;
+}
+
+.news-rich-body img,
+.news-body-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+}
+
+.news-rich-editor img {
+  display: inline-block !important;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  vertical-align: middle;
+}
+
+.news-body-image {
+  display: block;
+  margin: 0.75rem 0;
 }
 
 /* Compact notice list: one column on phone, two from tablet. */
@@ -1672,4 +1969,184 @@
   -webkit-animation: wq-pulse 0.5s ease-out;
   animation: wq-pulse 0.5s ease-out;
   display: inline-block;
+}
+
+/* نظرسنجی: امتیاز با ایموجی و پیام تشکر */
+.rv-summary {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.rv-summary__face,
+.rv-score__face,
+.rv-rate__face,
+.rv-thanks__emoji {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  line-height: 1;
+}
+
+.rv-summary__face {
+  font-size: 1.75rem;
+}
+
+.rv-summary__num {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0B6E4F;
+}
+
+.rv-summary__of {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4A5568;
+}
+
+.rv-score {
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0B6E4F;
+}
+
+.rv-score__face {
+  font-size: 1.15rem;
+}
+
+.rv-rate {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.rv-rate__opt {
+  position: relative;
+  -webkit-box-flex: 1;
+  -ms-flex: 1 1 4.2rem;
+  flex: 1 1 4.2rem;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 5.25rem;
+  margin: 0;
+  padding: 0.55rem 0.2rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.85rem;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.rv-rate__opt input {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.rv-rate__face {
+  font-size: 1.85rem;
+  -webkit-filter: grayscale(100%);
+  filter: grayscale(100%);
+  opacity: 0.45;
+}
+
+.rv-rate__label {
+  font-size: 0.75rem;
+  color: #4A5568;
+}
+
+.rv-rate__opt input:checked + .rv-rate__face,
+.rv-rate__opt input:focus-visible + .rv-rate__face {
+  -webkit-filter: none;
+  filter: none;
+  opacity: 1;
+  -webkit-transform: scale(1.12);
+  transform: scale(1.12);
+}
+
+.rv-rate__opt input:checked + .rv-rate__face + .rv-rate__label {
+  color: #0B6E4F;
+  font-weight: 700;
+}
+
+.rv-rate__opt:hover .rv-rate__face,
+.rv-rate__opt:focus-within .rv-rate__face {
+  -webkit-filter: none;
+  filter: none;
+  opacity: 1;
+}
+
+.rv-rate__opt:focus-within {
+  outline: 2px solid #0B6E4F;
+  outline-offset: 2px;
+}
+
+.rv-rate__opt:has(input:checked) {
+  border-color: #0B6E4F;
+  background: #E8F6F0;
+  -webkit-box-shadow: 0 0 0 1px #0B6E4F;
+  box-shadow: 0 0 0 1px #0B6E4F;
+}
+
+.rv-thanks {
+  border: 1px solid #A7F3D0;
+  border-radius: 0.85rem;
+  background: #ECFDF5;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.rv-thanks__emoji {
+  margin: 0;
+  font-size: 2.5rem;
+}
+
+.rv-thanks__title {
+  margin: 0.55rem 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #065F46;
+}
+
+.rv-thanks__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #047857;
 }

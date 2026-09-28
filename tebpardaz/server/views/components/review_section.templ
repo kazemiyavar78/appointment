@@ -1,6 +1,9 @@
 package components
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // ReviewItemView یک نظر تأییدشده برای نمایش است.
 type ReviewItemView struct {
@@ -23,6 +26,62 @@ type ReviewSectionView struct {
 	ClinicID     string
 	InfoMessage  string
 	ErrorMessage string
+	// Submitted یعنی نظر همین الان ثبت شده و به‌جای فرم، پیام تشکر نشان داده شود.
+	Submitted bool
+}
+
+// RatingChoice یک گزینه امتیاز با ایموجی است.
+type RatingChoice struct {
+	Value string
+	Emoji string
+	Label string
+}
+
+// RatingChoices گزینه‌های امتیاز را از عالی تا خیلی بد برمی‌گرداند.
+// ورودی: ندارد. خروجی: پنج گزینه با مقدار ۱ تا ۵.
+func RatingChoices() []RatingChoice {
+	return []RatingChoice{
+		{Value: "5", Emoji: "😍", Label: "عالی"},
+		{Value: "4", Emoji: "🙂", Label: "خوب"},
+		{Value: "3", Emoji: "😐", Label: "متوسط"},
+		{Value: "2", Emoji: "🙁", Label: "بد"},
+		{Value: "1", Emoji: "😞", Label: "خیلی بد"},
+	}
+}
+
+// RatingEmoji امتیاز ۱ تا ۵ را به ایموجی متناظر برمی‌گرداند.
+// ورودی: امتیاز عددی. خروجی: ایموجی، یا رشته خالی اگر خارج از بازه باشد.
+func RatingEmoji(n int) string {
+	for _, opt := range RatingChoices() {
+		if opt.Value == fmt.Sprintf("%d", n) {
+			return opt.Emoji
+		}
+	}
+	return ""
+}
+
+// RatingLabel برچسب فارسی امتیاز ۱ تا ۵ را برمی‌گرداند.
+// ورودی: امتیاز عددی. خروجی: برچسب، یا رشته خالی اگر خارج از بازه باشد.
+func RatingLabel(n int) string {
+	for _, opt := range RatingChoices() {
+		if opt.Value == fmt.Sprintf("%d", n) {
+			return opt.Label
+		}
+	}
+	return ""
+}
+
+// AverageEmoji نزدیک‌ترین ایموجی به میانگین امتیاز را برمی‌گرداند.
+// ورودی: میانگین. خروجی: ایموجی ۱ تا ۵.
+func AverageEmoji(v float64) string {
+	n := int(math.Round(v))
+	if n < 1 {
+		n = 1
+	}
+	if n > 5 {
+		n = 5
+	}
+	return RatingEmoji(n)
 }
 
 // formatAvg میانگین را با یک رقم اعشار برمی‌گرداند.
@@ -32,7 +91,7 @@ func formatAvg(v float64) string {
 
 // ReviewSection امتیاز، نظرات تأییدشده و فرم ثبت را رندر می‌کند.
 templ ReviewSection(view ReviewSectionView) {
-	<section class="ui-section">
+	<section class="ui-section rv-section">
 		<div class="ui-section-head">
 			<h2 class="ui-section-title">
 				if view.Title != "" {
@@ -47,9 +106,10 @@ templ ReviewSection(view ReviewSectionView) {
 			if view.Count == 0 {
 				<p class="text-sm text-ink-muted">هنوز امتیازی ثبت نشده است.</p>
 			} else {
-				<p class="text-lg font-bold text-brand tabular-nums">
-					{ formatAvg(view.Average) }
-					<span class="text-sm font-medium text-ink-muted"> از ۵</span>
+				<p class="rv-summary">
+					<span class="rv-summary__face" aria-hidden="true">{ AverageEmoji(view.Average) }</span>
+					<span class="rv-summary__num">{ formatAvg(view.Average) }</span>
+					<span class="rv-summary__of">از ۵</span>
 				</p>
 				<p class="mt-1 text-sm text-ink-muted">بر اساس { fmt.Sprintf("%d", view.Count) } امتیاز</p>
 			}
@@ -60,8 +120,13 @@ templ ReviewSection(view ReviewSectionView) {
 				for _, item := range view.Items {
 					<li class="ui-panel !p-3">
 						<div class="mb-1 flex flex-wrap items-center justify-between gap-2">
-							<p class="text-sm font-bold text-ink">{ item.AuthorName }</p>
-							<p class="text-xs font-bold text-brand tabular-nums">{ fmt.Sprintf("%d", item.Rating) } / ۵</p>
+							if item.AuthorName != "" {
+								<p class="text-sm font-bold text-ink">{ item.AuthorName }</p>
+							}
+							<p class="rv-score">
+								<span class="rv-score__face" aria-hidden="true">{ RatingEmoji(item.Rating) }</span>
+								<span>{ RatingLabel(item.Rating) }</span>
+							</p>
 						</div>
 						if item.Body != "" {
 							<p class="text-sm leading-relaxed text-ink-muted">{ item.Body }</p>
@@ -74,11 +139,17 @@ templ ReviewSection(view ReviewSectionView) {
 		if view.ErrorMessage != "" {
 			<p class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{ view.ErrorMessage }</p>
 		}
-		if view.InfoMessage != "" {
+		if view.InfoMessage != "" && !view.Submitted {
 			<p class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">{ view.InfoMessage }</p>
 		}
 
-		if view.FormAction != "" {
+		if view.Submitted {
+			<div class="rv-thanks" role="status">
+				<p class="rv-thanks__emoji" aria-hidden="true">🙏</p>
+				<p class="rv-thanks__title">از نظر ارزشمند شما سپاسگزاریم</p>
+				<p class="rv-thanks__text">نظر شما حتماً بررسی می‌شود.</p>
+			</div>
+		} else if view.FormAction != "" {
 			<form class="ui-panel space-y-3" method="post" action={ templ.SafeURL(view.FormAction) } autocomplete="off">
 				<input type="hidden" name="csrf_token" value={ view.CSRFToken }/>
 				<input type="hidden" name="target_type" value={ view.TargetType }/>
@@ -87,22 +158,19 @@ templ ReviewSection(view ReviewSectionView) {
 				<input type="hidden" name="redirect" value={ view.RedirectURL }/>
 				<p class="text-sm font-bold text-ink">ثبت نظر و امتیاز</p>
 				<div>
-					<label class="ui-label" for="author_name">نام شما</label>
-					<input id="author_name" name="author_name" class="ui-field" maxlength="100" required/>
+					<p class="ui-label" id="rating-label">امتیاز شما</p>
+					<div class="rv-rate" role="radiogroup" aria-labelledby="rating-label">
+						for _, opt := range RatingChoices() {
+							<label class="rv-rate__opt">
+								<input type="radio" name="rating" value={ opt.Value } required/>
+								<span class="rv-rate__face" aria-hidden="true">{ opt.Emoji }</span>
+								<span class="rv-rate__label">{ opt.Label }</span>
+							</label>
+						}
+					</div>
 				</div>
 				<div>
-					<label class="ui-label" for="rating">امتیاز (۱ تا ۵)</label>
-					<select id="rating" name="rating" class="ui-field" required>
-						<option value="">انتخاب کنید…</option>
-						<option value="5">۵</option>
-						<option value="4">۴</option>
-						<option value="3">۳</option>
-						<option value="2">۲</option>
-						<option value="1">۱</option>
-					</select>
-				</div>
-				<div>
-					<label class="ui-label" for="body">متن نظر (اختیاری — پس از تأیید نمایش داده می‌شود)</label>
+					<label class="ui-label" for="body">متن نظر (اختیاری)</label>
 					<textarea id="body" name="body" class="ui-field min-h-[5rem]" maxlength="1000" rows="3"></textarea>
 				</div>
 				<button type="submit" class="ui-btn ui-btn-primary">ارسال</button>

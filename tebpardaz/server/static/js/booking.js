@@ -61,11 +61,37 @@
     }
   }
 
+  /** نمایش خطای پایدار سرور روی صفحه و پنل OTP */
+  function showServerError(message) {
+    var alertEl = $("booking-server-error");
+    if (alertEl) {
+      alertEl.textContent = message || "خطا در ثبت نوبت";
+      alertEl.classList.remove("bk-hidden");
+    }
+    var otpStatusEl = $("booking-otp-status");
+    if (otpStatusEl) {
+      otpStatusEl.textContent = message || "خطا در ثبت نوبت";
+      otpStatusEl.classList.remove("is-ok");
+      otpStatusEl.classList.add("is-error");
+    }
+  }
+
+  /** پاک کردن بنر خطای سرور */
+  function clearServerError() {
+    var alertEl = $("booking-server-error");
+    if (alertEl) {
+      alertEl.textContent = "";
+      alertEl.classList.add("bk-hidden");
+    }
+  }
+
   /** باز کردن مودال نتیجه */
   function openModal(ok, message, extra) {
     var modal = $("booking-result-modal");
     var msgEl = $("bk-modal-message");
     var summary = $("bk-modal-summary");
+    var trackRow = $("bk-modal-tracking-row");
+    var trackEl = $("bk-modal-tracking");
     if (!modal) return;
     modal.classList.remove("bk-hidden", "is-error");
     modal.setAttribute("aria-hidden", "false");
@@ -76,21 +102,25 @@
         summary.classList.remove("bk-hidden");
         if ($("bk-modal-slot")) $("bk-modal-slot").textContent = extra.slot || "";
         if ($("bk-modal-patient")) $("bk-modal-patient").textContent = extra.patient || "";
-        if ($("bk-modal-tracking")) $("bk-modal-tracking").textContent = extra.tracking || "";
+        var tracking = extra.tracking || "";
+        if (trackRow) {
+          if (tracking) {
+            trackRow.classList.remove("bk-hidden");
+            if (trackEl) trackEl.textContent = tracking;
+          } else {
+            trackRow.classList.add("bk-hidden");
+            if (trackEl) trackEl.textContent = "";
+          }
+        } else if (trackEl) {
+          trackEl.textContent = tracking;
+        }
       } else {
         summary.classList.add("bk-hidden");
+        if (trackRow) trackRow.classList.add("bk-hidden");
       }
     }
     var title = $("bk-modal-title");
     if (title) title.textContent = ok ? "نوبت با موفقیت ثبت شد" : "ثبت نوبت ناموفق";
-  }
-
-  function closeModal() {
-    var modal = $("booking-result-modal");
-    if (modal) {
-      modal.classList.add("bk-hidden");
-      modal.setAttribute("aria-hidden", "true");
-    }
   }
 
   function wsURL(path) {
@@ -153,7 +183,9 @@
       for (i = 0; i < boxes.length; i++) code += boxes[i].value || "";
       if (hidden) hidden.value = code;
       var verifyBtn = $("booking-otp-verify");
-      if (verifyBtn) verifyBtn.disabled = code.length < 5;
+      if (verifyBtn && !verifyBtn.classList.contains("is-locked")) {
+        verifyBtn.disabled = code.length < 5;
+      }
       if (code.length === 5 && onComplete) onComplete(code);
     }
 
@@ -208,8 +240,33 @@
     var nationalInput = $("national_id");
 
     var busy = false;
+    var settled = false;
+    var bookingSucceeded = false;
+    var verifying = false;
+    var otpLocked = false;
     var cooldownTimer = null;
     var selectedSlotLabel = "";
+
+    /** قفل دائمی دکمه تایید پس از صحت کد OTP تا از ثبت تکراری جلوگیری شود */
+    function lockOTPAfterVerify() {
+      otpLocked = true;
+      verifying = false;
+      if (otpVerifyBtn) {
+        otpVerifyBtn.disabled = true;
+        otpVerifyBtn.classList.add("is-loading", "is-locked");
+      }
+      if (otpBackBtn) {
+        otpBackBtn.disabled = true;
+        otpBackBtn.classList.add("bk-hidden");
+      }
+      if (otpResendBtn) otpResendBtn.classList.add("bk-hidden");
+      var boxes = document.querySelectorAll(".bk-otp__box");
+      var b;
+      for (b = 0; b < boxes.length; b++) {
+        boxes[b].disabled = true;
+        boxes[b].readOnly = true;
+      }
+    }
 
     /** انتخاب نوبت */
     form.addEventListener("change", function (ev) {
@@ -282,7 +339,9 @@
         if (left <= 0) {
           clearInterval(cooldownTimer);
           if (otpTimerEl) otpTimerEl.textContent = "";
-          if (otpResendBtn) otpResendBtn.classList.remove("bk-hidden");
+          if (otpResendBtn && !otpLocked && !bookingSucceeded) {
+            otpResendBtn.classList.remove("bk-hidden");
+          }
           return;
         }
         if (otpTimerEl) otpTimerEl.textContent = "ارسال مجدد تا " + left + " ثانیه";
@@ -292,7 +351,8 @@
       cooldownTimer = setInterval(tick, 1000);
     }
 
-    function sendOTP(thenVerify) {
+    function sendOTP(forceResend) {
+      if (bookingSucceeded || otpLocked || busy) return;
       var result = V.validatePatientForm(form);
       V.showFieldErrors(result.errors);
       if (!result.ok) return;
@@ -304,12 +364,14 @@
         if (otpTicketInput) otpTicketInput.value = existing.ticket;
         showPanel(3);
         if ($("bk-otp-mobile-mask")) $("bk-otp-mobile-mask").textContent = maskMobile(mobile);
+        if ($("bk-otp-channel-notice")) $("bk-otp-channel-notice").classList.add("bk-hidden");
         setOtpStatus("موبایل قبلاً تایید شده است", false);
-        if (thenVerify) submitBooking();
+        lockOTPAfterVerify();
+        submitBooking();
         return;
       }
 
-      setOtpStatus("در حال ارسال کد…", false);
+      setOtpStatus(forceResend ? "در حال ارسال مجدد کد…" : "در حال بررسی کد…", false);
       fetch(otpSendURL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -321,6 +383,7 @@
           last_name: fd.get("last_name"),
           national_id: fd.get("national_id"),
           clinic_path: clinicPath,
+          resend: !!forceResend,
         }),
       })
         .then(function (res) {
@@ -330,16 +393,32 @@
         })
         .then(function (r) {
           if (!r.data.ok) {
-            setOtpStatus(r.data.message || "ارسال ناموفق", true);
+            var sendErr = r.data.message || "ارسال ناموفق";
+            setOtpStatus(sendErr, true);
+            showServerError(sendErr);
             if (r.status === 429) startCooldown(r.data.retry_after_sec || 7200);
             return;
           }
+          clearServerError();
           showPanel(3);
           if ($("bk-otp-mobile-mask")) $("bk-otp-mobile-mask").textContent = maskMobile(mobile);
+          if ($("bk-otp-channel-notice")) {
+            $("bk-otp-channel-notice").classList.toggle("bk-hidden", !!r.data.session_active);
+          }
           setOtpStatus(r.data.message || "کد ارسال شد", false);
-          startCooldown(OTP_COOLDOWN);
+          if (r.data.code_pending) {
+            var waitSec = parseInt(r.data.retry_after_sec, 10) || 0;
+            if (waitSec > 0) startCooldown(waitSec);
+            else if (otpResendBtn && !otpLocked && !bookingSucceeded) {
+              if (otpTimerEl) otpTimerEl.textContent = "";
+              otpResendBtn.classList.remove("bk-hidden");
+            }
+          } else {
+            startCooldown(OTP_COOLDOWN);
+          }
           if (r.data.session_active && r.data.otp_ticket) {
             if (otpTicketInput) otpTicketInput.value = r.data.otp_ticket;
+            lockOTPAfterVerify();
             submitBooking();
           } else {
             var boxes = document.querySelectorAll(".bk-otp__box");
@@ -348,6 +427,7 @@
         })
         .catch(function () {
           setOtpStatus("خطا در ارتباط با سرور", true);
+          showServerError("خطا در ارتباط با سرور");
         });
     }
 
@@ -359,17 +439,20 @@
 
     if (otpBackBtn) {
       otpBackBtn.addEventListener("click", function () {
+        if (otpLocked || busy || bookingSucceeded) return;
         showPanel(2);
       });
     }
 
     if (otpResendBtn) {
       otpResendBtn.addEventListener("click", function () {
-        sendOTP(false);
+        if (otpLocked || busy || bookingSucceeded) return;
+        sendOTP(true);
       });
     }
 
     function verifyAndBook() {
+      if (bookingSucceeded || otpLocked || verifying || busy) return;
       var fd = new FormData(form);
       var mobile = V.digitsOnly(fd.get("mobile"));
       var code = ($("otp_code") && $("otp_code").value) || "";
@@ -377,9 +460,10 @@
         setOtpStatus("کد ۵ رقمی را کامل وارد کنید", true);
         return;
       }
+      verifying = true;
       if (otpVerifyBtn) {
         otpVerifyBtn.disabled = true;
-        otpVerifyBtn.classList.add("is-loading");
+        otpVerifyBtn.classList.add("is-loading", "is-locked");
       }
       setOtpStatus("در حال بررسی…", false);
 
@@ -399,22 +483,29 @@
           });
         })
         .then(function (r) {
-          if (otpVerifyBtn) {
-            otpVerifyBtn.classList.remove("is-loading");
-            otpVerifyBtn.disabled = false;
-          }
           if (!r.data.ok || !r.data.otp_ticket) {
-            setOtpStatus(r.data.message || "کد نادرست", true);
+            verifying = false;
+            if (otpVerifyBtn) {
+              otpVerifyBtn.classList.remove("is-loading", "is-locked");
+              otpVerifyBtn.disabled = false;
+            }
+            var verifyErr = r.data.message || "کد نادرست";
+            setOtpStatus(verifyErr, true);
+            showServerError(verifyErr);
             return;
           }
+          clearServerError();
           if (otpTicketInput) otpTicketInput.value = r.data.otp_ticket;
           saveSession(mobile, r.data.otp_ticket, r.data.expires_at);
           setOtpStatus("تایید شد؛ در حال ثبت نوبت…", false);
+          lockOTPAfterVerify();
           submitBooking();
         })
         .catch(function () {
+          if (otpLocked) return;
+          verifying = false;
           if (otpVerifyBtn) {
-            otpVerifyBtn.classList.remove("is-loading");
+            otpVerifyBtn.classList.remove("is-loading", "is-locked");
             otpVerifyBtn.disabled = false;
           }
           setOtpStatus("خطا در ارتباط", true);
@@ -426,16 +517,49 @@
     }
 
     initOTPBoxes(function (code) {
-      if (code.length === 5 && !busy) verifyAndBook();
+      if (code.length === 5 && !busy && !otpLocked && !verifying) verifyAndBook();
     });
+
+    /** غیرفعال کردن ثبت مجدد پس از موفقیت */
+    function lockAfterSuccess() {
+      bookingSucceeded = true;
+      busy = true;
+      lockOTPAfterVerify();
+      if (otpVerifyBtn) otpVerifyBtn.classList.remove("is-loading");
+    }
+
+    /** رفتن به صفحه اصلی پس از نتیجه نهایی؛ بازگشت به مراحل رزرو مجاز نیست */
+    function goHome() {
+      window.location.href = "/";
+    }
+
+    /** اعمال نتیجه نهایی رزرو. پاسخ سرور بر خطای قطع ارتباط اولویت دارد. */
+    function finishBooking(ok, message, extra, fromServer) {
+      if (settled && !fromServer) return;
+      if (settled && fromServer && bookingSucceeded) return;
+      settled = true;
+      busy = false;
+      if (otpVerifyBtn) otpVerifyBtn.classList.remove("is-loading");
+      if (ok) {
+        clearServerError();
+        lockAfterSuccess();
+        setStepper(4);
+        openModal(true, message, extra);
+        return;
+      }
+      lockOTPAfterVerify();
+      if (otpVerifyBtn) otpVerifyBtn.classList.remove("is-loading");
+      showServerError(message || "ثبت نوبت ناموفق بود");
+      openModal(false, message || "ثبت نوبت ناموفق بود", null);
+    }
 
     /** ثبت نوبت از طریق WebSocket */
     function submitBooking() {
-      if (busy) return;
+      if (busy || bookingSucceeded) return;
       var result = V.validatePatientForm(form);
       if (!result.ok) {
         V.showFieldErrors(result.errors);
-        showPanel(2);
+        if (!otpLocked) showPanel(2);
         return;
       }
       if (!otpTicketInput || !otpTicketInput.value) {
@@ -444,17 +568,18 @@
       }
 
       busy = true;
+      settled = false;
+      clearServerError();
       if (otpVerifyBtn) {
         otpVerifyBtn.disabled = true;
-        otpVerifyBtn.classList.add("is-loading");
+        otpVerifyBtn.classList.add("is-loading", "is-locked");
       }
 
       var socket;
       try {
         socket = new WebSocket(wsURL(wsPath));
       } catch (e) {
-        openModal(false, "امکان برقراری ارتباط وجود ندارد");
-        busy = false;
+        finishBooking(false, "امکان برقراری ارتباط وجود ندارد", null, false);
         return;
       }
 
@@ -474,17 +599,11 @@
         }
         if (data.step) setProgressStep(data.step, data.status || "loading");
         if (data.done) {
-          busy = false;
-          if (otpVerifyBtn) {
-            otpVerifyBtn.classList.remove("is-loading");
-            otpVerifyBtn.disabled = false;
-          }
-          setStepper(4);
-          openModal(!!data.ok, data.message, {
+          finishBooking(data.ok === true, data.message, {
             slot: selectedSlotLabel || doctorName,
             patient: patientName.trim(),
-            tracking: data.external_id || "",
-          });
+            tracking: data.tracking_code || "",
+          }, true);
           try {
             socket.close();
           } catch (e) {}
@@ -492,24 +611,23 @@
       });
 
       socket.addEventListener("error", function () {
-        busy = false;
-        openModal(false, "خطا در ارتباط با سرور");
+        window.setTimeout(function () {
+          finishBooking(false, "خطا در ارتباط با سرور", null, false);
+        }, 50);
       });
 
       socket.addEventListener("close", function () {
-        if (busy) {
-          busy = false;
-          openModal(false, "ارتباط قطع شد");
-        }
+        if (settled) return;
+        window.setTimeout(function () {
+          if (busy && !settled) {
+            finishBooking(false, "ارتباط قطع شد", null, false);
+          }
+        }, 50);
       });
     }
 
-    if ($("bk-modal-close")) $("bk-modal-close").addEventListener("click", closeModal);
-    if ($("bk-modal-backdrop")) $("bk-modal-backdrop").addEventListener("click", closeModal);
     if ($("bk-modal-home")) {
-      $("bk-modal-home").addEventListener("click", function () {
-        window.location.href = "/";
-      });
+      $("bk-modal-home").addEventListener("click", goHome);
     }
   }
 

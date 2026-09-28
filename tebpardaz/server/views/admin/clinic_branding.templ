@@ -1,0 +1,111 @@
+package admin
+
+import "tebpardaz/server/views/layouts"
+
+// ClinicBrandingView drives the per-clinic logo and favicon upload page.
+type ClinicBrandingView struct {
+	Nav            layouts.AdminLayoutView
+	Message        string
+	Clinics        []ClinicOption
+	ShowClinicPick bool
+	ClinicID       uint
+	LogoURL        string
+	FaviconURL     string
+}
+
+// ClinicBranding renders clinic logo and favicon upload controls for admin users.
+templ ClinicBranding(view ClinicBrandingView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-3xl">
+			<div class="mb-4">
+				<h1 class="ui-page-title">لوگو و آیکون مرکز</h1>
+				<p class="mt-1 text-xs text-ink-muted">
+					لوگوی مرکز در نوار بالای سایت و favicon در تب مرورگر نمایش داده می‌شود.
+				</p>
+			</div>
+			if view.Message != "" {
+				<div class="ui-panel mb-4 text-sm font-medium text-brand-dark bg-brand/5 border border-brand/20">
+					{ view.Message }
+				</div>
+			}
+
+			if view.ShowClinicPick {
+				<div class="mb-6 rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+					<form class="flex flex-wrap items-end gap-3" method="get" action="/admin/clinic/branding">
+						<label class="block text-xs font-semibold text-ink-muted">
+							مرکز درمانی
+							<select class="ui-field mt-1.5 min-w-[14rem] text-sm" name="clinic_id" onchange="this.form.submit()" required>
+								<option value="">-- انتخاب مرکز درمانی --</option>
+								for _, clinic := range view.Clinics {
+									<option value={ formatUint(clinic.ID) } selected?={ clinic.Selected }>{ clinic.Name }</option>
+								}
+							</select>
+						</label>
+						<noscript>
+							<button class="ui-btn ui-btn-ghost text-xs" type="submit">نمایش</button>
+						</noscript>
+					</form>
+				</div>
+			} else if len(view.Clinics) == 1 {
+				<div class="mb-4 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 border border-surface-border text-xs text-ink font-medium">
+					<i class="fa-solid fa-hospital text-brand"></i>
+					مرکز درمانی: { view.Clinics[0].Name }
+				</div>
+			}
+
+			if view.ClinicID == 0 {
+				<div class="ui-panel text-center py-10 text-sm text-ink-muted">
+					<i class="fa-solid fa-hospital text-3xl mb-2 text-gray-300 block"></i>
+					لطفاً ابتدا یک مرکز درمانی را انتخاب نمایید.
+				</div>
+			} else {
+				<form class="ui-panel space-y-6" method="post" action="/admin/clinic/branding" enctype="multipart/form-data">
+					<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
+
+					<div class="space-y-3">
+						<h2 class="text-sm font-semibold text-ink">لوگوی مرکز</h2>
+						<p class="text-xs text-ink-muted">پیشنهاد: تصویر مربع با پس‌زمینه شفاف (PNG) — حداکثر ۵ مگابایت</p>
+						<label class="block text-sm text-ink-muted">
+							بارگذاری لوگو
+							<input class="mt-1 block text-sm" type="file" name="logo" accept="image/*"/>
+						</label>
+						if view.LogoURL != "" {
+							<div class="flex items-center gap-4">
+								<img class="h-16 w-16 rounded-full object-cover ring-2 ring-brand/15" src={ view.LogoURL } alt="لوگوی مرکز"/>
+								<label class="flex items-center gap-2 text-sm text-ink-muted">
+									<input type="checkbox" name="clear_logo" value="1"/>
+									حذف لوگو
+								</label>
+							</div>
+						}
+					</div>
+
+					<div class="space-y-3 border-t border-surface-border pt-6">
+						<h2 class="text-sm font-semibold text-ink">آیکون (Favicon)</h2>
+						<p class="text-xs text-ink-muted">پیشنهاد: ۳۲×۳۲ یا ۶۴×۶۴ پیکسل — فرمت PNG یا ICO</p>
+						<label class="block text-sm text-ink-muted">
+							بارگذاری favicon
+							<input class="mt-1 block text-sm" type="file" name="favicon" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/jpeg,image/webp"/>
+						</label>
+						if view.FaviconURL != "" {
+							<div class="flex items-center gap-4">
+								<img class="h-10 w-10 object-contain" src={ view.FaviconURL } alt="favicon مرکز"/>
+								<label class="flex items-center gap-2 text-sm text-ink-muted">
+									<input type="checkbox" name="clear_favicon" value="1"/>
+									حذف favicon
+								</label>
+							</div>
+						}
+					</div>
+
+					<div class="flex justify-end border-t border-surface-border pt-4">
+						<button class="ui-btn ui-btn-primary" type="submit">
+							<i class="fa-solid fa-floppy-disk ml-1"></i>
+							ذخیره
+						</button>
+					</div>
+				</form>
+			}
+		</div>
+	}
+}

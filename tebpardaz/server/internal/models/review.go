@@ -17,9 +17,11 @@ type Review struct {
 	// ClinicID برای محدوده تأیید ادمین مرکز استفاده می‌شود.
 	ClinicID   uint   `gorm:"not null;index" json:"clinic_id"`
 	AuthorName string `gorm:"type:nvarchar(100);not null;default:''" json:"author_name"`
+	// IPAddress آی‌پی نظر دهنده است.
+	IPAddress string `gorm:"column:ip_address;type:nvarchar(45);not null;default:''" json:"ip_address"`
 	// Rating امتیاز ۱ تا ۵ است.
-	Rating     int    `gorm:"type:int;not null" json:"rating"`
-	Body       string `gorm:"type:nvarchar(1000);not null;default:''" json:"body"`
+	Rating int    `gorm:"type:int;not null" json:"rating"`
+	Body   string `gorm:"type:nvarchar(1000);not null;default:''" json:"body"`
 	// IsApproved پس از تأیید ادمین، متن نظر نمایش داده می‌شود.
 	IsApproved bool `gorm:"type:bit;not null;default:false;index" json:"is_approved"`
 }

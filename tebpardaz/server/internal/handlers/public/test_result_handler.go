@@ -10,6 +10,7 @@ import (
 	"tebpardaz/server/internal/csrf"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/internal/testresult"
 	"tebpardaz/server/internal/websocket"
@@ -22,13 +23,13 @@ import (
 )
 
 const (
-	msgResultNotReady  = "هنوز جواب آزمایش آماده نشده است یا مرکز برای سرور ارسال نکرده است"
-	msgRateLimited     = "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید"
-	msgCSRFInvalid     = "نشست نامعتبر است؛ صفحه را تازه کنید و دوباره تلاش کنید"
-	msgInvalidForm     = "لطفاً همه فیلدهای لازم را به‌درستی وارد کنید"
-	msgClinicInvalid   = "کلینیک انتخاب‌شده معتبر نیست"
-	msgClinicOffline   = "ارتباط با مرکز برقرار نیست؛ کمی بعد دوباره تلاش کنید"
-	msgClinicTimeout   = "پاسخ مرکز به‌موقع نرسید؛ کمی بعد دوباره تلاش کنید"
+	msgResultNotReady   = "هنوز جواب آزمایش آماده نشده است یا مرکز برای سرور ارسال نکرده است"
+	msgRateLimited      = "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید"
+	msgCSRFInvalid      = "نشست نامعتبر است؛ صفحه را تازه کنید و دوباره تلاش کنید"
+	msgInvalidForm      = "لطفاً همه فیلدهای لازم را به‌درستی وارد کنید"
+	msgClinicInvalid    = "کلینیک انتخاب‌شده معتبر نیست"
+	msgClinicOffline    = "ارتباط با مرکز برقرار نیست؛ کمی بعد دوباره تلاش کنید"
+	msgClinicTimeout    = "پاسخ مرکز به‌موقع نرسید؛ کمی بعد دوباره تلاش کنید"
 	clinicLookupTimeout = 45 * time.Second
 )
 
@@ -258,7 +259,9 @@ func (h *TestResultHandler) renderForm(c *gin.Context, tc *tenant.Context, view 
 			view.CSRFToken = tok
 		}
 	}
-	renderPublicLayout(c, tc, pages.TestResultForm(view), "test-results")
+	kind, place := publicSite(tc)
+	meta := seo.TestResultMeta(kind, place, requestCanonical(c))
+	RenderPublicLayoutWithHead(c, tc, pages.TestResultForm(view), "test-results", headFromMeta(meta))
 }
 
 // clinicOptions lists clinics available in the current organ/platform tenant that have an active lab section.

@@ -16,19 +16,22 @@ import (
 const (
 	serviceNameMaxLen = 150
 	serviceDescMaxLen = 1000
+	servicePageSize   = 15
+	serviceQueryMax   = 100
 )
 
-// ServiceHandler عملیات مدیریت کاتالوگ خدمات و انتصاب آن‌ها به بیمه‌های مرکز و پزشکان را بر عهده دارد.
+// ServiceHandler عملیات مدیریت کاتالوگ خدمات و انتصاب آن‌ها به بیمه‌های مرکز، پزشکان و بخش‌ها را بر عهده دارد.
 type ServiceHandler struct {
 	Services   *repository.ServiceRepo
 	Insurances *repository.InsuranceRepo
 	Doctors    *repository.DoctorRepo
 	Clinics    *repository.ClinicRepo
+	Sections   *repository.SectionRepo
 	Scope      *auth.ClinicScope
 }
 
 // NewServiceHandler یک نمونه جدید از ServiceHandler می‌سازد.
-// ورودی: مخازن خدمات، بیمه‌ها، پزشکان، کلینیک‌ها و دامنه دسترسی کلینیک.
+// ورودی: مخازن خدمات، بیمه‌ها، پزشکان، کلینیک‌ها، بخش‌ها و دامنه دسترسی کلینیک.
 // خروجی: اشاره‌گر به ServiceHandler.
 func NewServiceHandler(
 	services *repository.ServiceRepo,
@@ -36,18 +39,20 @@ func NewServiceHandler(
 	doctors *repository.DoctorRepo,
 	clinics *repository.ClinicRepo,
 	scope *auth.ClinicScope,
+	sections *repository.SectionRepo,
 ) *ServiceHandler {
 	return &ServiceHandler{
 		Services:   services,
 		Insurances: insurances,
 		Doctors:    doctors,
 		Clinics:    clinics,
+		Sections:   sections,
 		Scope:      scope,
 	}
 }
 
-// List صفحه کاتالوگ خدمات را همراه با فرم ایجاد یا ویرایش خدمت رندر می‌کند.
-// ورودی: c کانتکست Gin (حاوی پارامترهای اختیاری edit و msg).
+// List صفحه کاتالوگ خدمات را همراه با فرم ایجاد یا ویرایش، جستجو و صفحه‌بندی رندر می‌کند.
+// ورودی: c کانتکست Gin (حاوی پارامترهای اختیاری edit، q، page و msg).
 // خروجی: صفحه HTML کاتالوگ خدمات.
 func (h *ServiceHandler) List(c *gin.Context) {
 	user, ok := auth.UserFromGin(c)
@@ -73,12 +78,10 @@ func (h *ServiceHandler) List(c *gin.Context) {
 		}
 	}
 
-	rows, err := h.Services.ListAll()
-	if err != nil {
+	if err := h.loadServiceCatalog(c, &view, nil); err != nil {
 		c.String(http.StatusInternalServerError, "خطا در بارگذاری لیست خدمات")
 		return
 	}
-	view.Items = toServiceRows(rows)
 	h.renderCatalog(c, view)
 }
 
@@ -103,7 +106,11 @@ func (h *ServiceHandler) Create(c *gin.Context) {
 		h.renderCatalogWithMessage(c, user, "خطا در ایجاد خدمت.")
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/services?msg=created")
+	if err := h.Services.ReplaceServicePackages(row.ID, parsePostedUintIDs(c, "package_ids")); err != nil {
+		c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref("", 1, row.ID, "packages_failed"))
+		return
+	}
+	c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref("", 1, 0, "created"))
 }
 
 // Update تغییرات یک خدمت موجود در کاتالوگ را ذخیره می‌کند.
@@ -127,19 +134,24 @@ func (h *ServiceHandler) Update(c *gin.Context) {
 		return
 	}
 
+	q, page := catalogQueryFromRequest(c)
 	name, description, msg := parseServiceFields(c)
 	if msg != "" {
-		c.Redirect(http.StatusFound, "/admin/services?edit="+strconv.FormatUint(uint64(id), 10)+"&msg=name_required")
+		c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, id, "name_required"))
 		return
 	}
 
 	row.Name = name
 	row.Description = description
 	if err := h.Services.Update(row); err != nil {
-		c.Redirect(http.StatusFound, "/admin/services?edit="+strconv.FormatUint(uint64(id), 10)+"&msg=update_failed")
+		c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, id, "update_failed"))
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/services?msg=updated")
+	if err := h.Services.ReplaceServicePackages(row.ID, parsePostedUintIDs(c, "package_ids")); err != nil {
+		c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, id, "packages_failed"))
+		return
+	}
+	c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, 0, "updated"))
 }
 
 // Delete یک خدمت را از کاتالوگ حذف کرده و انتصاب‌های آن را پاک می‌کند.
@@ -156,11 +168,12 @@ func (h *ServiceHandler) Delete(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+	q, page := catalogQueryFromRequest(c)
 	if err := h.Services.Delete(id); err != nil {
-		c.Redirect(http.StatusFound, "/admin/services?msg=delete_failed")
+		c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, 0, "delete_failed"))
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/services?msg=deleted")
+	c.Redirect(http.StatusFound, adminviews.ServiceCatalogHref(q, page, 0, "deleted"))
 }
 
 // ClinicInsuranceServicesForm فرم انتخاب مرکز، بیمه و انتصاب خدمات به آن بیمه را رندر می‌کند.
@@ -205,17 +218,11 @@ func (h *ServiceHandler) ClinicInsuranceServicesForm(c *gin.Context) {
 			for _, id := range assignedIDs {
 				assignedMap[id] = struct{}{}
 			}
-
-			view.Services = make([]adminviews.ServiceAssignOption, 0, len(allServices))
-			for _, s := range allServices {
-				_, isAssigned := assignedMap[s.ID]
-				view.Services = append(view.Services, adminviews.ServiceAssignOption{
-					ID:          s.ID,
-					Name:        s.Name,
-					Description: s.Description,
-					Selected:    isAssigned,
-				})
+			options, optErr := h.serviceAssignOptions(allServices, assignedMap)
+			if optErr != nil {
+				options = toServiceAssignOptions(allServices, assignedMap, nil)
 			}
+			view.Services = options
 		}
 	}
 
@@ -324,20 +331,14 @@ func (h *ServiceHandler) DoctorServicesForm(c *gin.Context) {
 				assignedMap[id] = struct{}{}
 			}
 		}
-
-		view.Services = make([]adminviews.ServiceAssignOption, 0, len(allServices))
-		for _, s := range allServices {
-			var isAssigned bool
-			if assignedMap != nil {
-				_, isAssigned = assignedMap[s.ID]
-			}
-			view.Services = append(view.Services, adminviews.ServiceAssignOption{
-				ID:          s.ID,
-				Name:        s.Name,
-				Description: s.Description,
-				Selected:    isAssigned,
-			})
+		options, optErr := h.serviceAssignOptions(allServices, assignedMap)
+		if optErr != nil {
+			options = toServiceAssignOptions(allServices, assignedMap, nil)
 		}
+		view.Services = options
+
+		packages, _ := h.Services.ListPackagesWithServiceIDs()
+		view.Packages = toServicePackageOptions(packages)
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
@@ -452,13 +453,106 @@ func (h *ServiceHandler) resolveClinicID(c *gin.Context, user *models.Appointmen
 func (h *ServiceHandler) renderCatalogWithMessage(c *gin.Context, user *models.AppointmentUser, message string) {
 	view := h.catalogView(user)
 	view.Message = message
-	rows, err := h.Services.ListAll()
-	if err != nil {
+	view.EditName = strings.TrimSpace(c.PostForm("name"))
+	view.EditDescription = strings.TrimSpace(c.PostForm("description"))
+	selected := parsePostedUintIDs(c, "package_ids")
+	if err := h.loadServiceCatalog(c, &view, &selected); err != nil {
 		c.String(http.StatusInternalServerError, "خطا در بارگذاری لیست خدمات")
 		return
 	}
-	view.Items = toServiceRows(rows)
 	h.renderCatalog(c, view)
+}
+
+// loadServiceCatalog لیست صفحه‌بندی‌شده خدمات، نام بسته‌ها و گزینه‌های فرم را پر می‌کند.
+// ورودی: c درخواست جاری، view مدل صفحه، explicitPackages انتخاب صریح بسته‌ها (nil یعنی خواندن از خدمت در حال ویرایش).
+// خروجی: خطای دیتابیس در صورت وقوع.
+func (h *ServiceHandler) loadServiceCatalog(c *gin.Context, view *adminviews.ServicePageView, explicitPackages *[]uint) error {
+	q, page := catalogQueryFromRequest(c)
+	view.SearchQuery = q
+	view.PageSize = servicePageSize
+
+	rows, total, err := h.Services.SearchServices(q, page, servicePageSize)
+	if err != nil {
+		return err
+	}
+	totalPages := 1
+	if total > 0 {
+		totalPages = int((total + int64(servicePageSize) - 1) / int64(servicePageSize))
+	}
+	if page > totalPages {
+		page = totalPages
+		rows, total, err = h.Services.SearchServices(q, page, servicePageSize)
+		if err != nil {
+			return err
+		}
+	}
+	view.Page = page
+	view.TotalPages = totalPages
+	view.Total = int(total)
+
+	ids := make([]uint, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	names, err := h.Services.ListPackageNamesByServiceIDs(ids)
+	if err != nil {
+		return err
+	}
+	view.Items = toServiceRows(rows, names)
+
+	var selected map[uint]struct{}
+	switch {
+	case explicitPackages != nil:
+		selected = uintSet(*explicitPackages)
+	case view.EditID > 0:
+		packageIDs, pkgErr := h.Services.ListPackageIDsByServiceID(view.EditID)
+		if pkgErr != nil {
+			return pkgErr
+		}
+		selected = uintSet(packageIDs)
+	}
+	packages, err := h.Services.ListPackages()
+	if err != nil {
+		return err
+	}
+	view.Packages = toPackageCheckOptions(packages, selected)
+	return nil
+}
+
+// catalogQueryFromRequest عبارت جستجو و شماره صفحه را از کوئری یا فرم می‌خواند.
+// ورودی: c کانتکست Gin. خروجی: عبارت جستجو و شماره صفحه حداقل ۱.
+func catalogQueryFromRequest(c *gin.Context) (string, int) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		q = strings.TrimSpace(c.PostForm("q"))
+	}
+	if len([]rune(q)) > serviceQueryMax {
+		q = string([]rune(q)[:serviceQueryMax])
+	}
+	raw := c.Query("page")
+	if raw == "" {
+		raw = c.PostForm("page")
+	}
+	page, _ := strconv.Atoi(raw)
+	if page < 1 {
+		page = 1
+	}
+	if page > 10000 {
+		page = 10000
+	}
+	return q, page
+}
+
+// uintSet شناسه‌های مثبت را به یک مجموعه تبدیل می‌کند.
+// ورودی: ids اسلایس شناسه. خروجی: نگاشت شناسه به مجموعه خالی.
+func uintSet(ids []uint) map[uint]struct{} {
+	out := make(map[uint]struct{}, len(ids))
+	for _, id := range ids {
+		if id > 0 {
+			out[id] = struct{}{}
+		}
+	}
+	return out
 }
 
 // renderCatalog صفحه HTML کاتالوگ خدمات را خروجی می‌دهد.
@@ -488,15 +582,37 @@ func parseServiceFields(c *gin.Context) (name, description, message string) {
 }
 
 // toServiceRows رکوردهای مدل Service را به ردیف‌های نمایشی در جدول ادمین تبدیل می‌کند.
-// ورودی: rows اسلایس مدل‌های Service.
+// ورودی: rows اسلایس مدل‌های Service، packages نگاشت شناسه خدمت به نام بسته‌ها.
 // خروجی: اسلایس ServiceRow مناسب برای تمپلیت.
-func toServiceRows(rows []models.Service) []adminviews.ServiceRow {
+func toServiceRows(rows []models.Service, packages map[uint][]string) []adminviews.ServiceRow {
 	out := make([]adminviews.ServiceRow, 0, len(rows))
 	for _, row := range rows {
+		names := packages[row.ID]
+		if names == nil {
+			names = []string{}
+		}
 		out = append(out, adminviews.ServiceRow{
 			ID:          row.ID,
 			Name:        row.Name,
 			Description: row.Description,
+			Packages:    names,
+		})
+	}
+	return out
+}
+
+// toPackageCheckOptions بسته‌ها را به گزینه‌های چک‌باکس فرم خدمت تبدیل می‌کند.
+// ورودی: rows بسته‌ها، selected مجموعه شناسه‌های انتخاب‌شده (می‌تواند nil باشد).
+// خروجی: اسلایس ServiceAssignOption.
+func toPackageCheckOptions(rows []models.ServicePackage, selected map[uint]struct{}) []adminviews.ServiceAssignOption {
+	out := make([]adminviews.ServiceAssignOption, 0, len(rows))
+	for _, row := range rows {
+		_, isSelected := selected[row.ID]
+		out = append(out, adminviews.ServiceAssignOption{
+			ID:          row.ID,
+			Name:        row.Name,
+			Description: row.Description,
+			Selected:    isSelected,
 		})
 	}
 	return out
@@ -529,6 +645,28 @@ func serviceFlashMessage(code string) string {
 		return "انتخاب بیمه الزامی است."
 	case "doctor_required":
 		return "انتخاب پزشک الزامی است."
+	case "packages_failed":
+		return "خدمت ذخیره شد اما انتصاب بسته‌ها انجام نشد."
+	case "section_assigned":
+		return "بسته‌های خدمات این بخش با موفقیت ذخیره شد."
+	case "section_required":
+		return "انتخاب بخش الزامی است."
+	case "section_assign_failed":
+		return "خطا در ذخیره انتصاب بسته‌ها به بخش."
+	case "pkg_created":
+		return "بسته خدمات با موفقیت ایجاد شد."
+	case "pkg_updated":
+		return "بسته خدمات با موفقیت بروزرسانی شد."
+	case "pkg_deleted":
+		return "بسته خدمات با موفقیت حذف شد."
+	case "pkg_name_required":
+		return "نام بسته الزامی است."
+	case "pkg_update_failed":
+		return "خطا در بروزرسانی بسته خدمات."
+	case "pkg_delete_failed":
+		return "خطا در حذف بسته خدمات."
+	case "pkg_create_failed":
+		return "خطا در ایجاد بسته خدمات."
 	default:
 		return ""
 	}

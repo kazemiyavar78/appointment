@@ -10,6 +10,7 @@ import (
 	"tebpardaz/server/internal/cache"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/statusnotify"
 	"tebpardaz/server/internal/websocket"
 	"tebpardaz/shared/protocol"
 
@@ -26,6 +27,7 @@ var (
 )
 
 const clinicBookingTimeout = 45 * time.Second
+const maxAppointmentIPLen = 45
 
 // ProgressFn receives progress events during Book (optional; may be nil).
 type ProgressFn func(ProgressEvent)
@@ -49,10 +51,11 @@ type BookRequest struct {
 
 // BookResult is the outcome of a booking attempt.
 type BookResult struct {
-	OK         bool
-	Message    string
-	ExternalID string
-	Duplicate  bool
+	OK           bool
+	Message      string
+	ExternalID   string
+	TrackingCode string
+	Duplicate    bool
 }
 
 // Service coordinates validation, persistence, and clinic WebSocket dispatch.
@@ -63,6 +66,7 @@ type Service struct {
 	Guard        *Guard
 	OTP          *OTPStore
 	Notifier     *Notifier
+	Status       *statusnotify.Notifier
 }
 
 // NewService constructs a booking Service.
@@ -75,6 +79,7 @@ func NewService(
 	guard *Guard,
 	otp *OTPStore,
 	notifier *Notifier,
+	status *statusnotify.Notifier,
 ) *Service {
 	return &Service{
 		Hub:          hub,
@@ -83,6 +88,7 @@ func NewService(
 		Guard:        guard,
 		OTP:          otp,
 		Notifier:     notifier,
+		Status:       status,
 	}
 }
 
@@ -164,10 +170,14 @@ func (s *Service) Book(req BookRequest, emit ProgressFn) (*BookResult, error) {
 		StartsAt:       slot.StartsAt,
 		EndsAt:         slot.EndsAt,
 		Source:         "website",
+		IPAddress:      normalizeAppointmentIP(req.ClientIP),
 	}
 	if s.Appointments != nil && patientID != 0 {
 		if err := s.Appointments.CreatePending(appt); err != nil {
 			return &BookResult{OK: false, Message: "خطا در ایجاد نوبت"}, err
+		}
+		if s.OTP != nil {
+			_ = s.OTP.MarkBooked(form.Mobile)
 		}
 	}
 
@@ -220,6 +230,9 @@ func (s *Service) Book(req BookRequest, emit ProgressFn) (*BookResult, error) {
 		if duplicate && s.Guard != nil {
 			s.Guard.RecordDuplicateAttempt(req.ClientIP)
 		}
+		if clinicRejectedForCapacity(code, msg) && s.Slots != nil {
+			s.Slots.DropSlot(req.ClinicID, req.Doctor.ID, slot.ExternalSlotID, slot.StartsAt)
+		}
 		if s.Appointments != nil && appt.ID != 0 {
 			_ = s.Appointments.MarkFailed(appt.ID, msg)
 		}
@@ -231,33 +244,57 @@ func (s *Service) Book(req BookRequest, emit ProgressFn) (*BookResult, error) {
 	}
 	emit(NewStepDone(StepClinicAck))
 
-	if s.Notifier != nil {
-		doctorName := ""
-		if req.Doctor != nil {
-			doctorName = strings.TrimSpace(req.Doctor.Name)
-			if doctorName == "" {
-				doctorName = strings.TrimSpace(req.Doctor.FirstName + " " + req.Doctor.LastName)
-			}
+	doctorName := ""
+	if req.Doctor != nil {
+		doctorName = strings.TrimSpace(req.Doctor.Name)
+		if doctorName == "" {
+			doctorName = strings.TrimSpace(req.Doctor.FirstName + " " + req.Doctor.LastName)
 		}
+	}
+	if s.Notifier != nil {
 		_ = s.Notifier.NotifyBookingConfirmed(context.Background(), BookingNotifyParams{
-			Phone:      form.Mobile,
-			FirstName:  form.FirstName,
-			LastName:   form.LastName,
-			NationalID: form.NationalID,
-			ClinicCode: req.ClinicCode,
-			ClinicName: req.ClinicName,
-			DoctorName: doctorName,
-			StartsAt:   slot.StartsAt,
-			ExternalID: ack.ExternalID,
-			ClientIP:   req.ClientIP,
+			Phone:        form.Mobile,
+			FirstName:    form.FirstName,
+			LastName:     form.LastName,
+			NationalID:   form.NationalID,
+			ClinicCode:   req.ClinicCode,
+			ClinicName:   req.ClinicName,
+			DoctorName:   doctorName,
+			StartsAt:     slot.StartsAt,
+			TrackingCode: FormatTrackingCode(appt.ID),
+			ClientIP:     req.ClientIP,
 		})
+	}
+	if s.Status != nil {
+		s.Status.NotifyBookingSuccess(
+			req.ClinicID,
+			req.ClinicCode,
+			req.ClinicName,
+			form.FirstName,
+			form.LastName,
+			form.NationalID,
+			form.Mobile,
+			doctorName,
+			FormatTrackingCode(appt.ID),
+			req.ClientIP,
+		)
 	}
 
 	return &BookResult{
-		OK:         true,
-		Message:    "نوبت شما با موفقیت ثبت شد؛ پیامک تایید ارسال شد",
-		ExternalID: ack.ExternalID,
+		OK:           true,
+		Message:      "نوبت شما با موفقیت ثبت شد؛ پیامک تایید ارسال شد",
+		ExternalID:   ack.ExternalID,
+		TrackingCode: FormatTrackingCode(appt.ID),
 	}, nil
+}
+
+// clinicRejectedForCapacity تشخیص می‌دهد مرکز به‌خاطر تکمیل ظرفیت، نوبت را رد کرده است.
+// ورودی: کد خطای پروتکل و پیام متنی ack. خروجی: true برای no_capacity یا پیام ظرفیت تکمیل‌شده.
+func clinicRejectedForCapacity(code, message string) bool {
+	if code == string(protocol.ErrCodeNoCapacity) {
+		return true
+	}
+	return strings.Contains(message, "ظرفیت این نوبت تکمیل شده")
 }
 
 func (s *Service) findSlot(clinicID, doctorID uint, slotKey string) (models.DoctorSlot, bool) {
@@ -274,4 +311,15 @@ func (s *Service) findSlot(clinicID, doctorID uint, slotKey string) (models.Doct
 		}
 	}
 	return models.DoctorSlot{}, false
+}
+
+// normalizeAppointmentIP trims a client IP and caps it to the PatientAppointment column length.
+// Inputs: raw IP from the booking request.
+// Output: stored IP string, possibly empty.
+func normalizeAppointmentIP(ip string) string {
+	ip = strings.TrimSpace(ip)
+	if len(ip) > maxAppointmentIPLen {
+		return ip[:maxAppointmentIPLen]
+	}
+	return ip
 }

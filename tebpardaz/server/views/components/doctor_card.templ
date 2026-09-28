@@ -1,8 +1,14 @@
 package components
 
 import "strconv"
+import "strings"
 import "time"
 import ptime "github.com/yaa110/go-persian-calendar"
+
+// doctorCardPhotoSizes عرض چیدمان عکس کارت را برای انتخاب منبع srcset توصیف می‌کند.
+// موبایل تقریباً تمام‌عرض، تبلت دو ستونه و دسکتاپ حدود ۲۲rem است؛
+// کمی بزرگ‌تر از عرض واقعی تا روی دستگاه‌های با DPR بالا عکس تیز بماند.
+const doctorCardPhotoSizes = "(max-width: 639px) calc(100vw - 2.5rem), (max-width: 1279px) calc(50vw - 2rem), 22rem"
 
 // DoctorCardView مدل نمایش کارت رزرو پزشک عمومی است.
 type DoctorCardView struct {
@@ -45,15 +51,6 @@ func doctorCardSlotDate(t time.Time) string {
 	return formatShamsiDateTime(t)
 }
 
-// formatDoctorSystemID شماره نظام پزشکی را به رشته تبدیل می‌کند.
-// ورودی: DoctorSystemID. خروجی: ارقام اعشاری یا خالی.
-func formatDoctorSystemID(id int) string {
-	if id <= 0 {
-		return ""
-	}
-	return strconv.Itoa(id)
-}
-
 // doctorCardCTALabel برچسب دکمه اقدام را از وضعیت نوبت برمی‌گزیند.
 // ورودی: hasSlot. خروجی: متن فارسی CTA.
 func doctorCardCTALabel(hasSlot bool) string {
@@ -63,16 +60,19 @@ func doctorCardCTALabel(hasSlot bool) string {
 	return "مشاهده جزئیات"
 }
 
-// doctorCardBadgeLabel متن نشان روی تصویر را از تخصص یا مرکز برمی‌گزیند.
-// ورودی: view. خروجی: نام تخصص/مرکز یا رشته خالی.
-func doctorCardBadgeLabel(view DoctorCardView) string {
-	if view.SpecialtyName != "" {
-		return view.SpecialtyName
+// doctorCardSpecialtyLabel متن نشان تخصص روی تصویر را برمی‌گرداند.
+// ورودی: view. خروجی: نام تخصص یا رشته خالی.
+func doctorCardSpecialtyLabel(view DoctorCardView) string {
+	return strings.TrimSpace(view.SpecialtyName)
+}
+
+// doctorCardClinicLabel نام درمانگاه را برای نشان لایه ارگان و پلتفرم برمی‌گرداند.
+// ورودی: view. خروجی: نام مرکز وقتی ShowClinicBadge فعال است، وگرنه خالی.
+func doctorCardClinicLabel(view DoctorCardView) string {
+	if !view.ShowClinicBadge {
+		return ""
 	}
-	if view.ShowClinicBadge && view.ClinicName != "" {
-		return view.ClinicName
-	}
-	return ""
+	return strings.TrimSpace(view.ClinicName)
 }
 
 // doctorCardMetaPrimary متن اصلی ردیف متا را از نوبت یا توضیح کوتاه می‌سازد.
@@ -92,14 +92,14 @@ func doctorCardMetaPrimary(view DoctorCardView) string {
 	return ""
 }
 
-// doctorCardMetaSecondary متن ثانویه ردیف متا (نظام پزشکی) را برمی‌گرداند.
-// ورودی: view. خروجی: برچسب نظام یا رشته خالی.
+// doctorCardMetaSecondary توضیح کوتاه را برای نمایش زیر نزدیک‌ترین نوبت برمی‌گرداند.
+// ورودی: view. خروجی: توضیح کوتاه وقتی نوبت نمایش داده می‌شود، وگرنه خالی.
 func doctorCardMetaSecondary(view DoctorCardView) string {
-
-	if id := formatDoctorSystemID(view.DoctorSystemID); id != "" ||  view.SpecialtyName != "کارشناس پرستاری" {
-		return "نظام " + id
+	desc := strings.TrimSpace(view.ShortDesc)
+	if desc == "" || !view.HasSlot || doctorCardSlotDate(view.NearestStartsAt) == "" {
+		return ""
 	}
-	return ""
+	return desc
 }
 
 // doctorCardImgAlt متن جایگزین تصویر پزشک را به صورت توصیفی و بهینه برای سئو می‌سازد.
@@ -149,6 +149,28 @@ func doctorCardHasPhoto(view DoctorCardView) bool {
 	return view.PhotoURL != "" || view.Photo1200 != "" || view.Photo900 != "" || view.Photo600 != "" || view.Photo300 != ""
 }
 
+// doctorCardSrcSet رشته srcset با توصیف‌گر w را از عکس‌های مربع پزشک می‌سازد.
+// ورودی: view حاوی آدرس تصاویر ۳۰۰ تا ۱۲۰۰. خروجی: «url 300w, url 600w, ...» یا رشته خالی.
+func doctorCardSrcSet(view DoctorCardView) string {
+	candidates := []struct {
+		url   string
+		width int
+	}{
+		{view.Photo300, 300},
+		{view.Photo600, 600},
+		{view.Photo900, 900},
+		{view.Photo1200, 1200},
+	}
+	parts := make([]string, 0, len(candidates))
+	for _, item := range candidates {
+		if item.url == "" {
+			continue
+		}
+		parts = append(parts, item.url+" "+strconv.Itoa(item.width)+"w")
+	}
+	return strings.Join(parts, ", ")
+}
+
 // DoctorCard خلاصه پزشک قابل کلیک به صفحه رزرو را رندر می‌کند.
 templ DoctorCard(view DoctorCardView) {
 	<a
@@ -158,34 +180,19 @@ templ DoctorCard(view DoctorCardView) {
 	>
 		<div class="doctor-card-photo">
 			if doctorCardHasPhoto(view) {
-
 				<picture>
-					if view.Photo300 != "" {
-						<source 
-							media="(max-width: 480px)" 
-							srcset={ view.Photo300 }
-						/>
-					}
-					if view.Photo600 != "" {
-						<source 
-							media="(max-width: 768px)" 
-							srcset={ view.Photo600 }
-						/>
-					}
-					if view.Photo900 != "" {
-						<source 
-							media="(max-width: 1024px)" 
-							srcset={ view.Photo900 }
-						/>
-					}
 					<img
 						src={ doctorCardMainPhoto(view) }
+						if srcset := doctorCardSrcSet(view); srcset != "" {
+							srcset={ srcset }
+							sizes={ doctorCardPhotoSizes }
+						}
 						alt={ doctorCardImgAlt(view) }
 						class="doctor-image doctor-card-photo-img"
 						loading="lazy"
 						decoding="async"
-						width="96"
-						height="96"
+						width="120"
+						height="120"
 					/>
 				</picture>
 			} else {
@@ -197,11 +204,21 @@ templ DoctorCard(view DoctorCardView) {
 					<circle cx="95" cy="120" r="14" fill="#f1f1f1" stroke="#9ab" stroke-width="2"></circle>
 				</svg>
 			}
-			if badge := doctorCardBadgeLabel(view); badge != "" {
-				<span class="doctor-card-badge">
-					<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
-					{ badge }
-				</span>
+			if specialty := doctorCardSpecialtyLabel(view); specialty != "" || doctorCardClinicLabel(view) != "" {
+				<div class="doctor-card-badges">
+					if specialty != "" {
+						<span class="doctor-card-badge">
+							<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
+							{ specialty }
+						</span>
+					}
+					if clinic := doctorCardClinicLabel(view); clinic != "" {
+						<span class="doctor-card-badge doctor-card-badge-clinic">
+							<span class="doctor-card-badge-icon" aria-hidden="true">🏥</span>
+							{ clinic }
+						</span>
+					}
+				</div>
 			}
 		</div>
 
@@ -212,8 +229,8 @@ templ DoctorCard(view DoctorCardView) {
 					if primary != "" {
 						<span class="doctor-card-meta-primary">{ primary }</span>
 					}
-					if secondary := doctorCardMetaSecondary(view); secondary != "" {
-						<span class="doctor-card-meta-secondary">{ secondary }</span>
+					if desc := doctorCardMetaSecondary(view); desc != "" {
+						<span class="doctor-card-short-desc">{ desc }</span>
 					}
 				</div>
 			}

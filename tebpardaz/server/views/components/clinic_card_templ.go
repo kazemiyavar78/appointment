@@ -8,22 +8,30 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "strconv"
+import (
+	"net/url"
+	"strings"
+)
 
 // ClinicCardView خلاصه یک مرکز تابعه برای صفحه اصلی ارگان/پلتفرم است.
 type ClinicCardView struct {
 	ID       uint
 	Name     string
+	Slug     string
 	Address  string
 	Phone    string
 	Province string
 	City     string
 }
 
-// clinicFilterURL آدرس فیلتر پزشکان بر اساس clinic_id را می‌سازد.
-// ورودی: شناسه مرکز. خروجی: URL نسبی فیلتر.
-func clinicFilterURL(id uint) string {
-	return "/doctors?clinic_id=" + strconv.FormatUint(uint64(id), 10)
+// clinicFilterURL آدرس فیلتر پزشکان بر اساس slug مرکز را می‌سازد.
+// ورودی: slug عمومی مرکز. خروجی: URL نسبی فیلتر (/doctors?clinic=...).
+func clinicFilterURL(slug string) string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "/doctors"
+	}
+	return "/doctors?clinic=" + url.QueryEscape(slug)
 }
 
 // ClinicCard کارت مرکز را با میکرواینتراکشن مشترک ui-card رندر می‌کند.
@@ -53,9 +61,9 @@ func ClinicCard(view ClinicCardView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(clinicFilterURL(view.ID)))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(clinicFilterURL(view.Slug)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 25, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 33, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -68,7 +76,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 29, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 37, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -87,7 +95,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(view.Province)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 34, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 42, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -100,7 +108,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(view.City)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 34, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 42, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -110,7 +118,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(view.Province)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 36, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 44, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -120,7 +128,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(view.City)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 38, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 46, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -140,7 +148,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(view.Address)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 44, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 52, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -159,7 +167,7 @@ func ClinicCard(view ClinicCardView) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(view.Phone)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 49, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/clinic_card.templ`, Line: 57, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {

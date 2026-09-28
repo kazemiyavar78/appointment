@@ -5,9 +5,11 @@ import (
 	"strconv"
 	"strings"
 
+	"tebpardaz/server/internal/analytics"
 	"tebpardaz/server/internal/csrf"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/pages"
@@ -33,6 +35,11 @@ func (h *StaticPageHandler) About(c *gin.Context) {
 	tc, ok := tenant.FromGin(c)
 	if !ok {
 		c.Status(http.StatusUnauthorized)
+		return
+	}
+	kind, place := publicSite(tc)
+	if tc.Layout == constants.LayoutPlatform {
+		RenderPublicLayoutWithHead(c, tc, pages.PlatformAboutPage(), "about", headFromMeta(seo.AboutMeta(kind, place, requestCanonical(c), "")))
 		return
 	}
 	view := pages.StaticPageView{
@@ -61,11 +68,12 @@ func (h *StaticPageHandler) About(c *gin.Context) {
 		}
 		view.ClinicName = name
 		view.BodyHTML = "<p>سامانه نوبت‌دهی مراکز زیرمجموعه «" + htmlEscape(name) + "».</p>"
-	default:
-		view.ClinicName = "طب‌پرداز"
-		view.BodyHTML = "<p>پلتفرم نوبت‌دهی مراکز درمانی طب‌پرداز.</p>"
 	}
-	renderPublicLayout(c, tc, pages.AboutPage(view), "about")
+	aboutText := ""
+	if tc.Layout == constants.LayoutPrivate && tc.Clinic != nil {
+		aboutText = tc.Clinic.Description
+	}
+	RenderPublicLayoutWithHead(c, tc, pages.AboutPage(view), "about", headFromMeta(seo.AboutMeta(kind, place, requestCanonical(c), aboutText)))
 }
 
 // Contact صفحه تماس با ما را رندر می‌کند.
@@ -88,7 +96,8 @@ func (h *StaticPageHandler) Contact(c *gin.Context) {
 	} else {
 		view.ClinicName = "طب‌پرداز"
 	}
-	renderPublicLayout(c, tc, pages.ContactPage(view), "contact")
+	kind, place := publicSite(tc)
+	RenderPublicLayoutWithHead(c, tc, pages.ContactPage(view), "contact", headFromMeta(seo.ContactMeta(kind, place, requestCanonical(c), view.Phone, view.Address)))
 }
 
 // Terms صفحه قوانین و مقررات را رندر می‌کند.
@@ -102,7 +111,8 @@ func (h *StaticPageHandler) Terms(c *gin.Context) {
 		Title: "قوانین و مقررات",
 		Lead:  "شرایط استفاده از سامانه نوبت‌دهی.",
 	}
-	renderPublicLayout(c, tc, pages.TermsPage(view), "terms")
+	kind, place := publicSite(tc)
+	RenderPublicLayoutWithHead(c, tc, pages.TermsPage(view), "terms", headFromMeta(seo.TermsMeta(kind, place, requestCanonical(c))))
 }
 
 // PostReview نظر کاربر برای پزشک یا مرکز را ثبت می‌کند.
@@ -130,6 +140,7 @@ func (h *StaticPageHandler) PostReview(c *gin.Context) {
 		TargetID:   targetID,
 		ClinicID:   clinicID,
 		AuthorName: c.PostForm("author_name"),
+		IPAddress:  analytics.ClientIP(c),
 		Rating:     rating,
 		Body:       c.PostForm("body"),
 	}); err != nil {
@@ -163,10 +174,10 @@ func (h *StaticPageHandler) buildClinicReviews(c *gin.Context, clinicID uint, re
 		}
 	}
 	if reviewFlash == "ok" {
-		view.InfoMessage = "نظر شما ثبت شد و پس از تأیید نمایش داده می‌شود."
+		view.Submitted = true
 	}
 	if reviewFlash == "error" {
-		view.ErrorMessage = "ثبت نظر ناموفق بود. امتیاز ۱ تا ۵ الزامی است."
+		view.ErrorMessage = "ثبت نظر ناموفق بود. انتخاب امتیاز الزامی است."
 	}
 	if h.Reviews == nil {
 		return view
@@ -176,12 +187,8 @@ func (h *StaticPageHandler) buildClinicReviews(c *gin.Context, clinicID uint, re
 	view.Average = sum.Average
 	rows, _ := h.Reviews.ListApprovedBodies(models.ReviewTargetClinic, clinicID, 20)
 	for _, row := range rows {
-		name := row.AuthorName
-		if name == "" {
-			name = "کاربر"
-		}
 		view.Items = append(view.Items, components.ReviewItemView{
-			AuthorName: name,
+			AuthorName: strings.TrimSpace(row.AuthorName),
 			Rating:     row.Rating,
 			Body:       row.Body,
 		})
@@ -205,20 +212,4 @@ func htmlEscape(s string) string {
 		`"`, "&quot;",
 	)
 	return replacer.Replace(strings.TrimSpace(s))
-}
-
-// NotFound صفحه ۴۰۴ مستأجر را رندر می‌کند.
-func NotFound(c *gin.Context) {
-	if strings.HasPrefix(c.Request.URL.Path, "/admin") {
-		c.String(http.StatusNotFound, "صفحه ادمین پیدا نشد")
-		return
-	}
-	tc, ok := tenant.FromGin(c)
-	home := "/"
-	if !ok {
-		c.Redirect(http.StatusFound, home)
-		return
-	}
-	c.Status(http.StatusNotFound)
-	renderPublicLayout(c, tc, pages.NotFound(pages.NotFoundView{HomeURL: home}), "")
 }

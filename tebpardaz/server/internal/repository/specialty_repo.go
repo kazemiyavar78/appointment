@@ -16,19 +16,21 @@ func NewSpecialtyRepo(db *gorm.DB) *SpecialtyRepo {
 	return &SpecialtyRepo{DB: db}
 }
 
-// ListAll returns all specialties ordered by name for admin assignment.
+// ListAll تمام تخصص‌ها را برای ادمین و انتساب پزشک برمی‌گرداند.
+// ورودی: ندارد. خروجی: ردیف‌ها به ترتیب نمایش سپس شناسه.
 func (r *SpecialtyRepo) ListAll() ([]models.Specialty, error) {
 	var rows []models.Specialty
-	err := r.DB.Order("name asc").Find(&rows).Error
+	err := r.DB.Order("sort_order asc, id asc").Find(&rows).Error
 	return rows, err
 }
 
-// ListApproved returns approved specialties for public booking filters.
-// Inputs: none.
-// Output: specialty rows ordered by name.
+// ListApproved تخصص‌های تأییدشده و قابل‌نمایش در نوبت‌دهی را برمی‌گرداند.
+// ورودی: ندارد. خروجی: ردیف‌های عمومی به ترتیب نمایش سپس شناسه.
 func (r *SpecialtyRepo) ListApproved() ([]models.Specialty, error) {
 	var rows []models.Specialty
-	err := r.DB.Where("is_approved = ?", true).Order("name asc").Find(&rows).Error
+	err := r.DB.Where("is_approved = ? AND show_in_booking = ?", true, true).
+		Order("sort_order asc, id asc").
+		Find(&rows).Error
 	return rows, err
 }
 

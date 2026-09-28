@@ -21,6 +21,8 @@ type AdminLayoutView struct {
 // ورودی: عنوان آیتم (string). خروجی: نام کلاس‌های آیکون FontAwesome (string).
 func getNavIcon(label string) string {
 	switch {
+	case strings.Contains(label, "داشبورد"):
+		return "fa-solid fa-gauge-high"
 	case strings.Contains(label, "پزشک"):
 		return "fa-solid fa-user-doctor"
 	case strings.Contains(label, "نوبت"):
@@ -47,6 +49,8 @@ func getNavIcon(label string) string {
 		return "fa-regular fa-message"
 	case strings.Contains(label, "حضور") || strings.Contains(label, "برنامه"):
 		return "fa-regular fa-clock"
+	case strings.Contains(label, "بازدید") || strings.Contains(label, "آی‌پی"):
+		return "fa-solid fa-chart-line"
 	default:
 		return "fa-solid fa-angle-left text-[0.7rem]"
 	}

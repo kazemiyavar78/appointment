@@ -3,7 +3,6 @@ package public
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,11 +21,7 @@ func NewRobotsHandler() *RobotsHandler {
 // ورودی: کانتکست Gin.
 // خروجی: متن تکست با وضعیت ۲۰۰ و هدر text/plain.
 func (h *RobotsHandler) ServeRobots(c *gin.Context) {
-	scheme := "https"
-	if c.Request.TLS == nil && !strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
-		scheme = "http"
-	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	baseURL := publicBaseURL(c)
 
 	robotsContent := fmt.Sprintf(`User-agent: *
 Allow: /

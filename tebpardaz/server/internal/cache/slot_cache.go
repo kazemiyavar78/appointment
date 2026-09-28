@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"tebpardaz/server/internal/models"
@@ -14,6 +15,8 @@ const (
 	SlotTTL = 4 * time.Hour
 	// slotCleanupInterval فاصله پاکسازی آیتم‌های منقضی‌شده در go-cache.
 	slotCleanupInterval = 30 * time.Minute
+	// minPublicLeadTime حداقل فاصله تا شروع نوبت امروز برای نمایش در رزرو عمومی.
+	minPublicLeadTime = time.Hour
 )
 
 // clinicSlotBag داده‌های اسلات یک مرکز در حافظه است (بدون ذخیره در دیتابیس).
@@ -197,7 +200,8 @@ func (c *SlotCache) NearestAvailableByDoctors(clinicIDs, doctorIDs []uint, from,
 }
 
 // isSlotBookable بررسی می‌کند اسلات برای رزرو آنلاین قابل نمایش است.
-// ورودی: اسلات و زمان مرجع. خروجی: true اگر آزاد و هنوز تمام نشده.
+// ورودی: اسلات و زمان مرجع.
+// خروجی: true اگر آزاد باشد، تمام نشده باشد، و برای نوبت امروز هم حداقل یک ساعت تا شروع مانده و زمان حضور پزشک نگذشته باشد.
 func isSlotBookable(slot models.DoctorSlot, now time.Time) bool {
 	if !slot.IsAvailable {
 		return false
@@ -208,7 +212,75 @@ func isSlotBookable(slot models.DoctorSlot, now time.Time) bool {
 	if !slot.EndsAt.After(now) {
 		return false
 	}
+	if sameLocalDay(slot.StartsAt, now) && slot.StartsAt.Sub(now) < minPublicLeadTime {
+		return false
+	}
 	return true
+}
+
+// TodayPresencePassed گزارش می‌دهد نوبت مربوط به امروز است و زمان حضور پزشک گذشته است.
+// ورودی: اسلات و زمان مرجع (معمولاً time.Now).
+// خروجی: true اگر شروع نوبت همان روزِ اکنون باشد و آن لحظه رسیده یا گذشته باشد.
+func TodayPresencePassed(slot models.DoctorSlot, now time.Time) bool {
+	if !sameLocalDay(slot.StartsAt, now) {
+		return false
+	}
+	return !slot.StartsAt.After(now)
+}
+
+// sameLocalDay تاریخ تقویمی دو زمان را در منطقه زمانی now مقایسه می‌کند.
+// ورودی: a و b. خروجی: true اگر هر دو غیرصفر و در یک روز محلی باشند.
+func sameLocalDay(a, b time.Time) bool {
+	if a.IsZero() || b.IsZero() {
+		return false
+	}
+	a = a.In(b.Location())
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+// DropSlot یک اسلات پزشک را از کش مرکز حذف می‌کند.
+// ورودی: clinicID، doctorID، externalSlotID (اولویت تطبیق)، startsAt برای وقتی شناسه خارجی خالی است.
+// خروجی: true اگر حداقل یک اسلات حذف شده باشد.
+func (c *SlotCache) DropSlot(clinicID, doctorID uint, externalSlotID string, startsAt time.Time) bool {
+	if c == nil || c.store == nil || clinicID == 0 || doctorID == 0 {
+		return false
+	}
+	bag := c.loadClinic(clinicID)
+	slots := bag.ByDoctor[doctorID]
+	if len(slots) == 0 {
+		return false
+	}
+	ext := strings.TrimSpace(externalSlotID)
+	kept := make([]models.DoctorSlot, 0, len(slots))
+	removed := false
+	for _, slot := range slots {
+		if !removed && slotMatches(slot, ext, startsAt) {
+			removed = true
+			continue
+		}
+		kept = append(kept, slot)
+	}
+	if !removed {
+		return false
+	}
+	if len(kept) == 0 {
+		delete(bag.ByDoctor, doctorID)
+	} else {
+		bag.ByDoctor[doctorID] = kept
+	}
+	c.store.SetWithTTL(clinicKey(clinicID), bag, SlotTTL)
+	return true
+}
+
+// slotMatches اسلات کش را با شناسه خارجی یا زمان شروع یکی می‌داند.
+// ورودی: اسلات، شناسه خارجی نرمال‌شده، زمان شروع. خروجی: true در صورت تطبیق.
+func slotMatches(slot models.DoctorSlot, externalSlotID string, startsAt time.Time) bool {
+	if externalSlotID != "" && strings.TrimSpace(slot.ExternalSlotID) == externalSlotID {
+		return true
+	}
+	return externalSlotID == "" && !startsAt.IsZero() && slot.StartsAt.Equal(startsAt)
 }
 
 // AvailableForDoctor اسلات‌های قابل رزرو یک پزشک را از کش برمی‌گرداند.
@@ -226,12 +298,11 @@ func (c *SlotCache) AvailableForDoctor(clinicID, doctorID uint, from time.Time, 
 	slots := bag.ByDoctor[doctorID]
 
 	for _, slot := range slots {
-		// if !isSlotBookable(slot, from) {
-		// 	continue
-		// }
+		if !isSlotBookable(slot, from) {
+			continue
+		}
 		out = append(out, slot)
 	}
-	fmt.Println(out)
 	sortSlotsByStart(out)
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]

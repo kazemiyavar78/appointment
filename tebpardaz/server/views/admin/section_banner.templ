@@ -1,21 +1,30 @@
 package admin
 
 import (
+	"strconv"
+
 	"tebpardaz/server/views/layouts"
 )
 
 // SectionBannerView holds view model for editing section banner.
 type SectionBannerView struct {
-	Nav             layouts.AdminLayoutView
-	SectionID       uint
-	SectionTitle    string
-	ClinicID        uint
-	Slogan          string
-	Description     string
-	Services        string
-	BackgroundColor string
-	ImageURL        string
-	Message         string
+	Nav                     layouts.AdminLayoutView
+	SectionID               uint
+	SectionTitle            string
+	ClinicID                uint
+	Slogan                  string
+	Description             string
+	Services                string
+	BackgroundColor         string
+	BackgroundColorEnd      string
+	UseBackgroundGradient   bool
+	BackgroundGradientDir   string
+	ImageURL                string
+	OverlayColor            string
+	UseOverlayGradient      bool
+	OverlayOpacityLeft      int
+	OverlayOpacityBottom    int
+	Message                 string
 }
 
 // SectionBannerEdit renders the banner configuration form.
@@ -33,6 +42,7 @@ templ SectionBannerEdit(view SectionBannerView) {
 				</div>
 				<div class="flex items-center gap-2">
 					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule") }>ساعات کاری</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/doctors") }>پزشکان</a>
 					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>پیام‌ها</a>
 					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment") }>تجهیزات</a>
 				</div>
@@ -43,7 +53,7 @@ templ SectionBannerEdit(view SectionBannerView) {
 			}
 
 			<section class="ui-panel mb-6">
-				<form class="space-y-5" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") } enctype="multipart/form-data">
+				<form id="section-banner-form" class="space-y-5" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") } enctype="multipart/form-data">
 					<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
 						<div class="space-y-4 md:col-span-2">
 							<label class="block text-sm font-semibold text-ink">
@@ -65,18 +75,95 @@ templ SectionBannerEdit(view SectionBannerView) {
 							</label>
 						</div>
 
-						<div>
-							<label class="block text-sm font-semibold text-ink mb-1">
-								رنگ پس‌زمینه بنر
-								<span class="text-xs text-ink-muted font-normal block mb-2">انتخاب رنگ پس‌زمینه تیره یا دلخواه برای بنر</span>
-							</label>
-							<div class="flex items-center gap-3">
-								<input class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1" type="color" name="background_color" value={ defaultColor(view.BackgroundColor) }/>
-								<input class="ui-field w-32 font-mono text-xs" dir="ltr" type="text" name="bg_hex" value={ defaultColor(view.BackgroundColor) } readonly/>
+						<div class="md:col-span-2 rounded-xl border border-gray-200 bg-surface-soft/40 p-4 space-y-4">
+							<div>
+								<h2 class="text-sm font-bold text-ink">پس‌زمینه بنر</h2>
+								<p class="text-xs text-ink-muted mt-0.5">رنگ یکدست یا گرادیان برای ستون متن بنر (همان پس‌زمینه بخش بالایی صفحه)</p>
+							</div>
+							<div class="flex flex-wrap gap-4">
+								<label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+									if !view.UseBackgroundGradient {
+										<input type="radio" name="use_background_gradient" value="0" checked class="h-4 w-4 text-brand focus:ring-brand"/>
+									} else {
+										<input type="radio" name="use_background_gradient" value="0" class="h-4 w-4 text-brand focus:ring-brand"/>
+									}
+									رنگ یکدست
+								</label>
+								<label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+									if view.UseBackgroundGradient {
+										<input type="radio" name="use_background_gradient" value="1" checked class="h-4 w-4 text-brand focus:ring-brand"/>
+									} else {
+										<input type="radio" name="use_background_gradient" value="1" class="h-4 w-4 text-brand focus:ring-brand"/>
+									}
+									گرادیان
+								</label>
+							</div>
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+								<label class="block text-sm text-ink-muted">
+									رنگ شروع / یکدست
+									<div class="mt-1 flex items-center gap-2">
+										<input id="bg-color-start" class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1" type="color" name="background_color" value={ defaultColor(view.BackgroundColor) }/>
+										<input id="bg-hex-start" class="ui-field w-28 font-mono text-xs" dir="ltr" type="text" value={ defaultColor(view.BackgroundColor) } maxlength="7"/>
+									</div>
+								</label>
+								<div id="bg-gradient-fields" class="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+									<label class="block text-sm text-ink-muted">
+										رنگ پایان گرادیان
+										<div class="mt-1 flex items-center gap-2">
+											<input id="bg-color-end" class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1" type="color" name="background_color_end" value={ defaultColorEnd(view.BackgroundColorEnd) }/>
+											<input id="bg-hex-end" class="ui-field w-28 font-mono text-xs" dir="ltr" type="text" value={ defaultColorEnd(view.BackgroundColorEnd) } maxlength="7"/>
+										</div>
+									</label>
+									<label class="block text-sm text-ink-muted">
+										جهت گرادیان
+										<select id="bg-gradient-dir" class="ui-field mt-1 w-full" name="background_gradient_dir">
+											@gradientDirOptions(view.BackgroundGradientDir)
+										</select>
+									</label>
+								</div>
+							</div>
+							<div id="bg-preview" class="h-16 rounded-xl border border-gray-200"></div>
+						</div>
+
+						<div class="md:col-span-2 rounded-xl border border-gray-200 bg-surface-soft/40 p-4 space-y-4">
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<h2 class="text-sm font-bold text-ink">پوشش گرادیان روی تصویر بنر</h2>
+									<p class="text-xs text-ink-muted mt-0.5">لایه نیمه‌شفاف روی عکس برای خوانایی متن در محل اتصال تصویر و نوشته</p>
+								</div>
+								<label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+									if view.UseOverlayGradient {
+										<input id="use-overlay" type="checkbox" name="use_overlay_gradient" value="1" checked class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+									} else {
+										<input id="use-overlay" type="checkbox" name="use_overlay_gradient" value="1" class="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"/>
+									}
+									فعال
+								</label>
+							</div>
+							<div id="overlay-fields" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+								<label class="block text-sm text-ink-muted">
+									رنگ پوشش
+									<div class="mt-1 flex items-center gap-2">
+										<input id="overlay-color" class="h-10 w-14 cursor-pointer rounded border border-gray-300 p-1" type="color" name="overlay_color" value={ defaultColor(view.OverlayColor) }/>
+										<input id="overlay-hex" class="ui-field w-28 font-mono text-xs" dir="ltr" type="text" value={ defaultColor(view.OverlayColor) } maxlength="7"/>
+									</div>
+								</label>
+								<label class="block text-sm text-ink-muted">
+									شدت پوشش سمت متن (<span id="overlay-left-label">{ strconv.Itoa(view.OverlayOpacityLeft) }</span>٪)
+									<input id="overlay-left" class="mt-3 w-full" type="range" name="overlay_opacity_left" min="0" max="100" value={ strconv.Itoa(view.OverlayOpacityLeft) }/>
+								</label>
+								<label class="block text-sm text-ink-muted">
+									شدت پوشش پایین تصویر (<span id="overlay-bottom-label">{ strconv.Itoa(view.OverlayOpacityBottom) }</span>٪)
+									<input id="overlay-bottom" class="mt-3 w-full" type="range" name="overlay_opacity_bottom" min="0" max="100" value={ strconv.Itoa(view.OverlayOpacityBottom) }/>
+								</label>
+							</div>
+							<div id="overlay-preview" class="relative h-28 overflow-hidden rounded-xl border border-gray-200">
+								<div class="absolute inset-0 bg-[linear-gradient(45deg,#d1d5db_25%,#9ca3af_25%,#9ca3af_50%,#d1d5db_50%,#d1d5db_75%,#9ca3af_75%)] bg-[length:24px_24px]"></div>
+								<div id="overlay-preview-layer" class="absolute inset-0 pointer-events-none"></div>
 							</div>
 						</div>
 
-						<div>
+						<div class="md:col-span-2">
 							<label class="block text-sm font-semibold text-ink mb-1">
 								تصویر بنر
 								<span class="text-xs text-ink-muted font-normal block mb-2">عکس باکیفیت و متناسب با بخش (حداکثر ۵ مگابایت)</span>
@@ -101,6 +188,105 @@ templ SectionBannerEdit(view SectionBannerView) {
 				</form>
 			</section>
 		</div>
+		<script>
+			(function () {
+				const form = document.getElementById("section-banner-form");
+				if (!form) return;
+
+				const startColor = document.getElementById("bg-color-start");
+				const startHex = document.getElementById("bg-hex-start");
+				const endColor = document.getElementById("bg-color-end");
+				const endHex = document.getElementById("bg-hex-end");
+				const dir = document.getElementById("bg-gradient-dir");
+				const preview = document.getElementById("bg-preview");
+				const overlayColor = document.getElementById("overlay-color");
+				const overlayHex = document.getElementById("overlay-hex");
+				const overlayLeft = document.getElementById("overlay-left");
+				const overlayBottom = document.getElementById("overlay-bottom");
+				const overlayLayer = document.getElementById("overlay-preview-layer");
+				const overlayFields = document.getElementById("overlay-fields");
+				const useOverlay = document.getElementById("use-overlay");
+				const hexRe = /^#[0-9a-fA-F]{6}$/;
+
+				function hexToRgba(hex, alpha) {
+					const h = hex.replace("#", "");
+					const r = parseInt(h.slice(0, 2), 16);
+					const g = parseInt(h.slice(2, 4), 16);
+					const b = parseInt(h.slice(4, 6), 16);
+					return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+				}
+
+				function useGradient() {
+					const checked = form.querySelector('input[name="use_background_gradient"]:checked');
+					return checked && checked.value === "1";
+				}
+
+				function bindColorPair(picker, hexInput) {
+					if (!picker || !hexInput) return;
+					picker.addEventListener("input", function () {
+						hexInput.value = picker.value;
+						updatePreview();
+					});
+					hexInput.addEventListener("input", function () {
+						if (hexRe.test(hexInput.value)) {
+							picker.value = hexInput.value;
+							updatePreview();
+						}
+					});
+				}
+
+				function updatePreview() {
+					const start = startColor ? startColor.value : "#0a2e2e";
+					const end = endColor ? endColor.value : "#134e4a";
+					const direction = dir ? dir.value : "to left";
+					if (preview) {
+						preview.style.background = useGradient()
+							? "linear-gradient(" + direction + ", " + start + ", " + end + ")"
+							: start;
+					}
+					const gradientFields = document.getElementById("bg-gradient-fields");
+					if (gradientFields) {
+						gradientFields.style.opacity = useGradient() ? "1" : "0.45";
+					}
+					if (overlayFields) {
+						overlayFields.style.opacity = useOverlay && useOverlay.checked ? "1" : "0.45";
+					}
+					if (overlayLayer) {
+						if (!useOverlay || !useOverlay.checked) {
+							overlayLayer.style.background = "none";
+							return;
+						}
+						const color = overlayColor ? overlayColor.value : start;
+						const left = overlayLeft ? Number(overlayLeft.value) / 100 : 0.85;
+						const bottom = overlayBottom ? Number(overlayBottom.value) / 100 : 0.6;
+						overlayLayer.style.background =
+							"linear-gradient(to left, " + hexToRgba(color, left) + " 0%, transparent 40%), " +
+							"linear-gradient(to top, " + hexToRgba(color, bottom) + " 0%, transparent 50%)";
+					}
+				}
+
+				form.querySelectorAll('input[name="use_background_gradient"]').forEach(function (el) {
+					el.addEventListener("change", updatePreview);
+				});
+				if (dir) dir.addEventListener("change", updatePreview);
+				if (overlayLeft) overlayLeft.addEventListener("input", function () {
+					const label = document.getElementById("overlay-left-label");
+					if (label) label.textContent = overlayLeft.value;
+					updatePreview();
+				});
+				if (overlayBottom) overlayBottom.addEventListener("input", function () {
+					const label = document.getElementById("overlay-bottom-label");
+					if (label) label.textContent = overlayBottom.value;
+					updatePreview();
+				});
+				if (useOverlay) useOverlay.addEventListener("change", updatePreview);
+
+				bindColorPair(startColor, startHex);
+				bindColorPair(endColor, endHex);
+				bindColorPair(overlayColor, overlayHex);
+				updatePreview();
+			})();
+		</script>
 	}
 }
 
@@ -110,4 +296,51 @@ func defaultColor(c string) string {
 		return "#0a2e2e"
 	}
 	return c
+}
+
+// defaultColorEnd returns the default gradient end color if empty.
+func defaultColorEnd(c string) string {
+	if c == "" {
+		return "#134e4a"
+	}
+	return c
+}
+
+// gradientDirOptions renders the CSS direction <option> list for the banner gradient.
+templ gradientDirOptions(current string) {
+	for _, item := range gradientDirChoices() {
+		if dirSelected(current, item.Value) {
+			<option value={ item.Value } selected>{ item.Label }</option>
+		} else {
+			<option value={ item.Value }>{ item.Label }</option>
+		}
+	}
+}
+
+// gradientDirChoice is one selectable CSS gradient direction.
+type gradientDirChoice struct {
+	Value string
+	Label string
+}
+
+// gradientDirChoices returns the allowed banner gradient directions with Persian labels.
+func gradientDirChoices() []gradientDirChoice {
+	return []gradientDirChoice{
+		{Value: "to left", Label: "به چپ"},
+		{Value: "to right", Label: "به راست"},
+		{Value: "to top", Label: "به بالا"},
+		{Value: "to bottom", Label: "به پایین"},
+		{Value: "to top left", Label: "مورب بالا-چپ"},
+		{Value: "to top right", Label: "مورب بالا-راست"},
+		{Value: "to bottom left", Label: "مورب پایین-چپ"},
+		{Value: "to bottom right", Label: "مورب پایین-راست"},
+	}
+}
+
+// dirSelected reports whether the stored gradient direction matches an option value.
+func dirSelected(current, value string) bool {
+	if current == "" {
+		return value == "to left"
+	}
+	return current == value
 }

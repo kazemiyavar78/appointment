@@ -58,6 +58,7 @@ type SpecialtyOption struct {
 type ClinicOption struct {
 	ID   uint
 	Name string
+	Slug string
 }
 
 // ListResult payload آماده‌شده لیست رزرو برای هندلر/ویو است.
@@ -146,6 +147,55 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 	}
 
 	metaByClinic := s.clinicMeta(clinicIDs)
+	result.Doctors = buildDoctorCards(doctors, metaByClinic, nearest, filter.Layout, showClinicBadge)
+	return result, nil
+}
+
+// CardsFromDoctors کارت‌های عمومی پزشکان مشخص‌شده را با حفظ ترتیب ورودی می‌سازد.
+// ورودی: لیست پزشکان، نوع چیدمان مستأجر و نمایش نشان مرکز. خروجی: کارت‌ها یا خطا.
+func (s *ListingService) CardsFromDoctors(doctors []models.Doctor, layout constants.LayoutKind, showClinicBadge bool) ([]DoctorCard, error) {
+	if s == nil || len(doctors) == 0 {
+		return nil, nil
+	}
+
+	clinicIDs := make([]uint, 0, len(doctors))
+	seenClinic := map[uint]bool{}
+	doctorIDs := make([]uint, 0, len(doctors))
+	for i := range doctors {
+		if s.Doctors != nil {
+			if err := s.Doctors.EnsureSlug(&doctors[i]); err != nil {
+				return nil, err
+			}
+		}
+		doctorIDs = append(doctorIDs, doctors[i].ID)
+		if !seenClinic[doctors[i].ClinicID] {
+			seenClinic[doctors[i].ClinicID] = true
+			clinicIDs = append(clinicIDs, doctors[i].ClinicID)
+		}
+	}
+
+	from, to := slotWindow(time.Time{})
+	nearest := map[uint]models.DoctorSlot{}
+	if s.Slots != nil {
+		slots, err := s.Slots.NearestAvailableByDoctors(clinicIDs, doctorIDs, from, to)
+		if err != nil {
+			return nil, err
+		}
+		nearest = slots
+	}
+
+	return buildDoctorCards(doctors, s.clinicMeta(clinicIDs), nearest, layout, showClinicBadge), nil
+}
+
+// buildDoctorCards مدل پزشک را به کارت نمایش عمومی تبدیل می‌کند و ترتیب ورودی را حفظ می‌کند.
+// ورودی: پزشکان، متادیتای مراکز، نزدیک‌ترین نوبت‌ها، چیدمان و نشان مرکز. خروجی: اسلایس DoctorCard.
+func buildDoctorCards(
+	doctors []models.Doctor,
+	metaByClinic map[uint]clinicListMeta,
+	nearest map[uint]models.DoctorSlot,
+	layout constants.LayoutKind,
+	showClinicBadge bool,
+) []DoctorCard {
 	cards := make([]DoctorCard, 0, len(doctors))
 	for _, d := range doctors {
 		meta := metaByClinic[d.ClinicID]
@@ -165,7 +215,7 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 			ClinicSlug:      meta.Slug,
 			DoctorSlug:      d.Slug,
 			ShowClinicBadge: showClinicBadge,
-			BookingURL:      BuildBookingURL(filter.Layout, meta.Slug, d.Slug),
+			BookingURL:      BuildBookingURL(layout, meta.Slug, d.Slug),
 		}
 		if slot, ok := nearest[d.ID]; ok {
 			card.HasSlot = true
@@ -173,8 +223,7 @@ func (s *ListingService) ListDoctors(filter ListFilter, showClinicBadge bool) (*
 		}
 		cards = append(cards, card)
 	}
-	result.Doctors = cards
-	return result, nil
+	return cards
 }
 
 // ListHomeDoctors حداکثر limit پزشک برای صفحه اول را برمی‌گرداند.
@@ -274,7 +323,7 @@ func (s *ListingService) fillFilterOptions(result *ListResult, orgClinicIDs []ui
 			if err != nil || c == nil {
 				continue
 			}
-			result.Clinics = append(result.Clinics, ClinicOption{ID: c.ID, Name: c.Name})
+			result.Clinics = append(result.Clinics, ClinicOption{ID: c.ID, Name: c.Name, Slug: ClinicPathKey(c)})
 		}
 	}
 	return nil

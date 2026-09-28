@@ -53,12 +53,19 @@ templ ContactPage(view StaticPageView) {
 			if view.Phone != "" {
 				<p class="text-sm text-ink-muted">تلفن: <span class="font-medium text-ink" dir="ltr">{ view.Phone }</span></p>
 			}
+			if view.ClinicName == "طب‌پرداز" {
+				// 02191691978
+				<p class="text-sm text-ink-muted">برای اطلاعات تماس با پشتیبانی <a href="tel:02191691978" target="_blank" class="text-primary-600 hover:text-primary-700">اینجا</a> کلیک کنید.</p>
+				// شماره تلفن پشتیبانی
+				<p class="text-sm text-ink-muted">شماره تلفن پشتیبانی: <span class="font-medium text-ink" dir="ltr">02191691978</span></p>
+
+			}
 			if view.Address != "" {
 				<p class="text-sm leading-relaxed text-ink-muted">آدرس: { view.Address }</p>
 			}
-			if view.Phone == "" && view.Address == "" {
-				<p class="text-sm text-ink-muted">برای اطلاعات تماس با پشتیبانی مرکز هماهنگ کنید.</p>
-			}
+			// if view.Phone == "" && view.Address == "" {
+			// 	<p class="text-sm text-ink-muted">برای اطلاعات تماس با پشتیبانی مرکز هماهنگ کنید.</p>
+			// }
 		</div>
 	</div>
 }

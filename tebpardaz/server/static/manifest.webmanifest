@@ -1,0 +1,25 @@
+{
+  "name": "وضعیت نوبت",
+  "short_name": "وضعیت نوبت",
+  "start_url": "/waiting-queue",
+  "scope": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "fa",
+  "background_color": "#F5F7FA",
+  "theme_color": "#0B6E4F",
+  "icons": [
+    {
+      "src": "/static/clinics/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/clinics/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

@@ -20,6 +20,15 @@ type DoctorOption struct {
 	Selected bool
 }
 
+// ServicePackageOption یک بسته خدمات برای انتخاب در فرم‌های انتصاب است.
+type ServicePackageOption struct {
+	ID         uint
+	Name       string
+	ServiceIDs []uint
+	Count      int
+	Selected   bool
+}
+
 // DoctorServicesView مدل داده صفحه انتصاب خدمات به پزشکان است.
 type DoctorServicesView struct {
 	Nav              layouts.AdminLayoutView
@@ -29,6 +38,7 @@ type DoctorServicesView struct {
 	Doctors          []DoctorOption
 	SelectedDoctorID uint
 	Services         []ServiceAssignOption
+	Packages         []ServicePackageOption
 }
 
 // DoctorServices صفحه انتصاب خدمات به پزشکان را رندر می‌کند.
@@ -66,7 +76,7 @@ func DoctorServices(view DoctorServicesView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><div class=\"mb-4 flex flex-wrap items-center justify-between gap-3\"><div><h1 class=\"ui-page-title\">انتصاب خدمات به پزشکان</h1><p class=\"mt-1 text-xs text-ink-muted\">خدمات درمانی و پوشش\u200cهای هر پزشک را در مرکز درمانی مشخص کنید.</p></div><a class=\"ui-btn ui-btn-ghost text-xs\" href=\"/admin/services\"><i class=\"fa-solid fa-arrow-right ml-1\"></i> بازگشت به لیست خدمات</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mx-auto max-w-5xl\"><div class=\"mb-4 flex flex-wrap items-center justify-between gap-3\"><div><h1 class=\"ui-page-title\">انتصاب خدمات به پزشکان</h1><p class=\"mt-1 text-xs text-ink-muted\">خدمات درمانی و پوشش\u200cهای هر پزشک را در مرکز درمانی مشخص کنید.</p></div><div class=\"flex flex-wrap gap-2\"><a class=\"ui-btn ui-btn-ghost text-xs\" href=\"/admin/services/packages\">بسته\u200cهای خدمات</a> <a class=\"ui-btn ui-btn-ghost text-xs\" href=\"/admin/services\"><i class=\"fa-solid fa-arrow-right ml-1\"></i> بازگشت به لیست خدمات</a></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -78,7 +88,7 @@ func DoctorServices(view DoctorServicesView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(view.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 45, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 58, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -101,7 +111,7 @@ func DoctorServices(view DoctorServicesView) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(clinic.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 57, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 70, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -124,7 +134,7 @@ func DoctorServices(view DoctorServicesView) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(clinic.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 57, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 70, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -162,159 +172,203 @@ func DoctorServices(view DoctorServicesView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(view.SelectedClinicID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 84, Col: 84}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 97, Col: 84}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><div class=\"grid grid-cols-1 md:grid-cols-2 gap-5\"><!-- ستون انتخاب پزشکان --><div class=\"flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]\"><div class=\"flex items-center justify-between pb-3 border-b border-gray-100\"><div class=\"flex items-center gap-2\"><i class=\"fa-solid fa-user-doctor text-brand text-sm\"></i><h2 class=\"text-sm font-bold text-ink\">انتخاب پزشک(ها)</h2></div><span id=\"doc-selected-badge\" class=\"rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700\">۰ پزشک انتخاب شده</span></div><!-- جستجوی پزشک --><div class=\"mt-3 relative\"><input type=\"search\" id=\"doc-search-input\" placeholder=\"جستجوی پزشک بر اساس نام...\" oninput=\"filterDocItems()\" class=\"ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white\"> <i class=\"fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none\"></i></div><!-- دکمه\u200cهای اقدام سریع پزشکان --><div class=\"flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs\"><button type=\"button\" onclick=\"toggleAllDocs(true)\" class=\"text-brand hover:underline font-medium\">انتخاب همه</button> <button type=\"button\" onclick=\"toggleAllDocs(false)\" class=\"text-ink-muted hover:underline\">لغو انتخاب همه</button></div><!-- لیست اسکرول\u200cشونده پزشکان --><div id=\"doc-list-container\" class=\"mt-2 flex-1 overflow-y-auto space-y-1 pr-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, doc := range view.Doctors {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<label class=\"doc-item flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors\" data-search=\"")
+				if len(view.Packages) > 0 {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"mb-5 rounded-xl border border-brand/15 bg-brand/5 p-4\"><div class=\"mb-2 flex flex-wrap items-center justify-between gap-2\"><p class=\"text-xs font-semibold text-ink\"><i class=\"fa-solid fa-box-open text-brand ml-1\"></i> اعمال بسته خدمات</p><p class=\"text-[11px] text-ink-muted\">با انتخاب هر بسته، تمام خدمات آن برای پزشکان انتخاب\u200cشده علامت می\u200cخورند.</p></div><div class=\"flex flex-wrap gap-1.5\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var7 string
-					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(strings.ToLower(doc.Name))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 124, Col: 211}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><input type=\"checkbox\" name=\"doctor_ids\" value=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var8 string
-					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(doc.ID))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 128, Col: 37}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" onchange=\"updateDocCount()\" class=\"doc-checkbox h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if doc.Selected {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " checked")
+					for _, pkg := range view.Packages {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<button type=\"button\" class=\"pkg-apply-btn rounded-full border border-brand/30 bg-white px-2.5 py-1 text-[11px] font-medium text-brand hover:bg-brand hover:text-white transition-colors\" data-ids=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var7 string
+						templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(joinUintIDs(pkg.ServiceIDs))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 113, Col: 48}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" onclick=\"applyServicePackage(this)\" title=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var8 string
+						templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("انتخاب تمام خدمات بسته " + pkg.Name)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 115, Col: 73}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var9 string
+						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(pkg.Name)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 117, Col: 20}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " <span class=\"opacity-70\">(")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var10 string
+						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(formatUint(uint(pkg.Count)))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 118, Col: 65}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, ")</span></button>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "> <span class=\"text-xs font-medium text-ink\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var9 string
-					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(doc.Name)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 133, Col: 63}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</span></label>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p id=\"doc-empty-msg\" class=\"hidden text-center text-xs text-ink-muted py-8\">پزشکی مطابق با عبارت جستجو یافت نشد.</p></div></div><!-- ستون انتخاب خدمات --><div class=\"flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]\"><div class=\"flex items-center justify-between pb-3 border-b border-gray-100\"><div class=\"flex items-center gap-2\"><i class=\"fa-solid fa-list-check text-brand text-sm\"></i><h2 class=\"text-sm font-bold text-ink\">انتخاب خدمات</h2></div><span id=\"srv-selected-badge\" class=\"rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700\">۰ خدمت انتخاب شده</span></div><!-- جستجوی خدمت --><div class=\"mt-3 relative\"><input type=\"search\" id=\"srv-search-input\" placeholder=\"جستجوی خدمت بر اساس عنوان یا شرح...\" oninput=\"filterSrvItems()\" class=\"ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white\"> <i class=\"fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none\"></i></div><!-- دکمه\u200cهای اقدام سریع خدمات --><div class=\"flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs\"><button type=\"button\" onclick=\"toggleAllSrvs(true)\" class=\"text-brand hover:underline font-medium\">انتخاب همه</button> <button type=\"button\" onclick=\"toggleAllSrvs(false)\" class=\"text-ink-muted hover:underline\">لغو انتخاب همه</button></div><!-- لیست اسکرول\u200cشونده خدمات --><div id=\"srv-list-container\" class=\"mt-2 flex-1 overflow-y-auto space-y-1.5 pr-1 divide-y divide-gray-50\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"grid grid-cols-1 md:grid-cols-2 gap-5\"><!-- ستون انتخاب پزشکان --><div class=\"flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]\"><div class=\"flex items-center justify-between pb-3 border-b border-gray-100\"><div class=\"flex items-center gap-2\"><i class=\"fa-solid fa-user-doctor text-brand text-sm\"></i><h2 class=\"text-sm font-bold text-ink\">انتخاب پزشک(ها)</h2></div><span id=\"doc-selected-badge\" class=\"rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700\">۰ پزشک انتخاب شده</span></div><!-- جستجوی پزشک --><div class=\"mt-3 relative\"><input type=\"search\" id=\"doc-search-input\" placeholder=\"جستجوی پزشک بر اساس نام...\" oninput=\"filterDocItems()\" class=\"ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white\"> <i class=\"fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none\"></i></div><!-- دکمه\u200cهای اقدام سریع پزشکان --><div class=\"flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs\"><button type=\"button\" onclick=\"toggleAllDocs(true)\" class=\"text-brand hover:underline font-medium\">انتخاب همه</button> <button type=\"button\" onclick=\"toggleAllDocs(false)\" class=\"text-ink-muted hover:underline\">لغو انتخاب همه</button></div><!-- لیست اسکرول\u200cشونده پزشکان --><div id=\"doc-list-container\" class=\"mt-2 flex-1 overflow-y-auto space-y-1 pr-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, item := range view.Services {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<label class=\"srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors\" data-search=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var10 string
-					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(strings.ToLower(item.Name + " " + item.Description))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 179, Col: 236}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><input type=\"checkbox\" name=\"service_ids\" value=\"")
+				for _, doc := range view.Doctors {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<label class=\"doc-item flex items-center gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors\" data-search=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var11 string
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(item.ID))
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(strings.ToLower(doc.Name))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 183, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 163, Col: 211}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" onchange=\"updateSrvCount()\" class=\"srv-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if item.Selected {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " checked")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "><div class=\"min-w-0 flex-1\"><span class=\"text-xs font-semibold text-ink block\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><input type=\"checkbox\" name=\"doctor_ids\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
+					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(doc.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 189, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 167, Col: 37}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> ")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if item.Description != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<span class=\"text-[11px] text-ink-muted block mt-0.5\">")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var13 string
-						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(item.Description)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 191, Col: 84}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" onchange=\"updateDocCount()\" class=\"doc-checkbox h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if doc.Selected {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " checked")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></label>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "> <span class=\"text-xs font-medium text-ink\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var13 string
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(doc.Name)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 172, Col: 63}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span></label>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p id=\"srv-empty-msg\" class=\"hidden text-center text-xs text-ink-muted py-8\">خدمتی مطابق با عبارت جستجو یافت نشد.</p></div></div></div><!-- نوار ذخیره --><div class=\"mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-white p-4 shadow-sm\"><div class=\"text-xs text-ink-muted leading-relaxed\"><i class=\"fa-solid fa-circle-info text-brand ml-1\"></i> با ذخیره اطلاعات، خدمات علامت\u200cخورده به تمام پزشکان انتخاب\u200cشده در بالا اختصاص داده می\u200cشوند.</div><button class=\"ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold\" type=\"submit\"><i class=\"fa-solid fa-floppy-disk ml-1.5\"></i> ذخیره انتصاب خدمات</button></div></form><script>\n\t\t\t\t\tfunction toPersianDigits(n) {\n\t\t\t\t\t\tvar id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];\n\t\t\t\t\t\treturn String(n).replace(/[0-9]/g, function(w){ return id[+w]; });\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction updateDocCount() {\n\t\t\t\t\t\tvar checked = document.querySelectorAll('.doc-checkbox:checked').length;\n\t\t\t\t\t\tvar badge = document.getElementById('doc-selected-badge');\n\t\t\t\t\t\tif (badge) {\n\t\t\t\t\t\t\tbadge.textContent = toPersianDigits(checked) + ' پزشک انتخاب شده';\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction filterDocItems() {\n\t\t\t\t\t\tvar q = (document.getElementById('doc-search-input').value || '').trim().toLowerCase();\n\t\t\t\t\t\tvar items = document.querySelectorAll('.doc-item');\n\t\t\t\t\t\tvar visibleCount = 0;\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tvar text = item.getAttribute('data-search') || '';\n\t\t\t\t\t\t\tif (!q || text.indexOf(q) !== -1) {\n\t\t\t\t\t\t\t\titem.style.display = '';\n\t\t\t\t\t\t\t\tvisibleCount++;\n\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\titem.style.display = 'none';\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tvar emptyMsg = document.getElementById('doc-empty-msg');\n\t\t\t\t\t\tif (emptyMsg) {\n\t\t\t\t\t\t\temptyMsg.classList.toggle('hidden', visibleCount > 0);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction toggleAllDocs(checked) {\n\t\t\t\t\t\tvar items = document.querySelectorAll('.doc-item');\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tif (item.style.display !== 'none') {\n\t\t\t\t\t\t\t\tvar cb = item.querySelector('.doc-checkbox');\n\t\t\t\t\t\t\t\tif (cb) cb.checked = checked;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tupdateDocCount();\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction updateSrvCount() {\n\t\t\t\t\t\tvar checked = document.querySelectorAll('.srv-checkbox:checked').length;\n\t\t\t\t\t\tvar badge = document.getElementById('srv-selected-badge');\n\t\t\t\t\t\tif (badge) {\n\t\t\t\t\t\t\tbadge.textContent = toPersianDigits(checked) + ' خدمت انتخاب شده';\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction filterSrvItems() {\n\t\t\t\t\t\tvar q = (document.getElementById('srv-search-input').value || '').trim().toLowerCase();\n\t\t\t\t\t\tvar items = document.querySelectorAll('.srv-item');\n\t\t\t\t\t\tvar visibleCount = 0;\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tvar text = item.getAttribute('data-search') || '';\n\t\t\t\t\t\t\tif (!q || text.indexOf(q) !== -1) {\n\t\t\t\t\t\t\t\titem.style.display = '';\n\t\t\t\t\t\t\t\tvisibleCount++;\n\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\titem.style.display = 'none';\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tvar emptyMsg = document.getElementById('srv-empty-msg');\n\t\t\t\t\t\tif (emptyMsg) {\n\t\t\t\t\t\t\temptyMsg.classList.toggle('hidden', visibleCount > 0);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction toggleAllSrvs(checked) {\n\t\t\t\t\t\tvar items = document.querySelectorAll('.srv-item');\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tif (item.style.display !== 'none') {\n\t\t\t\t\t\t\t\tvar cb = item.querySelector('.srv-checkbox');\n\t\t\t\t\t\t\t\tif (cb) cb.checked = checked;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction validateDoctorServicesForm() {\n\t\t\t\t\t\tvar docChecked = document.querySelectorAll('.doc-checkbox:checked').length;\n\t\t\t\t\t\tif (docChecked === 0) {\n\t\t\t\t\t\t\talert('لطفاً حداقل یک پزشک را برای انتصاب خدمات انتخاب نمایید.');\n\t\t\t\t\t\t\treturn false;\n\t\t\t\t\t\t}\n\t\t\t\t\t\treturn true;\n\t\t\t\t\t}\n\n\t\t\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\t\t\tupdateDocCount();\n\t\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\t});\n\t\t\t\t\tupdateDocCount();\n\t\t\t\t\tupdateSrvCount();\n\t\t\t\t</script>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p id=\"doc-empty-msg\" class=\"hidden text-center text-xs text-ink-muted py-8\">پزشکی مطابق با عبارت جستجو یافت نشد.</p></div></div><!-- ستون انتخاب خدمات --><div class=\"flex flex-col rounded-xl border border-surface-border bg-white p-4 shadow-sm h-[520px]\"><div class=\"flex items-center justify-between pb-3 border-b border-gray-100\"><div class=\"flex items-center gap-2\"><i class=\"fa-solid fa-list-check text-brand text-sm\"></i><h2 class=\"text-sm font-bold text-ink\">انتخاب خدمات</h2></div><span id=\"srv-selected-badge\" class=\"rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700\">۰ خدمت انتخاب شده</span></div><!-- جستجوی خدمت --><div class=\"mt-3 relative\"><input type=\"search\" id=\"srv-search-input\" placeholder=\"جستجوی خدمت بر اساس عنوان یا شرح...\" oninput=\"filterSrvItems()\" class=\"ui-field w-full pr-8 text-xs bg-gray-50/60 focus:bg-white\"> <i class=\"fa-solid fa-magnifying-glass absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none\"></i></div><!-- دکمه\u200cهای اقدام سریع خدمات --><div class=\"flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs\"><button type=\"button\" onclick=\"toggleAllSrvs(true)\" class=\"text-white hover:underline font-medium\">انتخاب همه</button> <button type=\"button\" onclick=\"toggleAllSrvs(false)\" class=\"text-ink-muted hover:underline\">لغو انتخاب همه</button></div><!-- لیست اسکرول\u200cشونده خدمات --><div id=\"srv-list-container\" class=\"mt-2 flex-1 overflow-y-auto space-y-1.5 pr-1 divide-y divide-gray-50\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				for _, item := range view.Services {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<label class=\"srv-item flex items-start gap-2.5 p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 cursor-pointer transition-colors\" data-search=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var14 string
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(serviceAssignSearchText(item))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 218, Col: 214}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\"><input type=\"checkbox\" name=\"service_ids\" value=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var15 string
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(formatUint(item.ID))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/admin/doctor_services.templ`, Line: 222, Col: 38}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" onchange=\"updateSrvCount(); syncPackageButtons()\" class=\"srv-checkbox mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if item.Selected {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, " checked")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, ">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = serviceAssignLabel(item).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</label>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p id=\"srv-empty-msg\" class=\"hidden text-center text-xs text-ink-muted py-8\">خدمتی مطابق با عبارت جستجو یافت نشد.</p></div></div></div><!-- نوار ذخیره --><div class=\"mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border bg-white p-4 shadow-sm\"><div class=\"text-xs text-ink-muted leading-relaxed\"><i class=\"fa-solid fa-circle-info text-brand ml-1\"></i> با ذخیره اطلاعات، خدمات علامت\u200cخورده — از جمله خدمات بسته\u200cهای اعمال\u200cشده — به تمام پزشکان انتخاب\u200cشده اختصاص داده می\u200cشوند.</div><button class=\"ui-btn ui-btn-primary text-xs px-6 py-2.5 font-semibold\" type=\"submit\"><i class=\"fa-solid fa-floppy-disk ml-1.5\"></i> ذخیره انتصاب خدمات</button></div></form><script>\n\t\t\t\t\tfunction toPersianDigits(n) {\n\t\t\t\t\t\tvar id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];\n\t\t\t\t\t\treturn String(n).replace(/[0-9]/g, function(w){ return id[+w]; });\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction updateDocCount() {\n\t\t\t\t\t\tvar checked = document.querySelectorAll('.doc-checkbox:checked').length;\n\t\t\t\t\t\tvar badge = document.getElementById('doc-selected-badge');\n\t\t\t\t\t\tif (badge) {\n\t\t\t\t\t\t\tbadge.textContent = toPersianDigits(checked) + ' پزشک انتخاب شده';\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction filterDocItems() {\n\t\t\t\t\t\tvar q = (document.getElementById('doc-search-input').value || '').trim().toLowerCase();\n\t\t\t\t\t\tvar items = document.querySelectorAll('.doc-item');\n\t\t\t\t\t\tvar visibleCount = 0;\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tvar text = item.getAttribute('data-search') || '';\n\t\t\t\t\t\t\tif (!q || text.indexOf(q) !== -1) {\n\t\t\t\t\t\t\t\titem.style.display = '';\n\t\t\t\t\t\t\t\tvisibleCount++;\n\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\titem.style.display = 'none';\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tvar emptyMsg = document.getElementById('doc-empty-msg');\n\t\t\t\t\t\tif (emptyMsg) {\n\t\t\t\t\t\t\temptyMsg.classList.toggle('hidden', visibleCount > 0);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction toggleAllDocs(checked) {\n\t\t\t\t\t\tvar items = document.querySelectorAll('.doc-item');\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tif (item.style.display !== 'none') {\n\t\t\t\t\t\t\t\tvar cb = item.querySelector('.doc-checkbox');\n\t\t\t\t\t\t\t\tif (cb) cb.checked = checked;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tupdateDocCount();\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction updateSrvCount() {\n\t\t\t\t\t\tvar checked = document.querySelectorAll('.srv-checkbox:checked').length;\n\t\t\t\t\t\tvar badge = document.getElementById('srv-selected-badge');\n\t\t\t\t\t\tif (badge) {\n\t\t\t\t\t\t\tbadge.textContent = toPersianDigits(checked) + ' خدمت انتخاب شده';\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction filterSrvItems() {\n\t\t\t\t\t\tvar q = (document.getElementById('srv-search-input').value || '').trim().toLowerCase();\n\t\t\t\t\t\tvar items = document.querySelectorAll('.srv-item');\n\t\t\t\t\t\tvar visibleCount = 0;\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tvar text = item.getAttribute('data-search') || '';\n\t\t\t\t\t\t\tif (!q || text.indexOf(q) !== -1) {\n\t\t\t\t\t\t\t\titem.style.display = '';\n\t\t\t\t\t\t\t\tvisibleCount++;\n\t\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\t\titem.style.display = 'none';\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tvar emptyMsg = document.getElementById('srv-empty-msg');\n\t\t\t\t\t\tif (emptyMsg) {\n\t\t\t\t\t\t\temptyMsg.classList.toggle('hidden', visibleCount > 0);\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction toggleAllSrvs(checked) {\n\t\t\t\t\t\tvar items = document.querySelectorAll('.srv-item');\n\t\t\t\t\t\titems.forEach(function(item) {\n\t\t\t\t\t\t\tif (item.style.display !== 'none') {\n\t\t\t\t\t\t\t\tvar cb = item.querySelector('.srv-checkbox');\n\t\t\t\t\t\t\t\tif (cb) cb.checked = checked;\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t});\n\t\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\t\tsyncPackageButtons();\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction applyServicePackage(btn) {\n\t\t\t\t\t\tvar ids = (btn.getAttribute('data-ids') || '').split(',').filter(Boolean);\n\t\t\t\t\t\tif (ids.length === 0) {\n\t\t\t\t\t\t\talert('این بسته هنوز خدمتی ندارد.');\n\t\t\t\t\t\t\treturn;\n\t\t\t\t\t\t}\n\t\t\t\t\t\tvar allChecked = ids.every(function(id) {\n\t\t\t\t\t\t\tvar cb = document.querySelector('.srv-checkbox[value=\"' + id + '\"]');\n\t\t\t\t\t\t\treturn cb && cb.checked;\n\t\t\t\t\t\t});\n\t\t\t\t\t\tids.forEach(function(id) {\n\t\t\t\t\t\t\tvar cb = document.querySelector('.srv-checkbox[value=\"' + id + '\"]');\n\t\t\t\t\t\t\tif (cb) cb.checked = !allChecked;\n\t\t\t\t\t\t});\n\t\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\t\tsyncPackageButtons();\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction syncPackageButtons() {\n\t\t\t\t\t\tdocument.querySelectorAll('.pkg-apply-btn').forEach(function(btn) {\n\t\t\t\t\t\t\tvar ids = (btn.getAttribute('data-ids') || '').split(',').filter(Boolean);\n\t\t\t\t\t\t\tvar active = ids.length > 0 && ids.every(function(id) {\n\t\t\t\t\t\t\t\tvar cb = document.querySelector('.srv-checkbox[value=\"' + id + '\"]');\n\t\t\t\t\t\t\t\treturn cb && cb.checked;\n\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\tbtn.classList.toggle('bg-brand', active);\n\t\t\t\t\t\t\tbtn.classList.toggle('text-white', active);\n\t\t\t\t\t\t\tbtn.classList.toggle('bg-white', !active);\n\t\t\t\t\t\t\tbtn.classList.toggle('text-brand', !active);\n\t\t\t\t\t\t});\n\t\t\t\t\t}\n\n\t\t\t\t\tfunction validateDoctorServicesForm() {\n\t\t\t\t\t\tvar docChecked = document.querySelectorAll('.doc-checkbox:checked').length;\n\t\t\t\t\t\tif (docChecked === 0) {\n\t\t\t\t\t\t\talert('لطفاً حداقل یک پزشک را برای انتصاب خدمات انتخاب نمایید.');\n\t\t\t\t\t\t\treturn false;\n\t\t\t\t\t\t}\n\t\t\t\t\t\treturn true;\n\t\t\t\t\t}\n\n\t\t\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\t\t\tupdateDocCount();\n\t\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\t\tsyncPackageButtons();\n\t\t\t\t\t});\n\t\t\t\t\tupdateDocCount();\n\t\t\t\t\tupdateSrvCount();\n\t\t\t\t\tsyncPackageButtons();\n\t\t\t\t</script>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -1,28 +1,36 @@
 package components
 
-import "strconv"
+import (
+	"net/url"
+	"strings"
+)
 
 // ClinicCardView خلاصه یک مرکز تابعه برای صفحه اصلی ارگان/پلتفرم است.
 type ClinicCardView struct {
 	ID       uint
 	Name     string
+	Slug     string
 	Address  string
 	Phone    string
 	Province string
 	City     string
 }
 
-// clinicFilterURL آدرس فیلتر پزشکان بر اساس clinic_id را می‌سازد.
-// ورودی: شناسه مرکز. خروجی: URL نسبی فیلتر.
-func clinicFilterURL(id uint) string {
-	return "/doctors?clinic_id=" + strconv.FormatUint(uint64(id), 10)
+// clinicFilterURL آدرس فیلتر پزشکان بر اساس slug مرکز را می‌سازد.
+// ورودی: slug عمومی مرکز. خروجی: URL نسبی فیلتر (/doctors?clinic=...).
+func clinicFilterURL(slug string) string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "/doctors"
+	}
+	return "/doctors?clinic=" + url.QueryEscape(slug)
 }
 
 // ClinicCard کارت مرکز را با میکرواینتراکشن مشترک ui-card رندر می‌کند.
 templ ClinicCard(view ClinicCardView) {
 	<a
 		class="ui-card group flex flex-col"
-		href={ templ.SafeURL(clinicFilterURL(view.ID)) }
+		href={ templ.SafeURL(clinicFilterURL(view.Slug)) }
 	>
 		<div class="flex min-w-0 flex-1 flex-col gap-2.5 p-4">
 			<h3 class="break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">

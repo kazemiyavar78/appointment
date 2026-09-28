@@ -2,7 +2,6 @@ package seo
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -14,13 +13,6 @@ type PostalAddressDTO struct {
 	AddressCountry  string `json:"addressCountry,omitempty"`
 }
 
-// OpeningHoursDTO داده‌های بازه‌های زمانی کارکرد را نگه می‌دارد.
-type OpeningHoursDTO struct {
-	DaysOfWeek []string `json:"dayOfWeek"`
-	Opens      string   `json:"opens"`
-	Closes     string   `json:"closes"`
-}
-
 // SubOrgDTO مشخصات مختصر کلینیک یا ارگان زیرمجموعه را نگه می‌دارد.
 type SubOrgDTO struct {
 	Name string `json:"name"`
@@ -29,30 +21,29 @@ type SubOrgDTO struct {
 
 // MedicalClinicDTO مدل ورودی برای تولید اسکیمای MedicalClinic است.
 type MedicalClinicDTO struct {
-	ID                 string             `json:"@id,omitempty"`
-	Name               string             `json:"name"`
-	URL                string             `json:"url"`
-	LogoURL            string             `json:"logo,omitempty"`
-	ImageURL           string             `json:"image,omitempty"`
-	Telephone          string             `json:"telephone,omitempty"`
-	Specialties        []string           `json:"medicalSpecialty,omitempty"`
-	Address            *PostalAddressDTO  `json:"address,omitempty"`
-	ParentOrganization *SubOrgDTO         `json:"parentOrganization,omitempty"`
-	OpeningHours       []OpeningHoursDTO  `json:"openingHoursSpecification,omitempty"`
+	ID                 string            `json:"@id,omitempty"`
+	Name               string            `json:"name"`
+	URL                string            `json:"url"`
+	Description        string            `json:"description,omitempty"`
+	LogoURL            string            `json:"logo,omitempty"`
+	ImageURL           string            `json:"image,omitempty"`
+	Telephone          string            `json:"telephone,omitempty"`
+	Specialties        []string          `json:"medicalSpecialty,omitempty"`
+	Address            *PostalAddressDTO `json:"address,omitempty"`
+	ParentOrganization *SubOrgDTO        `json:"parentOrganization,omitempty"`
 }
 
 // PhysicianDTO مدل ورودی برای تولید اسکیمای Physician است.
 type PhysicianDTO struct {
-	ID             string            `json:"@id,omitempty"`
-	Name           string            `json:"name"`
-	ImageURL       string            `json:"image,omitempty"`
-	Specialty      string            `json:"medicalSpecialty,omitempty"`
-	JobTitle       string            `json:"jobTitle,omitempty"`
-	MedicalCouncil string            `json:"medicalCouncilID,omitempty"`
-	ClinicName     string            `json:"clinicName,omitempty"`
-	ClinicURL      string            `json:"clinicURL,omitempty"`
-	URL            string            `json:"url,omitempty"`
-	HoursAvailable []OpeningHoursDTO `json:"hoursAvailable,omitempty"`
+	ID         string `json:"@id,omitempty"`
+	Name       string `json:"name"`
+	ImageURL   string `json:"image,omitempty"`
+	Specialty  string `json:"medicalSpecialty,omitempty"`
+	JobTitle   string `json:"jobTitle,omitempty"`
+	ClinicID   string `json:"clinicID,omitempty"`
+	ClinicName string `json:"clinicName,omitempty"`
+	ClinicURL  string `json:"clinicURL,omitempty"`
+	URL        string `json:"url,omitempty"`
 }
 
 // ItemListElementDTO یک آیتم منفرد در فهرست ساختاریافته است.
@@ -123,6 +114,9 @@ func BuildMedicalClinicSchema(dto MedicalClinicDTO) string {
 	if dto.Telephone != "" {
 		data["telephone"] = dto.Telephone
 	}
+	if desc := strings.TrimSpace(dto.Description); desc != "" {
+		data["description"] = desc
+	}
 	if len(dto.Specialties) > 0 {
 		data["medicalSpecialty"] = dto.Specialties
 	}
@@ -144,25 +138,13 @@ func BuildMedicalClinicSchema(dto MedicalClinicDTO) string {
 		}
 		data["address"] = addr
 	}
+	// ساعات بخش روی درمانگاه نوشته نمی‌شود؛ درمانگاه ساعت سراسری ندارد.
 	if dto.ParentOrganization != nil && dto.ParentOrganization.Name != "" {
 		data["parentOrganization"] = map[string]interface{}{
 			"@type": "MedicalOrganization",
 			"name":  dto.ParentOrganization.Name,
 			"url":   dto.ParentOrganization.URL,
 		}
-	}
-	if len(dto.OpeningHours) > 0 {
-		specs := make([]map[string]interface{}, 0, len(dto.OpeningHours))
-		for _, oh := range dto.OpeningHours {
-			spec := map[string]interface{}{
-				"@type":     "OpeningHoursSpecification",
-				"dayOfWeek": oh.DaysOfWeek,
-				"opens":     oh.Opens,
-				"closes":    oh.Closes,
-			}
-			specs = append(specs, spec)
-		}
-		data["openingHoursSpecification"] = specs
 	}
 	return MinifyJSONLD(data)
 }
@@ -193,8 +175,9 @@ func BuildMedicalOrganizationSchema(name, orgURL, logoURL string, subOrgs []SubO
 	return MinifyJSONLD(data)
 }
 
-// BuildPhysicianSchema اسکیمای استاندارد JSON-LD برای پزشک به همراه شماره نظام و کلینیک کارفرما می‌سازد.
-// ورودی: شیء PhysicianDTO حاوی اطلاعات فردی و حرفه‌ای پزشک. خروجی: رشته JSON-LD معتبر Schema.org.
+// BuildPhysicianSchema اسکیمای Physician را از داده واقعی می‌سازد.
+// ورودی: PhysicianDTO. خروجی: JSON-LD.
+// شماره نظام، کد ملی و ساعات نوبت اینجا نوشته نمی‌شوند.
 func BuildPhysicianSchema(dto PhysicianDTO) string {
 	data := map[string]interface{}{
 		"@context": "https://schema.org",
@@ -216,42 +199,28 @@ func BuildPhysicianSchema(dto PhysicianDTO) string {
 	if dto.URL != "" {
 		data["url"] = dto.URL
 	}
-	if dto.MedicalCouncil != "" {
-		data["identifier"] = map[string]interface{}{
-			"@type":      "PropertyValue",
-			"name":       "شماره نظام پزشکی",
-			"propertyID": "MedicalCouncilID",
-			"value":      dto.MedicalCouncil,
-		}
-	}
-	if dto.ClinicName != "" {
+	if dto.ClinicID != "" || dto.ClinicName != "" {
 		worksFor := map[string]interface{}{
 			"@type": "MedicalClinic",
-			"name":  dto.ClinicName,
+		}
+		if dto.ClinicID != "" {
+			worksFor["@id"] = dto.ClinicID
+		}
+		if dto.ClinicName != "" {
+			worksFor["name"] = dto.ClinicName
 		}
 		if dto.ClinicURL != "" {
 			worksFor["url"] = dto.ClinicURL
 		}
 		data["worksFor"] = worksFor
 	}
-	if len(dto.HoursAvailable) > 0 {
-		hours := make([]map[string]interface{}, 0, len(dto.HoursAvailable))
-		for _, ha := range dto.HoursAvailable {
-			hours = append(hours, map[string]interface{}{
-				"@type":     "OpeningHoursSpecification",
-				"dayOfWeek": ha.DaysOfWeek,
-				"opens":     ha.Opens,
-				"closes":    ha.Closes,
-			})
-		}
-		data["hoursAvailable"] = hours
-	}
 	return MinifyJSONLD(data)
 }
 
 // BuildItemListSchema اسکیمای فهرست ساختاریافته از عناصر (نظیر لیست پزشکان یا تخصص‌ها) تولید می‌کند.
-// ورودی: نام لیست و آرایه‌ای از آیتم‌های دارای موقعیت و پیوند. خروجی: رشته JSON-LD معتبر Schema.org.
-func BuildItemListSchema(listName string, items []ItemListElementDTO) string {
+// ورودی: نام لیست، آیتم‌های همین صفحه، و تعداد کل listing. خروجی: رشته JSON-LD معتبر Schema.org.
+// اگر total مثبت نباشد numberOfItems حذف می‌شود تا تعداد همین صفحه به‌جای کل نتایج ننشیند.
+func BuildItemListSchema(listName string, items []ItemListElementDTO, total int) string {
 	elements := make([]map[string]interface{}, 0, len(items))
 	for idx, it := range items {
 		pos := it.Position
@@ -276,8 +245,10 @@ func BuildItemListSchema(listName string, items []ItemListElementDTO) string {
 		"@context":        "https://schema.org",
 		"@type":           "ItemList",
 		"name":            listName,
-		"numberOfItems":   len(items),
 		"itemListElement": elements,
+	}
+	if total > 0 {
+		data["numberOfItems"] = total
 	}
 	return MinifyJSONLD(data)
 }
@@ -330,35 +301,54 @@ func BuildArticleSchema(dto ArticleDTO) string {
 	return MinifyJSONLD(data)
 }
 
-// BuildEquipmentListSchema اسکیمای تجهیزات پزشکی و تشخیصی مرکز درمانی را برمی‌گرداند.
-// ورودی: نام مرکز، پیوند صفحه تجهیزات و لیست تجهیزات. خروجی: رشته JSON-LD معتبر Schema.org.
-func BuildEquipmentListSchema(clinicName, pageURL string, items []EquipmentItemDTO) string {
-	devices := make([]map[string]interface{}, 0, len(items))
+// equipmentBadgePlaceholder مقدار پیش‌فرض مدل تجهیزات است و دستهٔ واقعی دستگاه نیست.
+const equipmentBadgePlaceholder = "فناوری روز دنیا"
+
+// BuildEquipmentListSchema فهرست MedicalDevice را از تجهیزات همان صفحه می‌سازد.
+// ورودی: URL صفحه و آیتم‌ها. خروجی: ItemList، یا خالی اگر دستگاهی نمانده باشد.
+// مرکز را MedicalBusiness معرفی نمی‌کند.
+func BuildEquipmentListSchema(pageURL string, items []EquipmentItemDTO) string {
+	wrapped := make([]map[string]interface{}, 0, len(items))
 	for _, it := range items {
+		name := strings.TrimSpace(it.Name)
+		if name == "" {
+			continue
+		}
 		dev := map[string]interface{}{
-			"@type":       "MedicalDevice",
-			"name":        it.Name,
-			"description": it.Description,
+			"@type": "MedicalDevice",
+			"name":  name,
 		}
-		if it.Manufacturer != "" {
-			dev["manufacturer"] = it.Manufacturer
+		if desc := strings.TrimSpace(it.Description); desc != "" {
+			dev["description"] = desc
 		}
-		if it.Category != "" {
-			dev["category"] = it.Category
+		if m := strings.TrimSpace(it.Manufacturer); m != "" {
+			dev["manufacturer"] = m
 		}
-		if it.ImageURL != "" {
-			dev["image"] = it.ImageURL
+		if cat := strings.TrimSpace(it.Category); cat != "" && cat != equipmentBadgePlaceholder {
+			dev["category"] = cat
 		}
-		devices = append(devices, dev)
+		if img := strings.TrimSpace(it.ImageURL); img != "" {
+			dev["image"] = img
+		}
+		if pageURL != "" {
+			dev["url"] = pageURL
+		}
+		wrapped = append(wrapped, map[string]interface{}{
+			"@type":    "ListItem",
+			"position": len(wrapped) + 1,
+			"item":     dev,
+		})
 	}
-	data := map[string]interface{}{
-		"@context":   "https://schema.org",
-		"@type":      "MedicalBusiness",
-		"name":       fmt.Sprintf("تجهیزات و فناوری‌های درمانی %s", clinicName),
-		"url":        pageURL,
-		"department": devices,
+	if len(wrapped) == 0 {
+		return ""
 	}
-	return MinifyJSONLD(data)
+	return MinifyJSONLD(map[string]interface{}{
+		"@context":        "https://schema.org",
+		"@type":           "ItemList",
+		"name":            "تجهیزات",
+		"numberOfItems":   len(wrapped),
+		"itemListElement": wrapped,
+	})
 }
 
 // BuildBreadcrumbSchema اسکیمای سلسله‌مراتب خرده‌نانی صفحات سایت را ایجاد می‌کند.

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"tebpardaz/server/internal/analytics"
 	"tebpardaz/server/internal/booking"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/shared/constants"
@@ -49,14 +50,12 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
-	fmt.Println("tc", tc)
+	
 	clinicSlug, doctorSlug, ok := bookingPathSlugs(c.Param("path"))
 	if !ok {
 		c.Status(http.StatusNotFound)
 		return
 	}
-
-	fmt.Println("clinicSlug", clinicSlug, "doctorSlug", doctorSlug)
 
 	clinicID, doctorSlugResolved, err := h.resolveBookingTarget(tc, clinicSlug, doctorSlug)
 	if err != nil || clinicID == 0 {
@@ -73,7 +72,7 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 	fmt.Println("doctor", doctor)
 	_ = h.Doctors.EnsureSlug(doctor)
 
-	ip := c.ClientIP()
+	ip := analytics.ClientIP(c)
 	fmt.Println("ip", ip)
 	if h.Guard != nil {
 		if allowed, reason := h.Guard.Allow(ip); !allowed {
@@ -88,7 +87,7 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
-	fmt.Println("conn", conn)
+
 	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	_ = conn.SetWriteDeadline(time.Now().Add(90 * time.Second))
 
@@ -146,7 +145,7 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		emit(booking.NewFinal(false, msg, ""))
 		return
 	}
-	emit(booking.NewFinal(result.OK, result.Message, result.ExternalID))
+	emit(booking.NewFinal(result.OK, result.Message, result.TrackingCode))
 }
 
 // resolveBookingTarget resolves clinic ID and doctor slug for the current tenant layout.

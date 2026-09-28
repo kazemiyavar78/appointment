@@ -19,11 +19,13 @@ templ BookingResultModal(view BookingResultModalView) {
 			<div class="bk-modal__summary bk-hidden" id="bk-modal-summary">
 				<div class="bk-modal__row"><span>📅</span><span id="bk-modal-slot"></span></div>
 				<div class="bk-modal__row"><span>👤</span><span id="bk-modal-patient"></span></div>
-				<div class="bk-modal__row"><span>🔖</span><span id="bk-modal-tracking"></span></div>
+				<div class="bk-modal__row bk-hidden" id="bk-modal-tracking-row">
+					<span class="bk-modal__row-label">کد رهگیری</span>
+					<strong class="bk-modal__tracking" id="bk-modal-tracking"></strong>
+				</div>
 			</div>
 			<div class="bk-modal__actions">
-				<button type="button" id="bk-modal-home" class="bk-link">بازگشت به صفحه اصلی</button>
-				<button type="button" id="bk-modal-close" class="bk-btn bk-btn--primary">متوجه شدم</button>
+				<button type="button" id="bk-modal-home" class="bk-btn bk-btn--primary bk-btn--block">بازگشت به صفحه اصلی</button>
 			</div>
 		</div>
 	</div>

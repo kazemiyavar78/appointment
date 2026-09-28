@@ -9,7 +9,7 @@ import (
 
 const homeSpecialtyPreviewCount = 6
 
-// loadApprovedSpecialties تخصص‌های تأییدشده را از DB بارگذاری می‌کند.
+// loadApprovedSpecialties تخصص‌های تأییدشده و قابل‌نمایش در نوبت‌دهی را از DB بارگذاری می‌کند.
 // ورودی: repo تخصص. خروجی: لیست کارت تخصص با نام، آیکون و توضیحات.
 func loadApprovedSpecialties(repo *repository.SpecialtyRepo) []components.SpecialtyCardView {
 	if repo == nil {

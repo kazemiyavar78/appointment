@@ -2,6 +2,7 @@ package repository
 
 import (
 	"tebpardaz/server/internal/models"
+	"tebpardaz/server/internal/wskey"
 	"time"
 
 	"gorm.io/gorm"
@@ -49,16 +50,20 @@ func (r *ClinicRepo) GetBySlug(slug string) (*models.Clinic, error) {
 	return &clinic, nil
 }
 
-// GetByWSClientKey finds a clinic by its WebSocket client key.
-// Inputs: key (Clinic.WSClientKey).
-// Output: clinic pointer or DB error.
-// update LastSyncAt now
+// GetByWSClientKey finds a clinic by the plaintext WebSocket key presented on the connection.
+// Inputs: key — plaintext clinic_key from the client. The database column stores RC4 ciphertext.
+// Output: clinic pointer or DB error. Also accepts a legacy plaintext column until that clinic is rebuilt.
+// What it does: encrypts key the same way as the clinic backend and matches ws_client_key, then stamps last_sync_at.
 func (r *ClinicRepo) GetByWSClientKey(key string) (*models.Clinic, error) {
 	if r.DB == nil {
 		return nil, gorm.ErrRecordNotFound
 	}
+	stored := key
+	if enc, err := wskey.Encrypt(key); err == nil && enc != "" {
+		stored = enc
+	}
 	var clinic models.Clinic
-	err := r.DB.Where("ws_client_key = ? AND is_active_on_website = ?", key, true).First(&clinic).Error
+	err := r.DB.Where("is_active_on_website = ? AND (ws_client_key = ? OR ws_client_key = ?)", true, stored, key).First(&clinic).Error
 	if err != nil {
 		return nil, err
 	}
@@ -128,4 +133,17 @@ func (r *ClinicRepo) GetByIDForAdmin(id uint) (*models.Clinic, error) {
 		return nil, err
 	}
 	return &clinic, nil
+}
+
+// UpdateBranding stores uploaded logo and favicon URLs for one clinic.
+// Inputs: clinic id, logoURL, faviconURL (empty string clears that asset).
+// Output: DB error, if any.
+func (r *ClinicRepo) UpdateBranding(id uint, logoURL, faviconURL string) error {
+	if r.DB == nil {
+		return gorm.ErrRecordNotFound
+	}
+	return r.DB.Model(&models.Clinic{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"logo_url":    logoURL,
+		"favicon_url": faviconURL,
+	}).Error
 }

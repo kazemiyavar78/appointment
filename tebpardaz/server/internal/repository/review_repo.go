@@ -42,8 +42,19 @@ func (r *ReviewRepo) Create(review *models.Review) error {
 	}
 	review.AuthorName = strings.TrimSpace(review.AuthorName)
 	review.Body = strings.TrimSpace(review.Body)
+	review.IPAddress = trimReviewIP(review.IPAddress)
 	review.IsApproved = false
 	return r.DB.Create(review).Error
+}
+
+// trimReviewIP آی‌پی را برای ستون reviews.ip_address کوتاه و تمیز می‌کند.
+// ورودی: رشته آی‌پی. خروجی: حداکثر ۴۵ نویسه، بدون فاصله اضافه.
+func trimReviewIP(ip string) string {
+	ip = strings.TrimSpace(ip)
+	if len(ip) > 45 {
+		return ip[:45]
+	}
+	return ip
 }
 
 // Summary میانگین و تعداد همه امتیازهای یک هدف را برمی‌گرداند.

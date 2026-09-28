@@ -24,6 +24,8 @@ type WaitingQueueFormView struct {
 	ShowLivePanel bool
 	Status        WaitingQueueStatusView
 	WSPath        string
+	PushPath      string
+	VAPIDPublicKey string
 	UpdatedAtUnix int64
 }
 
@@ -38,31 +40,44 @@ type WaitingQueueStatusView struct {
 
 // WaitingQueueForm صفحه «وضعیت نوبت شما» را رندر می‌کند.
 templ WaitingQueueForm(view WaitingQueueFormView) {
+	<link rel="stylesheet" href="/static/css/waiting_queue.css"/>
 	<div class="ui-fade-in mx-auto max-w-lg">
-		<section class="ui-hero text-center">
-			if view.ClinicLogoURL != "" {
-				<div class="mb-4 flex justify-center">
-					<img
-						src={ view.ClinicLogoURL }
-						alt={ view.ClinicName }
-						class="h-20 w-20 rounded-2xl border-2 border-brand/20 bg-white object-contain p-1.5 shadow-sm"
-						width="80"
-						height="80"
-						loading="eager"
-						onerror="this.style.display='none'"
-					/>
-				</div>
-			}
-			if view.ClinicName != "" {
-				<p class="ui-hero-brand">{ view.ClinicName }</p>
-			}
-			<h1 class="ui-hero-title">وضعیت نوبت شما</h1>
-			if !view.ShowLivePanel {
+		if !view.ShowLivePanel {
+			<section class="ui-hero text-center">
+				if view.ClinicLogoURL != "" {
+					<div class="mb-4 flex justify-center">
+						<img
+							src={ view.ClinicLogoURL }
+							alt={ view.ClinicName }
+							class="h-20 w-20 rounded-2xl border-2 border-brand/20 bg-white object-contain p-1.5 shadow-sm"
+							width="80"
+							height="80"
+							loading="eager"
+							onerror="this.style.display='none'"
+						/>
+					</div>
+				}
+				if view.ClinicName != "" {
+					<p class="ui-hero-brand">{ view.ClinicName }</p>
+				}
+				<h1 class="ui-hero-title">وضعیت نوبت شما</h1>
 				<p class="ui-hero-text mx-auto">
 					شماره پذیرش را وارد کنید. اگر روی قبض کد ملی دارید، آن را هم بنویسید تا فقط نوبت خودتان را ببینید.
 				</p>
-			}
-		</section>
+			</section>
+		} else if view.ClinicLogoURL != "" {
+			<div class="mb-4 flex justify-center">
+				<img
+					src={ view.ClinicLogoURL }
+					alt={ view.ClinicName }
+					class="h-16 w-16 rounded-2xl border-2 border-brand/20 bg-white object-contain p-1.5 shadow-sm"
+					width="64"
+					height="64"
+					loading="eager"
+					onerror="this.style.display='none'"
+				/>
+			</div>
+		}
 
 		if view.ErrorMessage != "" {
 			<div class="mb-4 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-lg text-red-800" role="alert">
@@ -139,47 +154,75 @@ templ WaitingQueueForm(view WaitingQueueFormView) {
 		if view.ShowLivePanel {
 			<div
 				id="waiting-queue-live"
-				class="space-y-4"
+				class={ waitingQueueLiveClass(view.Status.AheadCount) }
 				data-ws-path={ view.WSPath }
+				data-push-path={ view.PushPath }
+				data-vapid-key={ view.VAPIDPublicKey }
+				data-csrf-token={ view.CSRFToken }
 				data-ahead-count={ intToString(view.Status.AheadCount) }
 				data-updated-at={ int64ToString(view.UpdatedAtUnix) }
 			>
-				<div class="wq-ahead-panel rounded-2xl border-4 border-green-400 bg-green-50 p-6 text-center shadow-md">
-					<p class="mb-2 text-xl text-green-900">چند نفر جلوتر از شما هستند؟</p>
-					<p id="wq-ahead-count" class="wq-ahead-num text-7xl font-black leading-none text-green-700 tabular-nums">
-						{ intToString(view.Status.AheadCount) }
-					</p>
-					if view.Status.AheadCount == 0 {
-						<p id="wq-ahead-hint" class="mt-3 text-lg font-medium text-green-800">نوبت شماست! لطفاً به اتاق پزشک بروید.</p>
-					} else {
-						<p id="wq-ahead-hint" class="mt-3 text-lg text-green-800">لطفاً در سالن منتظر بمانید.</p>
-					}
-				</div>
+				if view.ClinicName != "" {
+					<p class="wq-clinic">{ view.ClinicName }</p>
+				}
+				<h1 id="wq-patient-name" class="wq-patient">{ view.Status.PatientName }</h1>
 
-				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-					<div class="ui-panel text-center sm:col-span-2">
-						<p class="mb-1 text-sm text-ink-muted">نام بیمار</p>
-						<p id="wq-patient-name" class="text-xl font-bold text-ink">{ view.Status.PatientName }</p>
-					</div>
-					<div class="ui-panel text-center">
-						<p class="mb-1 text-sm text-ink-muted">پزشک</p>
-						<p id="wq-doctor-name" class="text-lg font-bold text-brand">{ view.Status.DoctorName }</p>
-					</div>
-					<div class="ui-panel text-center">
-						<p class="mb-1 text-sm text-ink-muted">ساعت نوبت</p>
-						<p id="wq-visit-time" class="text-2xl font-bold tabular-nums text-ink">{ view.Status.VisitTime }</p>
+				<div class="wq-ring-wrap">
+					<svg viewBox="0 0 260 260" aria-hidden="true">
+						<circle class="wq-ring-bg" cx="130" cy="130" r="112"></circle>
+						<circle
+							id="wq-ring-fg"
+							class="wq-ring-fg"
+							cx="130"
+							cy="130"
+							r="112"
+							stroke-dasharray="703.7"
+							stroke-dashoffset={ ringDashOffset(view.Status.AheadCount) }
+						></circle>
+					</svg>
+					<div class="wq-ring-center">
+						<p id="wq-ahead-count" class="wq-ring-number" aria-live="polite">{ faQueueNumber(view.Status.AheadCount) }</p>
+						<p id="wq-ring-label" class="wq-ring-label">{ ringCaption(view.Status.AheadCount) }</p>
 					</div>
 				</div>
 
-				<div class="ui-panel text-center">
-					<p id="wq-last-updated" class="text-sm text-ink-muted">آخرین بروزرسانی: —</p>
-					<p id="wq-status-msg" class="mt-1 text-xs text-ink-faint">در حال بروزرسانی خودکار…</p>
+				<p id="wq-status-banner" class="wq-banner" role="status" aria-live="polite">{ waitingQueueBanner(view.Status.AheadCount) }</p>
+
+				<div class="wq-meta">
+					<div>
+						<span>پزشک</span>
+						<b id="wq-doctor-name">{ view.Status.DoctorName }</b>
+					</div>
+					<div class="wq-meta-divider"></div>
+					<div>
+						<span>ساعت نوبت</span>
+						<b id="wq-visit-time">{ view.Status.VisitTime }</b>
+					</div>
+					<div class="wq-meta-divider"></div>
+					<div>
+						<span>شماره پذیرش</span>
+						<b id="wq-admission">{ view.AdmissionNo }</b>
+					</div>
 				</div>
 
-				<p class="text-center text-xs text-ink-faint">
-					با کاهش تعداد نفرات جلوتر، لرزش و صدای کوتاه پخش می‌شود (در صورت فعال بودن در گوشی).
+				<div class="wq-conn">
+					<span id="wq-conn-dot" class="wq-dot wq-dot-live"></span>
+					<span id="wq-conn-text">بروزرسانی زنده — همین الان</span>
+				</div>
+
+				<button type="button" id="wq-confirm" class="wq-confirm">نوبت شماست — تأیید می‌کنم که در راهم</button>
+
+				<div class="wq-actions">
+					<button type="button" id="wq-sound-toggle" class="wq-chip" data-on="false">فعال‌سازی صدا و لرزش هشدار</button>
+					<button type="button" id="wq-push-toggle" class="wq-chip">فعال‌سازی اعلان پس‌زمینه</button>
+				</div>
+				<p id="wq-ios-guide" class="wq-ios-guide" hidden>
+					برای دریافت اعلان حتی با گوشی قفل، لطفاً روی دکمه اشتراک‌گذاری Safari بزنید و گزینه Add to Home Screen را انتخاب کنید، سپس از همان آیکون روی صفحه اصلی وارد شوید.
 				</p>
+				<p id="wq-push-msg" class="wq-push-msg" role="status"></p>
 			</div>
+			<script src="/static/js/waiting_queue.js" defer></script>
+		} else {
 			<script src="/static/js/waiting_queue.js" defer></script>
 		}
 	</div>

@@ -18,13 +18,17 @@ var (
 	ErrRequestTimeout = errors.New("clinic request timeout")
 )
 
+// ClinicPresenceHook is called after a clinic connects or disconnects.
+type ClinicPresenceHook func(clinicID uint, connected bool)
+
 // Hub tracks connected clinic clients and fans out protocol messages.
 type Hub struct {
-	mu         sync.RWMutex
-	clients    map[uint]*ClientConn
-	register   chan *ClientConn
-	unregister chan *ClientConn
-	pending    map[string]chan *protocol.Envelope
+	mu           sync.RWMutex
+	clients      map[uint]*ClientConn
+	register     chan *ClientConn
+	unregister   chan *ClientConn
+	pending      map[string]chan *protocol.Envelope
+	presenceHook ClinicPresenceHook
 }
 
 // NewHub constructs an empty Hub.
@@ -50,17 +54,40 @@ func (h *Hub) Run() {
 			h.mu.Unlock()
 			// لاگ شروع اتصال مرکز
 			LogClinicBehavior(c.ClinicID, ActionConnect, "", "", "مرکز متصل شد", nil)
+			h.emitPresence(c.ClinicID, true)
 		case c := <-h.unregister:
+			removed := false
 			h.mu.Lock()
 			if cur, ok := h.clients[c.ClinicID]; ok && cur == c {
 				delete(h.clients, c.ClinicID)
 				_ = c.Close()
+				removed = true
 			}
 			h.mu.Unlock()
-			// لاگ قطع اتصال مرکز
-			LogClinicBehavior(c.ClinicID, ActionDisconnect, "", "", "مرکز قطع شد", nil)
+			if removed {
+				// لاگ قطع اتصال مرکز
+				LogClinicBehavior(c.ClinicID, ActionDisconnect, "", "", "مرکز قطع شد", nil)
+				h.emitPresence(c.ClinicID, false)
+			}
 		}
 	}
+}
+
+// SetPresenceHook registers a connect/disconnect callback (status SMS).
+// Input: hook — تابع اطلاع‌رسانی؛ nil یعنی غیرفعال.
+func (h *Hub) SetPresenceHook(hook ClinicPresenceHook) {
+	if h == nil {
+		return
+	}
+	h.presenceHook = hook
+}
+
+// emitPresence calls the presence hook without blocking the hub loop.
+func (h *Hub) emitPresence(clinicID uint, connected bool) {
+	if h == nil || h.presenceHook == nil || clinicID == 0 {
+		return
+	}
+	go h.presenceHook(clinicID, connected)
 }
 
 // Register enqueues a client connection onto the hub.
@@ -318,6 +345,48 @@ func (h *Hub) RequestTestResult(clinicID uint, timeout time.Duration, req protoc
 	case <-timer.C:
 		// لاگ اتمام مهلت رفت‌وبرگشت جواب آزمایش
 		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeTestResultRequest), requestID, "مهلت پاسخ جواب آزمایش تمام شد", ErrRequestTimeout)
+		return nil, ErrRequestTimeout
+	}
+}
+
+// RequestVisitCheck asks the clinic to read paziresh and waits for the counts.
+// Inputs: clinicID, timeout, and the appointment rows to look up.
+// Output: VisitCheckResponse, or ErrClinicOffline / ErrRequestTimeout / a decode error.
+func (h *Hub) RequestVisitCheck(clinicID uint, timeout time.Duration, req protocol.VisitCheckRequest) (*protocol.VisitCheckResponse, error) {
+	requestID := uuid.NewString()
+	replyCh := make(chan *protocol.Envelope, 1)
+
+	h.mu.Lock()
+	h.pending[requestID] = replyCh
+	h.mu.Unlock()
+	defer func() {
+		h.mu.Lock()
+		delete(h.pending, requestID)
+		h.mu.Unlock()
+	}()
+
+	env, err := protocol.NewEnvelope(protocol.TypeVisitCheckRequest, requestID, req)
+	if err != nil {
+		return nil, err
+	}
+	if !h.sendEnvelope(clinicID, env) {
+		return nil, ErrClinicOffline
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case reply := <-replyCh:
+		if reply.Error != nil {
+			return nil, errors.New(reply.Error.Message)
+		}
+		var resp protocol.VisitCheckResponse
+		if err := reply.DecodePayload(&resp); err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	case <-timer.C:
+		LogClinicBehavior(clinicID, ActionTimeout, string(protocol.TypeVisitCheckRequest), requestID, "مهلت پاسخ بررسی مراجعه تمام شد", ErrRequestTimeout)
 		return nil, ErrRequestTimeout
 	}
 }

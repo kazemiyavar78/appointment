@@ -1,0 +1,423 @@
+package admin
+
+import (
+	"net/url"
+	"strconv"
+	"time"
+
+	"tebpardaz/server/views/layouts"
+)
+
+// VisitorIPRow is one unique IP in the admin table.
+type VisitorIPRow struct {
+	ID          uint
+	IPAddress   string
+	VisitCount  uint
+	LastVisitAt time.Time
+	CreatedAt   time.Time
+}
+
+// VisitorVisitRow is one page visit in the admin table.
+type VisitorVisitRow struct {
+	ID           uint
+	VisitorIPID  uint
+	IPAddress    string
+	Host         string
+	ClinicName   string
+	Path         string
+	FullURL      string
+	Browser      string
+	OS           string
+	Referrer     string
+	IsFromGoogle bool
+	CreatedAt    time.Time
+}
+
+// VisitorIPsView is the admin unique-IP list page model.
+type VisitorIPsView struct {
+	Nav            layouts.AdminLayoutView
+	Clinics        []ClinicOption
+	Rows           []VisitorIPRow
+	Total          int64
+	Page           int
+	PerPage        int
+	TotalPages     int
+	SearchQuery    string
+	ClinicID       uint
+	PlatformOnly   bool
+	FromDate       string
+	ToDate         string
+	CanSeePlatform bool
+	Message        string
+}
+
+// VisitorVisitsView is the admin page-visit list page model.
+type VisitorVisitsView struct {
+	Nav              layouts.AdminLayoutView
+	Clinics          []ClinicOption
+	Browsers         []string
+	OperatingSystems []string
+	Rows             []VisitorVisitRow
+	Total            int64
+	Page             int
+	PerPage          int
+	TotalPages       int
+	SearchQuery      string
+	IPQuery          string
+	VisitorIPID      uint
+	Host             string
+	Browser          string
+	OS               string
+	GoogleFilter     string
+	ClinicID         uint
+	PlatformOnly     bool
+	FromDate         string
+	ToDate           string
+	CanSeePlatform   bool
+	Message          string
+}
+
+// visitorClinicValue encodes the clinic filter for query strings ("none", empty, or numeric id).
+func visitorClinicValue(platformOnly bool, clinicID uint) string {
+	if platformOnly {
+		return "none"
+	}
+	if clinicID == 0 {
+		return ""
+	}
+	return strconv.FormatUint(uint64(clinicID), 10)
+}
+
+// visitorIPsHref builds the IP-list URL with current filters and the given page.
+func visitorIPsHref(view VisitorIPsView, page int) string {
+	v := url.Values{}
+	if view.SearchQuery != "" {
+		v.Set("q", view.SearchQuery)
+	}
+	if cv := visitorClinicValue(view.PlatformOnly, view.ClinicID); cv != "" {
+		v.Set("clinic_id", cv)
+	}
+	if view.FromDate != "" {
+		v.Set("from", view.FromDate)
+	}
+	if view.ToDate != "" {
+		v.Set("to", view.ToDate)
+	}
+	if page > 1 {
+		v.Set("page", strconv.Itoa(page))
+	}
+	if qs := v.Encode(); qs != "" {
+		return "/admin/visitors?" + qs
+	}
+	return "/admin/visitors"
+}
+
+// visitorVisitsHref builds the page-visit URL with current filters and the given page.
+func visitorVisitsHref(view VisitorVisitsView, page int) string {
+	v := url.Values{}
+	if view.SearchQuery != "" {
+		v.Set("q", view.SearchQuery)
+	}
+	if view.IPQuery != "" {
+		v.Set("ip", view.IPQuery)
+	}
+	if view.VisitorIPID > 0 {
+		v.Set("visitor_ip_id", strconv.FormatUint(uint64(view.VisitorIPID), 10))
+	}
+	if view.Host != "" {
+		v.Set("host", view.Host)
+	}
+	if view.Browser != "" {
+		v.Set("browser", view.Browser)
+	}
+	if view.OS != "" {
+		v.Set("os", view.OS)
+	}
+	if view.GoogleFilter != "" {
+		v.Set("from_google", view.GoogleFilter)
+	}
+	if cv := visitorClinicValue(view.PlatformOnly, view.ClinicID); cv != "" {
+		v.Set("clinic_id", cv)
+	}
+	if view.FromDate != "" {
+		v.Set("from", view.FromDate)
+	}
+	if view.ToDate != "" {
+		v.Set("to", view.ToDate)
+	}
+	if page > 1 {
+		v.Set("page", strconv.Itoa(page))
+	}
+	if qs := v.Encode(); qs != "" {
+		return "/admin/visitors/visits?" + qs
+	}
+	return "/admin/visitors/visits"
+}
+
+// visitorVisitsByIPHref links from an IP row to that IP's page visits.
+func visitorVisitsByIPHref(ipID uint) string {
+	return "/admin/visitors/visits?visitor_ip_id=" + strconv.FormatUint(uint64(ipID), 10)
+}
+
+// googleVisitLabel returns the Persian yes/no label for IsFromGoogle.
+func googleVisitLabel(fromGoogle bool) string {
+	if fromGoogle {
+		return "بله"
+	}
+	return "خیر"
+}
+
+// optionSelected reports whether a select option should be marked selected.
+func optionSelected(current, value string) bool {
+	return current == value
+}
+
+// VisitorIPs صفحه لیست آی‌پی‌های بازدیدکننده را با فیلتر رندر می‌کند.
+templ VisitorIPs(view VisitorIPsView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4">
+				<h1 class="ui-page-title">لیست آی‌پی بازدیدکنندگان</h1>
+				<p class="mt-1 text-sm text-ink-muted">هر آی‌پی یک ردیف است. تعداد بازدید و زمان آخرین مراجعه در همین جدول دیده می‌شود.</p>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			} else {
+				<form class="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-2 xl:grid-cols-4" method="get" action="/admin/visitors">
+					<label class="block text-sm text-ink-muted">
+						آی‌پی
+						<input class="ui-field mt-1 w-full" type="search" name="q" value={ view.SearchQuery } placeholder="مثلاً 203.0.113.10"/>
+					</label>
+					@visitorClinicFilter(view.Clinics, view.ClinicID, view.PlatformOnly, view.CanSeePlatform)
+					<label class="block text-sm text-ink-muted">
+						از تاریخ آخرین بازدید
+						<input class="ui-field mt-1 w-full" type="date" name="from" value={ view.FromDate }/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						تا تاریخ آخرین بازدید
+						<input class="ui-field mt-1 w-full" type="date" name="to" value={ view.ToDate }/>
+					</label>
+					<div class="flex items-end gap-2 md:col-span-2 xl:col-span-4">
+						<button class="ui-btn ui-btn-primary" type="submit">اعمال فیلتر</button>
+						<a class="ui-btn" href="/admin/visitors">پاک کردن فیلتر</a>
+						<a class="ui-btn ui-btn-ghost" href="/admin/visitors/visits">بازدید صفحات</a>
+					</div>
+				</form>
+				<p class="mb-2 text-sm text-ink-muted">
+					تعداد کل: { formatInt64(view.Total) } — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }
+				</p>
+				<div class="overflow-x-auto ui-panel !p-0">
+					<table class="min-w-full text-sm">
+						<thead class="border-b border-border bg-surface-soft text-ink-muted">
+							<tr>
+								<th class="px-3 py-2 text-right">#</th>
+								<th class="px-3 py-2 text-right">آی‌پی</th>
+								<th class="px-3 py-2 text-right">تعداد بازدید</th>
+								<th class="px-3 py-2 text-right">آخرین بازدید</th>
+								<th class="px-3 py-2 text-right">اولین بازدید</th>
+								<th class="px-3 py-2 text-right">جزئیات</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Rows) == 0 {
+								<tr>
+									<td class="px-3 py-4 text-ink-muted" colspan="6">موردی برای نمایش نیست.</td>
+								</tr>
+							}
+							for _, row := range view.Rows {
+								<tr class="border-b border-border hover:bg-surface-soft">
+									<td class="px-3 py-2">{ formatUint(row.ID) }</td>
+									<td class="px-3 py-2 font-mono dir-ltr text-left">{ row.IPAddress }</td>
+									<td class="px-3 py-2 tabular-nums">{ formatUint(row.VisitCount) }</td>
+									<td class="px-3 py-2 whitespace-nowrap">{ formatLogDateTime(row.LastVisitAt) }</td>
+									<td class="px-3 py-2 whitespace-nowrap">{ formatLogDateTime(row.CreatedAt) }</td>
+									<td class="px-3 py-2">
+										<a class="text-brand hover:underline" href={ templ.SafeURL(visitorVisitsByIPHref(row.ID)) }>بازدید صفحات</a>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				@visitorPager(view.Page, view.TotalPages, visitorIPsHref(view, view.Page-1), visitorIPsHref(view, view.Page+1))
+			}
+		</div>
+	}
+}
+
+// VisitorVisits صفحه ریز بازدید صفحات را با فیلتر رندر می‌کند.
+templ VisitorVisits(view VisitorVisitsView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-[100rem]">
+			<div class="mb-4">
+				<h1 class="ui-page-title">بازدید صفحات</h1>
+				<p class="mt-1 text-sm text-ink-muted">هر ردیف یک بازدید ثبت‌شده است؛ مسیر، مرورگر، سیستم‌عامل و منبع گوگل قابل فیلتر است.</p>
+			</div>
+			if view.Message != "" {
+				<p class="ui-panel mb-3 text-sm text-ink-muted">{ view.Message }</p>
+			} else {
+				<form class="mb-4 grid gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-2 xl:grid-cols-4" method="get" action="/admin/visitors/visits">
+					if view.VisitorIPID > 0 {
+						<input type="hidden" name="visitor_ip_id" value={ formatUint(view.VisitorIPID) }/>
+					}
+					<label class="block text-sm text-ink-muted">
+						مسیر / آدرس / ارجاع
+						<input class="ui-field mt-1 w-full" type="search" name="q" value={ view.SearchQuery } placeholder="/doctors یا بخشی از URL"/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						آی‌پی
+						<input class="ui-field mt-1 w-full" type="search" name="ip" value={ view.IPQuery } placeholder="203.0.113.10"/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						دامنه (Host)
+						<input class="ui-field mt-1 w-full" type="text" name="host" value={ view.Host } placeholder="clinic.example.ir"/>
+					</label>
+					@visitorClinicFilter(view.Clinics, view.ClinicID, view.PlatformOnly, view.CanSeePlatform)
+					<label class="block text-sm text-ink-muted">
+						مرورگر
+						<select class="ui-field mt-1 w-full" name="browser">
+							<option value="">همه</option>
+							for _, browser := range view.Browsers {
+								if optionSelected(view.Browser, browser) {
+									<option value={ browser } selected>{ browser }</option>
+								} else {
+									<option value={ browser }>{ browser }</option>
+								}
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						سیستم‌عامل
+						<select class="ui-field mt-1 w-full" name="os">
+							<option value="">همه</option>
+							for _, osName := range view.OperatingSystems {
+								if optionSelected(view.OS, osName) {
+									<option value={ osName } selected>{ osName }</option>
+								} else {
+									<option value={ osName }>{ osName }</option>
+								}
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						از گوگل
+						<select class="ui-field mt-1 w-full" name="from_google">
+							if view.GoogleFilter == "" {
+								<option value="" selected>همه</option>
+							} else {
+								<option value="">همه</option>
+							}
+							if optionSelected(view.GoogleFilter, "1") {
+								<option value="1" selected>بله</option>
+							} else {
+								<option value="1">بله</option>
+							}
+							if optionSelected(view.GoogleFilter, "0") {
+								<option value="0" selected>خیر</option>
+							} else {
+								<option value="0">خیر</option>
+							}
+						</select>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						از تاریخ
+						<input class="ui-field mt-1 w-full" type="date" name="from" value={ view.FromDate }/>
+					</label>
+					<label class="block text-sm text-ink-muted">
+						تا تاریخ
+						<input class="ui-field mt-1 w-full" type="date" name="to" value={ view.ToDate }/>
+					</label>
+					<div class="flex items-end gap-2 md:col-span-2 xl:col-span-4">
+						<button class="ui-btn ui-btn-primary" type="submit">اعمال فیلتر</button>
+						<a class="ui-btn" href="/admin/visitors/visits">پاک کردن فیلتر</a>
+						<a class="ui-btn ui-btn-ghost" href="/admin/visitors">لیست آی‌پی‌ها</a>
+					</div>
+				</form>
+				<p class="mb-2 text-sm text-ink-muted">
+					تعداد کل: { formatInt64(view.Total) } — صفحه { formatInt(view.Page) } از { formatInt(view.TotalPages) }
+				</p>
+				<div class="overflow-x-auto ui-panel !p-0">
+					<table class="min-w-full text-sm">
+						<thead class="border-b border-border bg-surface-soft text-ink-muted">
+							<tr>
+								<th class="px-3 py-2 text-right">زمان</th>
+								<th class="px-3 py-2 text-right">آی‌پی</th>
+								<th class="px-3 py-2 text-right">دامنه</th>
+								<th class="px-3 py-2 text-right">مرکز</th>
+								<th class="px-3 py-2 text-right">مسیر</th>
+								<th class="px-3 py-2 text-right">مرورگر</th>
+								<th class="px-3 py-2 text-right">سیستم‌عامل</th>
+								<th class="px-3 py-2 text-right">گوگل</th>
+								<th class="px-3 py-2 text-right">ارجاع</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Rows) == 0 {
+								<tr>
+									<td class="px-3 py-4 text-ink-muted" colspan="9">موردی برای نمایش نیست.</td>
+								</tr>
+							}
+							for _, row := range view.Rows {
+								<tr class="border-b border-border hover:bg-surface-soft">
+									<td class="px-3 py-2 whitespace-nowrap">{ formatLogDateTime(row.CreatedAt) }</td>
+									<td class="px-3 py-2 font-mono dir-ltr text-left">
+										<a class="text-brand hover:underline" href={ templ.SafeURL(visitorVisitsByIPHref(row.VisitorIPID)) }>{ row.IPAddress }</a>
+									</td>
+									<td class="px-3 py-2 dir-ltr text-left">{ row.Host }</td>
+									<td class="px-3 py-2">{ row.ClinicName }</td>
+									<td class="px-3 py-2 max-w-xs truncate dir-ltr text-left" title={ row.FullURL }>{ row.Path }</td>
+									<td class="px-3 py-2">{ row.Browser }</td>
+									<td class="px-3 py-2">{ row.OS }</td>
+									<td class="px-3 py-2">{ googleVisitLabel(row.IsFromGoogle) }</td>
+									<td class="px-3 py-2 max-w-xs truncate dir-ltr text-left" title={ row.Referrer }>{ row.Referrer }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				@visitorPager(view.Page, view.TotalPages, visitorVisitsHref(view, view.Page-1), visitorVisitsHref(view, view.Page+1))
+			}
+		</div>
+	}
+}
+
+templ visitorClinicFilter(clinics []ClinicOption, clinicID uint, platformOnly bool, canSeePlatform bool) {
+	<label class="block text-sm text-ink-muted">
+		مرکز
+		<select class="ui-field mt-1 w-full" name="clinic_id">
+			if clinicID == 0 && !platformOnly {
+				<option value="" selected>همه مراکز</option>
+			} else {
+				<option value="">همه مراکز</option>
+			}
+			if canSeePlatform {
+				if platformOnly {
+					<option value="none" selected>بدون مرکز (پلتفرم/ارگان)</option>
+				} else {
+					<option value="none">بدون مرکز (پلتفرم/ارگان)</option>
+				}
+			}
+			for _, clinic := range clinics {
+				if clinic.Selected {
+					<option value={ formatUint(clinic.ID) } selected>{ clinic.Name }</option>
+				} else {
+					<option value={ formatUint(clinic.ID) }>{ clinic.Name }</option>
+				}
+			}
+		</select>
+	</label>
+}
+
+templ visitorPager(page int, totalPages int, prevHref string, nextHref string) {
+	if totalPages > 1 {
+		<nav class="mt-4 flex flex-wrap items-center justify-center gap-2">
+			if page > 1 {
+				<a class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-brand hover:text-brand" href={ templ.SafeURL(prevHref) }>قبلی</a>
+			}
+			<span class="text-sm text-ink-muted">صفحه { formatInt(page) } از { formatInt(totalPages) }</span>
+			if page < totalPages {
+				<a class="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-brand hover:text-brand" href={ templ.SafeURL(nextHref) }>بعدی</a>
+			}
+		</nav>
+	}
+}

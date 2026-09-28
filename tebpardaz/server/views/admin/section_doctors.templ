@@ -1,0 +1,144 @@
+package admin
+
+import (
+	"strconv"
+	"tebpardaz/server/views/layouts"
+)
+
+// SectionDoctorRow represents an assigned doctor in the section admin list.
+type SectionDoctorRow struct {
+	DoctorID      uint
+	Name          string
+	SpecialtyName string
+	SystemID      int
+	IsApproved    bool
+	IsActive      bool
+	SortOrder     int
+}
+
+// SectionDoctorOption is a selectable approved doctor not yet assigned to the section.
+type SectionDoctorOption struct {
+	ID            uint
+	Name          string
+	SpecialtyName string
+}
+
+// SectionDoctorsView holds data for managing doctors assigned to a clinic section.
+type SectionDoctorsView struct {
+	Nav          layouts.AdminLayoutView
+	SectionID    uint
+	SectionTitle string
+	ClinicID     uint
+	Assigned     []SectionDoctorRow
+	Available    []SectionDoctorOption
+	Message      string
+}
+
+// SectionDoctors renders the assigned-doctors list and the add-doctor form.
+templ SectionDoctors(view SectionDoctorsView) {
+	@layouts.AdminLayout(view.Nav) {
+		<div class="mx-auto max-w-5xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<div class="flex items-center gap-2 text-sm text-ink-muted mb-1">
+						<a class="hover:text-brand" href={ templ.SafeURL("/admin/sections?clinic_id=" + formatUint(view.ClinicID)) }>بخش‌های مرکز</a>
+						<span>/</span>
+						<span>{ view.SectionTitle }</span>
+					</div>
+					<h1 class="ui-page-title">پزشکان بخش: { view.SectionTitle }</h1>
+					<p class="text-xs text-ink-muted mt-1">فقط پزشکان تأییدشده همین مرکز را می‌توان به بخش اضافه کرد. این پزشکان در صفحه عمومی بخش نمایش داده می‌شوند.</p>
+				</div>
+				<div class="flex flex-wrap items-center gap-2">
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/banner") }>بنر</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/schedule") }>ساعات کاری</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/messages") }>پیام‌ها</a>
+					<a class="ui-btn ui-btn-ghost text-xs" href={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/equipment") }>تجهیزات</a>
+				</div>
+			</div>
+
+			if view.Message != "" {
+				<p class="ui-panel mb-4 text-sm text-brand">{ view.Message }</p>
+			}
+
+			<section class="ui-panel mb-6">
+				<h2 class="mb-3 text-lg font-bold text-ink">افزودن پزشک تأییدشده</h2>
+				if len(view.Available) == 0 {
+					<p class="text-sm text-ink-muted">پزشک تأییدشده‌ای برای افزودن باقی نمانده است. همه پزشکان تأییدشده این مرکز یا به بخش اضافه شده‌اند یا هنوز تأیید نشده‌اند.</p>
+				} else {
+					<form class="flex flex-wrap items-end gap-3" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/doctors") }>
+						<label class="block min-w-[16rem] flex-1 text-sm text-ink-muted">
+							انتخاب پزشک
+							<select class="ui-field mt-1 w-full" name="doctor_id" required>
+								<option value="">یک پزشک را انتخاب کنید</option>
+								for _, d := range view.Available {
+									<option value={ formatUint(d.ID) }>{ sectionDoctorOptionLabel(d) }</option>
+								}
+							</select>
+						</label>
+						<button class="ui-btn ui-btn-primary" type="submit">افزودن به بخش</button>
+					</form>
+				}
+			</section>
+
+			<section class="ui-panel">
+				<h2 class="mb-3 text-lg font-bold text-ink">پزشکان این بخش ({ strconv.Itoa(len(view.Assigned)) })</h2>
+				<div class="ui-table-wrap overflow-x-auto">
+					<table class="ui-table min-w-[700px] text-sm">
+						<thead>
+							<tr class="border-b border-gray-200 bg-surface-soft text-right">
+								<th class="p-3">ردیف</th>
+								<th class="p-3">نام پزشک</th>
+								<th class="p-3">تخصص</th>
+								<th class="p-3">نظام پزشکی</th>
+								<th class="p-3">وضعیت</th>
+								<th class="p-3">اقدام</th>
+							</tr>
+						</thead>
+						<tbody>
+							if len(view.Assigned) == 0 {
+								<tr>
+									<td class="p-4 text-center text-ink-muted" colspan="6">هنوز پزشکی به این بخش اضافه نشده است.</td>
+								</tr>
+							}
+							for index, row := range view.Assigned {
+								<tr class="border-b border-gray-100 hover:bg-surface-soft/50">
+									<td class="p-3">{ strconv.Itoa(index + 1) }</td>
+									<td class="p-3 font-semibold text-ink">{ row.Name }</td>
+									<td class="p-3 text-ink-muted">{ row.SpecialtyName }</td>
+									<td class="p-3">
+										if row.SystemID > 0 {
+											{ strconv.Itoa(row.SystemID) }
+										} else {
+											<span class="text-ink-muted">—</span>
+										}
+									</td>
+									<td class="p-3">
+										if row.IsApproved && row.IsActive {
+											<span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">قابل نمایش</span>
+										} else {
+											<span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">غیرفعال در سایت</span>
+										}
+									</td>
+									<td class="p-3 whitespace-nowrap">
+										<form class="inline" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(view.SectionID) + "/doctors/" + formatUint(row.DoctorID) + "/delete") } onsubmit="return confirm('این پزشک از بخش حذف شود؟');">
+											<button class="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700 hover:bg-red-50" type="submit">حذف از بخش</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</div>
+	}
+}
+
+// sectionDoctorOptionLabel برچسب گزینه انتخاب پزشک را از نام و تخصص می‌سازد.
+// ورودی: گزینه پزشک. خروجی: متن فارسی نمایش در دراپ‌داون.
+func sectionDoctorOptionLabel(d SectionDoctorOption) string {
+	if d.SpecialtyName == "" {
+		return d.Name
+	}
+	return d.Name + " — " + d.SpecialtyName
+}

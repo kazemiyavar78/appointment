@@ -25,11 +25,14 @@ const (
 type Refresher struct {
 	Hub *websocket.Hub
 
-	mu            sync.Mutex
-	viewerCount   map[uint]int
-	lastRefresh   map[uint]time.Time
-	stopCh        chan struct{}
-	startOnce     sync.Once
+	// HasPushInterest اگر true برگرداند، مرکز مثل صفحه باز هر ۵ ثانیه تازه می‌شود (مثلاً اشتراک Web Push).
+	HasPushInterest func(clinicID uint) bool
+
+	mu          sync.Mutex
+	viewerCount map[uint]int
+	lastRefresh map[uint]time.Time
+	stopCh      chan struct{}
+	startOnce   sync.Once
 }
 
 // NewRefresher سازنده Refresher است.
@@ -137,7 +140,7 @@ func (r *Refresher) refreshIntervalFor(clinicID uint) time.Duration {
 	r.mu.Lock()
 	count := r.viewerCount[clinicID]
 	r.mu.Unlock()
-	if count > 0 {
+	if count > 0 || (r.HasPushInterest != nil && r.HasPushInterest(clinicID)) {
 		return LiveRefreshInterval
 	}
 	return IdleRefreshInterval

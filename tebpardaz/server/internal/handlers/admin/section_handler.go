@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -251,17 +252,31 @@ func (h *SectionAdminHandler) BannerEdit(c *gin.Context) {
 	sections, _ := h.Sections.ListSectionsByClinic(sec.ClinicID)
 	nav := adminviews.BuildAdminNavWithSections(fmt.Sprintf("section_%d_banner", sec.ID), user.Role, toSectionSummaries(sections))
 
+	overlayLeft := models.ClampPercent(banner.OverlayOpacityLeft, 85)
+	overlayBottom := models.ClampPercent(banner.OverlayOpacityBottom, 60)
+	if overlayLeft == 0 && overlayBottom == 0 {
+		overlayLeft = 85
+		overlayBottom = 60
+	}
+
 	view := adminviews.SectionBannerView{
-		Nav:             nav,
-		SectionID:       sec.ID,
-		SectionTitle:    sec.Title,
-		ClinicID:        sec.ClinicID,
-		Slogan:          banner.Slogan,
-		Description:     banner.Description,
-		Services:        banner.Services,
-		BackgroundColor: banner.BackgroundColor,
-		ImageURL:        banner.ImageURL,
-		Message:         sectionFlashMessage(c.Query("msg")),
+		Nav:                   nav,
+		SectionID:             sec.ID,
+		SectionTitle:          sec.Title,
+		ClinicID:              sec.ClinicID,
+		Slogan:                banner.Slogan,
+		Description:           banner.Description,
+		Services:              banner.Services,
+		BackgroundColor:       models.SanitizeHexColor(banner.BackgroundColor, "#0a2e2e"),
+		BackgroundColorEnd:    models.SanitizeHexColor(banner.BackgroundColorEnd, "#134e4a"),
+		UseBackgroundGradient: banner.UseBackgroundGradient,
+		BackgroundGradientDir: models.SanitizeGradientDir(banner.BackgroundGradientDir),
+		ImageURL:              banner.ImageURL,
+		OverlayColor:          models.SanitizeHexColor(banner.OverlayColor, banner.BackgroundColor),
+		UseOverlayGradient:    banner.OverlayEnabled(),
+		OverlayOpacityLeft:    overlayLeft,
+		OverlayOpacityBottom:  overlayBottom,
+		Message:               sectionFlashMessage(c.Query("msg")),
 	}
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
@@ -269,7 +284,7 @@ func (h *SectionAdminHandler) BannerEdit(c *gin.Context) {
 }
 
 // BannerSave updates the banner fields and optional banner image.
-// Input: gin.Context with form data (slogan, description, services, background_color, image).
+// Input: gin.Context with form data (slogan, description, services, background/overlay gradient fields, image).
 // Output: redirects back to banner editor with success or error message.
 func (h *SectionAdminHandler) BannerSave(c *gin.Context) {
 	_, sec, ok := h.requireSectionAccess(c)
@@ -280,10 +295,14 @@ func (h *SectionAdminHandler) BannerSave(c *gin.Context) {
 	slogan := strings.TrimSpace(c.PostForm("slogan"))
 	description := strings.TrimSpace(c.PostForm("description"))
 	rawServices := strings.TrimSpace(c.PostForm("services"))
-	bgColor := strings.TrimSpace(c.PostForm("background_color"))
-	if bgColor == "" {
-		bgColor = "#0a2e2e"
-	}
+	bgColor := models.SanitizeHexColor(c.PostForm("background_color"), "#0a2e2e")
+	bgColorEnd := models.SanitizeHexColor(c.PostForm("background_color_end"), "#134e4a")
+	useBgGradient := c.PostForm("use_background_gradient") == "1"
+	bgGradientDir := models.SanitizeGradientDir(c.PostForm("background_gradient_dir"))
+	overlayColor := models.SanitizeHexColor(c.PostForm("overlay_color"), bgColor)
+	useOverlay := c.PostForm("use_overlay_gradient") == "1"
+	overlayLeft := parsePercentForm(c.PostForm("overlay_opacity_left"), 85)
+	overlayBottom := parsePercentForm(c.PostForm("overlay_opacity_bottom"), 60)
 
 	// Validate services count <= 5
 	servicesList := parseServicesLines(rawServices, maxServicesCount)
@@ -302,12 +321,19 @@ func (h *SectionAdminHandler) BannerSave(c *gin.Context) {
 	}
 
 	bannerToSave := &models.SectionBanner{
-		SectionID:       sec.ID,
-		Slogan:          slogan,
-		Description:     description,
-		Services:        validatedServices,
-		BackgroundColor: bgColor,
-		ImageURL:        imageURL,
+		SectionID:             sec.ID,
+		Slogan:                slogan,
+		Description:           description,
+		Services:              validatedServices,
+		BackgroundColor:       bgColor,
+		ImageURL:              imageURL,
+		BackgroundColorEnd:    bgColorEnd,
+		UseBackgroundGradient: useBgGradient,
+		BackgroundGradientDir: bgGradientDir,
+		OverlayColor:          overlayColor,
+		UseOverlayGradient:    useOverlay,
+		OverlayOpacityLeft:    overlayLeft,
+		OverlayOpacityBottom:  overlayBottom,
 	}
 
 	if err := h.Sections.SaveBanner(bannerToSave); err != nil {
@@ -772,6 +798,134 @@ func (h *SectionAdminHandler) EquipmentDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/equipment?msg=deleted", sec.ID))
 }
 
+// DoctorsList صفحه مدیریت پزشکان منتسب به یک بخش را رندر می‌کند.
+// ورودی: gin.Context حاوی شناسه بخش. خروجی: HTML لیست و فرم افزودن پزشک تأییدشده.
+func (h *SectionAdminHandler) DoctorsList(c *gin.Context) {
+	user, sec, ok := h.requireSectionAccess(c)
+	if !ok {
+		return
+	}
+
+	assigned, err := h.Sections.ListSectionDoctorsBySectionID(sec.ID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "خطا در دریافت پزشکان بخش")
+		return
+	}
+	available, err := h.Sections.ListAssignableApprovedDoctors(sec.ID, sec.ClinicID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "خطا در دریافت پزشکان قابل انتخاب")
+		return
+	}
+
+	sections, _ := h.Sections.ListSectionsByClinic(sec.ClinicID)
+	nav := adminviews.BuildAdminNavWithSections(fmt.Sprintf("section_%d_doctors", sec.ID), user.Role, toSectionSummaries(sections))
+
+	view := adminviews.SectionDoctorsView{
+		Nav:          nav,
+		SectionID:    sec.ID,
+		SectionTitle: sec.Title,
+		ClinicID:     sec.ClinicID,
+		Assigned:     toSectionDoctorRows(assigned),
+		Available:    toSectionDoctorOptions(available),
+		Message:      sectionFlashMessage(c.Query("msg")),
+	}
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	_ = adminviews.SectionDoctors(view).Render(c.Request.Context(), c.Writer)
+}
+
+// DoctorAssign پزشک تأییدشدهٔ همان مرکز را به بخش اضافه می‌کند.
+// ورودی: gin.Context با شناسه بخش و doctor_id فرم. خروجی: تغییر مسیر به لیست پزشکان بخش.
+func (h *SectionAdminHandler) DoctorAssign(c *gin.Context) {
+	_, sec, ok := h.requireSectionAccess(c)
+	if !ok {
+		return
+	}
+
+	doctorID, err := strconv.ParseUint(strings.TrimSpace(c.PostForm("doctor_id")), 10, 64)
+	if err != nil || doctorID == 0 {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=doctor_invalid", sec.ID))
+		return
+	}
+
+	if err := h.Sections.AssignDoctorToSection(sec.ID, sec.ClinicID, uint(doctorID), 0); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrSectionDoctorExists):
+			c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=doctor_already", sec.ID))
+		case errors.Is(err, repository.ErrSectionDoctorNotEligible):
+			c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=doctor_not_approved", sec.ID))
+		default:
+			c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=error", sec.ID))
+		}
+		return
+	}
+
+	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=doctor_assigned", sec.ID))
+}
+
+// DoctorRemove پزشک را از بخش جدا می‌کند.
+// ورودی: gin.Context با شناسه بخش و doctor_id. خروجی: تغییر مسیر به لیست پزشکان بخش.
+func (h *SectionAdminHandler) DoctorRemove(c *gin.Context) {
+	_, sec, ok := h.requireSectionAccess(c)
+	if !ok {
+		return
+	}
+
+	doctorID, err := parseUintParam(c, "doctor_id")
+	if err != nil {
+		c.String(http.StatusBadRequest, "شناسه پزشک نامعتبر است.")
+		return
+	}
+
+	if err := h.Sections.UnassignDoctorFromSection(sec.ID, doctorID); err != nil {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=error", sec.ID))
+		return
+	}
+
+	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/sections/%d/doctors?msg=doctor_removed", sec.ID))
+}
+
+// toSectionDoctorRows ردیف‌های انتصاب را به مدل نمای ادمین تبدیل می‌کند.
+// ورودی: اسلایس SectionDoctor. خروجی: اسلایس SectionDoctorRow.
+func toSectionDoctorRows(links []models.SectionDoctor) []adminviews.SectionDoctorRow {
+	out := make([]adminviews.SectionDoctorRow, 0, len(links))
+	for _, link := range links {
+		out = append(out, adminviews.SectionDoctorRow{
+			DoctorID:      link.DoctorID,
+			Name:          sectionDoctorDisplayName(link.Doctor),
+			SpecialtyName: link.Doctor.Specialty.Name,
+			SystemID:      link.Doctor.DoctorSystemID,
+			IsApproved:    link.Doctor.IsApproved,
+			IsActive:      link.Doctor.IsActive,
+			SortOrder:     link.SortOrder,
+		})
+	}
+	return out
+}
+
+// toSectionDoctorOptions پزشکان قابل انتخاب را به گزینه‌های فرم تبدیل می‌کند.
+// ورودی: اسلایس Doctor. خروجی: اسلایس SectionDoctorOption.
+func toSectionDoctorOptions(doctors []models.Doctor) []adminviews.SectionDoctorOption {
+	out := make([]adminviews.SectionDoctorOption, 0, len(doctors))
+	for _, d := range doctors {
+		out = append(out, adminviews.SectionDoctorOption{
+			ID:            d.ID,
+			Name:          sectionDoctorDisplayName(d),
+			SpecialtyName: d.Specialty.Name,
+		})
+	}
+	return out
+}
+
+// sectionDoctorDisplayName نام نمایشی پزشک را از فیلدهای نام می‌سازد.
+// ورودی: مدل پزشک. خروجی: نام کامل یا ترکیب نام و نام خانوادگی.
+func sectionDoctorDisplayName(d models.Doctor) string {
+	if name := strings.TrimSpace(d.Name); name != "" {
+		return name
+	}
+	return strings.TrimSpace(d.FirstName + " " + d.LastName)
+}
+
 // requireUserClinics verifies user authorization and returns their allowed clinics.
 // Input: gin.Context.
 // Output: AppointmentUser pointer, slice of Clinic, and boolean success.
@@ -932,6 +1086,16 @@ func sanitizeSlug(s string) string {
 	return s
 }
 
+// parsePercentForm parses a 0..100 integer from a form value.
+// Input: raw form string and fallback. Output: clamped percent.
+func parsePercentForm(raw string, fallback int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return models.ClampPercent(fallback, fallback)
+	}
+	return models.ClampPercent(n, fallback)
+}
+
 // parseServicesLines splits services text by newline and limits to maxCount.
 // Input: raw string and maxCount.
 // Output: slice of trimmed service strings.
@@ -1023,6 +1187,16 @@ func sectionFlashMessage(code string) string {
 		return "متن پیام نمی‌تواند خالی باشد."
 	case "invalid_image":
 		return "تصویر ارسالی نامعتبر یا حجم آن بیش از ۵ مگابایت است."
+	case "doctor_assigned":
+		return "پزشک تأییدشده با موفقیت به این بخش اضافه شد."
+	case "doctor_removed":
+		return "پزشک از این بخش حذف شد."
+	case "doctor_already":
+		return "این پزشک از قبل به بخش اضافه شده است."
+	case "doctor_not_approved":
+		return "فقط پزشکان تأییدشده همین مرکز را می‌توان به بخش افزود."
+	case "doctor_invalid":
+		return "لطفاً یک پزشک معتبر انتخاب کنید."
 	case "error":
 		return "خطایی در انجام عملیات رخ داد."
 	default:

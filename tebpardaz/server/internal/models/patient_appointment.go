@@ -21,8 +21,22 @@ type PatientAppointment struct {
 	Source         string     `gorm:"type:nvarchar(40);not null;default:'website'" json:"source"`
 	FailReason     string     `gorm:"type:nvarchar(255);not null;default:''" json:"fail_reason"`
 	ConfirmedAt    *time.Time `gorm:"type:datetime;default:null" json:"confirmed_at"`
+	// VisitStatus is empty until the clinic admission table is checked.
+	// visited means the patient was admitted; absent means the check found no row.
+	VisitStatus string `gorm:"type:nvarchar(20);not null;default:'';index" json:"visit_status"`
+	// VisitCheckedAt is when the server stored the admission check result.
+	VisitCheckedAt *time.Time `gorm:"type:datetime" json:"visit_checked_at"`
+	// IPAddress is the booking client IP captured at registration time.
+	IPAddress string `gorm:"type:nvarchar(45);not null;default:'';index" json:"ip_address"`
 
 	Patient Patient     `gorm:"foreignKey:PatientID;references:ID"`
 	Doctor  Doctor      `gorm:"foreignKey:DoctorID;references:ID"`
 	Slot    *DoctorSlot `gorm:"foreignKey:SlotID;references:ID"`
 }
+
+const (
+	// VisitStatusVisited means paziresh had at least one matching admission.
+	VisitStatusVisited = "visited"
+	// VisitStatusAbsent means the admission check ran and the count was zero.
+	VisitStatusAbsent = "absent"
+)

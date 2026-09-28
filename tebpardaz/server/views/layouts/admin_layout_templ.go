@@ -29,6 +29,8 @@ type AdminLayoutView struct {
 // ورودی: عنوان آیتم (string). خروجی: نام کلاس‌های آیکون FontAwesome (string).
 func getNavIcon(label string) string {
 	switch {
+	case strings.Contains(label, "داشبورد"):
+		return "fa-solid fa-gauge-high"
 	case strings.Contains(label, "پزشک"):
 		return "fa-solid fa-user-doctor"
 	case strings.Contains(label, "نوبت"):
@@ -55,6 +57,8 @@ func getNavIcon(label string) string {
 		return "fa-regular fa-message"
 	case strings.Contains(label, "حضور") || strings.Contains(label, "برنامه"):
 		return "fa-regular fa-clock"
+	case strings.Contains(label, "بازدید") || strings.Contains(label, "آی‌پی"):
+		return "fa-solid fa-chart-line"
 	default:
 		return "fa-solid fa-angle-left text-[0.7rem]"
 	}
@@ -188,7 +192,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var6 templ.SafeURL
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.Href))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 172, Col: 42}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 176, Col: 42}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -201,7 +205,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 172, Col: 117}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 176, Col: 117}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -219,7 +223,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 174, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 178, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -243,7 +247,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 						var templ_7745c5c3_Var9 templ.SafeURL
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(child.Href))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 181, Col: 89}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 185, Col: 89}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
@@ -278,7 +282,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(child.Label)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 183, Col: 28}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 187, Col: 28}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
@@ -296,7 +300,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 						var templ_7745c5c3_Var13 templ.SafeURL
 						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(child.Href))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 186, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 190, Col: 79}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 						if templ_7745c5c3_Err != nil {
@@ -331,7 +335,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 						var templ_7745c5c3_Var16 string
 						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(child.Label)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 188, Col: 28}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 192, Col: 28}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 						if templ_7745c5c3_Err != nil {
@@ -356,7 +360,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var17 templ.SafeURL
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.Href))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 196, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 200, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
@@ -391,7 +395,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 198, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 202, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -409,7 +413,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var21 templ.SafeURL
 					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(item.Href))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 201, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 205, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 					if templ_7745c5c3_Err != nil {
@@ -444,7 +448,7 @@ func adminNavLinks(items []AdminNavItem) templ.Component {
 					var templ_7745c5c3_Var24 string
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 203, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/layouts/admin_layout.templ`, Line: 207, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {

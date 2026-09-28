@@ -157,6 +157,7 @@ templ Sections(view SectionsPageView) {
 										<div class="flex flex-wrap items-center gap-1.5 text-xs">
 											<a class="rounded bg-teal-50 px-2 py-1 text-teal-700 hover:bg-teal-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/banner") }>بنر</a>
 											<a class="rounded bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/schedule") }>ساعات کاری</a>
+											<a class="rounded bg-cyan-50 px-2 py-1 text-cyan-700 hover:bg-cyan-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/doctors") }>پزشکان</a>
 											<a class="rounded bg-indigo-50 px-2 py-1 text-indigo-700 hover:bg-indigo-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/messages") }>پیام‌ها</a>
 											<a class="rounded bg-purple-50 px-2 py-1 text-purple-700 hover:bg-purple-100" href={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/equipment") }>تجهیزات</a>
 										</div>
@@ -167,7 +168,7 @@ templ Sections(view SectionsPageView) {
 											if s.PublicURL != "" && s.IsActive {
 												<a class="rounded border border-teal-300 px-2.5 py-1 text-xs text-teal-700 hover:bg-teal-50" href={ templ.SafeURL(s.PublicURL) } target="_blank">مشاهده</a>
 											}
-											<form class="inline" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/delete") } onsubmit="return confirm('آیا از حذف این بخش و تمامی داده‌های مربوط به آن (بنر، ساعات، پیام‌ها، تجهیزات) اطمینان دارید؟');">
+											<form class="inline" method="post" action={ templ.SafeURL("/admin/sections/" + formatUint(s.ID) + "/delete") } onsubmit="return confirm('آیا از حذف این بخش و تمامی داده‌های مربوط به آن (بنر، ساعات، پزشکان، پیام‌ها، تجهیزات) اطمینان دارید؟');">
 												<input type="hidden" name="clinic_id" value={ formatUint(view.ClinicID) }/>
 												<button class="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700 hover:bg-red-50" type="submit">حذف</button>
 											</form>

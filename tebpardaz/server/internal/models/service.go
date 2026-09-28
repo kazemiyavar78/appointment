@@ -43,3 +43,44 @@ type DoctorService struct {
 func (DoctorService) TableName() string {
 	return "doctor_services"
 }
+
+// ServicePackage بستهٔ خدمات است که چند خدمت را برای انتصاب گروهی گروه‌بندی می‌کند.
+type ServicePackage struct {
+	gorm.Model
+	// Name نام بسته خدمات است
+	Name string `gorm:"type:nvarchar(150);not null" json:"name"`
+	// Description توضیحات بسته خدمات است
+	Description string `gorm:"type:nvarchar(1000);not null;default:''" json:"description"`
+}
+
+// TableName نام جدول دیتابیس را برای مدل ServicePackage برمی‌گرداند.
+// ورودی: ندارد (گیرنده متد). خروجی: نام جدول در دیتابیس (service_packages).
+func (ServicePackage) TableName() string {
+	return "service_packages"
+}
+
+// ServicePackageItem جدول واسط انتصاب خدمت به بسته است.
+// یک خدمت می‌تواند در چند بسته حضور داشته باشد.
+type ServicePackageItem struct {
+	PackageID uint `gorm:"primaryKey;not null" json:"package_id"`
+	ServiceID uint `gorm:"primaryKey;not null;index" json:"service_id"`
+}
+
+// TableName نام جدول دیتابیس را برای مدل ServicePackageItem برمی‌گرداند.
+// ورودی: ندارد (گیرنده متد). خروجی: نام جدول در دیتابیس (service_package_items).
+func (ServicePackageItem) TableName() string {
+	return "service_package_items"
+}
+
+// SectionServicePackage جدول واسط انتصاب بسته خدمات به بخش یک مرکز درمانی است.
+// یک بخش می‌تواند چند بسته داشته باشد و یک بسته می‌تواند به چند بخش منتسب شود.
+type SectionServicePackage struct {
+	SectionID uint `gorm:"primaryKey;not null" json:"section_id"`
+	PackageID uint `gorm:"primaryKey;not null;index" json:"package_id"`
+}
+
+// TableName نام جدول دیتابیس را برای مدل SectionServicePackage برمی‌گرداند.
+// ورودی: ندارد (گیرنده متد). خروجی: نام جدول در دیتابیس (section_service_packages).
+func (SectionServicePackage) TableName() string {
+	return "section_service_packages"
+}

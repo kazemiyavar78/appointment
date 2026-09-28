@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +14,8 @@ import (
 
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/statusnotify"
+	adminviews "tebpardaz/server/views/admin"
 	"tebpardaz/shared/constants"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +24,9 @@ import (
 
 const (
 	sessionCookieName = "tp_admin_session"
+	otpPendingCookie  = "tp_admin_otp"
 	sessionTTL        = 24 * time.Hour
+	otpPendingTTL     = 5 * time.Minute
 	// ContextUserKey is the gin.Context key for *models.AppointmentUser.
 	ContextUserKey = "admin_user"
 )
@@ -35,57 +41,57 @@ type sessionPayload struct {
 type AdminAuth struct {
 	Users  *repository.UserRepo
 	Secret []byte
+	OTP    *AdminOTPStore
+	Status *statusnotify.Notifier
 }
 
 // NewAdminAuth constructs AdminAuth.
-// Inputs: users repo, session HMAC secret.
+// Inputs: users repo, session HMAC secret, OTP store, status notifier (may be nil).
 // Output: pointer to AdminAuth.
-func NewAdminAuth(users *repository.UserRepo, sessionSecret string) *AdminAuth {
+func NewAdminAuth(users *repository.UserRepo, sessionSecret string, otp *AdminOTPStore, status *statusnotify.Notifier) *AdminAuth {
+	if otp == nil {
+		otp = NewAdminOTPStore()
+	}
 	return &AdminAuth{
 		Users:  users,
 		Secret: []byte(sessionSecret),
+		OTP:    otp,
+		Status: status,
 	}
 }
 
 // LoginPage renders the login form (HTML).
 func (a *AdminAuth) LoginPage(c *gin.Context) {
-	if _, ok := a.currentUser(c); ok {
-		c.Redirect(http.StatusFound, "/admin/approvals")
+	if user, ok := a.currentUser(c); ok {
+		c.Redirect(http.StatusFound, homePathForRole(user.Role))
 		return
 	}
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.String(http.StatusOK, loginHTML(""))
+	if pending, ok := a.pendingOTPUser(c); ok {
+		renderAdminLogin(c, http.StatusOK, adminviews.AdminLoginView{
+			OTPRequired: true,
+			Username:    pending.Username,
+		})
+		return
+	}
+	renderAdminLogin(c, http.StatusOK, adminviews.AdminLoginView{})
 }
 
-// Login authenticates username/password and sets the session cookie.
+// Login authenticates username/password then requires OTP, or verifies the OTP step.
 func (a *AdminAuth) Login(c *gin.Context) {
-	username := strings.TrimSpace(c.PostForm("username"))
-	password := c.PostForm("password")
-	if username == "" || password == "" {
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		c.String(http.StatusBadRequest, loginHTML("نام کاربری و رمز عبور الزامی است"))
+	if user, ok := a.currentUser(c); ok {
+		c.Redirect(http.StatusFound, homePathForRole(user.Role))
 		return
 	}
-	user, err := a.Users.FindByUsername(username)
-	if err != nil || !user.IsActive {
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		c.String(http.StatusUnauthorized, loginHTML("نام کاربری یا رمز عبور نادرست است"))
+	if strings.TrimSpace(c.PostForm("otp_code")) != "" || a.hasPendingOTP(c) {
+		a.completeLoginWithOTP(c)
 		return
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		c.Header("Content-Type", "text/html; charset=utf-8")
-		c.String(http.StatusUnauthorized, loginHTML("نام کاربری یا رمز عبور نادرست است"))
-		return
-	}
-	if err := a.setSession(c, user); err != nil {
-		c.String(http.StatusInternalServerError, "session error")
-		return
-	}
-	c.Redirect(http.StatusFound, "/admin/approvals")
+	a.startLoginOTP(c)
 }
 
 // Logout clears the session cookie.
 func (a *AdminAuth) Logout(c *gin.Context) {
+	a.clearPendingOTP(c)
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
@@ -141,6 +147,15 @@ func UserFromGin(c *gin.Context) (*models.AppointmentUser, bool) {
 	return u, ok
 }
 
+// homePathForRole مسیر صفحه اول پنل را بر اساس نقش برمی‌گرداند.
+// ورودی: رشته نقش کاربر. خروجی: مسیر داشبورد یا اخبار برای ویراستار.
+func homePathForRole(role string) string {
+	if constants.UserRole(role) == constants.UserRoleEditor {
+		return "/admin/news"
+	}
+	return "/admin"
+}
+
 // currentUser reads and validates the session cookie.
 func (a *AdminAuth) currentUser(c *gin.Context) (*models.AppointmentUser, bool) {
 	cookie, err := c.Cookie(sessionCookieName)
@@ -164,15 +179,10 @@ func (a *AdminAuth) setSession(c *gin.Context, user *models.AppointmentUser) err
 		UserID:    user.ID,
 		ExpiresAt: time.Now().Add(sessionTTL).Unix(),
 	}
-	raw, err := json.Marshal(payload)
+	value, err := a.signPayload(payload)
 	if err != nil {
 		return err
 	}
-	body := base64.RawURLEncoding.EncodeToString(raw)
-	mac := hmac.New(sha256.New, a.Secret)
-	_, _ = mac.Write([]byte(body))
-	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	value := body + "." + sig
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    value,
@@ -208,31 +218,171 @@ func (a *AdminAuth) verifySession(value string) (*sessionPayload, error) {
 	return &payload, nil
 }
 
-func loginHTML(errMsg string) string {
-	errBlock := ""
-	if errMsg != "" {
-		errBlock = `<p class="mb-3 text-sm text-red-600">` + errMsg + `</p>`
+// startLoginOTP verifies password and sends a login OTP to status recipients.
+func (a *AdminAuth) startLoginOTP(c *gin.Context) {
+	username := strings.TrimSpace(c.PostForm("username"))
+	password := c.PostForm("password")
+	if username == "" || password == "" {
+		renderAdminLogin(c, http.StatusBadRequest, adminviews.AdminLoginView{ErrorMessage: "نام کاربری و رمز عبور الزامی است"})
+		return
 	}
-	return `<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ورود ادمین | طب‌پرداز</title>
-<link rel="stylesheet" href="/static/css/output.css"/>
-</head>
-<body class="bg-surface-soft text-ink font-sans">
-<main class="mx-auto flex min-h-screen max-w-md items-center p-4">
-<form method="post" action="/admin/login" class="w-full space-y-3 rounded border border-gray-200 bg-white p-6">
-<h1 class="mb-2 text-2xl text-brand">ورود به پنل</h1>
-` + errBlock + `
-<label class="block text-sm text-ink-muted">نام کاربری</label>
-<input class="w-full rounded border border-gray-300 p-2" type="text" name="username" required autocomplete="username"/>
-<label class="block text-sm text-ink-muted">رمز عبور</label>
-<input class="w-full rounded border border-gray-300 p-2" type="password" name="password" required autocomplete="current-password"/>
-<button class="w-full rounded bg-brand px-4 py-2 text-white" type="submit">ورود</button>
-</form>
-</main>
-</body>
-</html>`
+	user, err := a.Users.FindByUsername(username)
+	if err != nil || user == nil || !user.IsActive {
+		renderAdminLogin(c, http.StatusUnauthorized, adminviews.AdminLoginView{ErrorMessage: "نام کاربری یا رمز عبور نادرست است"})
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		renderAdminLogin(c, http.StatusUnauthorized, adminviews.AdminLoginView{ErrorMessage: "نام کاربری یا رمز عبور نادرست است"})
+		return
+	}
+	code, err := a.OTP.Create(user.ID)
+	if err != nil {
+		renderAdminLogin(c, http.StatusInternalServerError, adminviews.AdminLoginView{ErrorMessage: "خطا در ایجاد کد تایید"})
+		return
+	}
+	if err := a.sendLoginOTP(c.Request.Context(), user, code, c.ClientIP()); err != nil {
+		renderAdminLogin(c, http.StatusBadGateway, adminviews.AdminLoginView{ErrorMessage: err.Error()})
+		return
+	}
+	if err := a.setPendingOTP(c, user); err != nil {
+		renderAdminLogin(c, http.StatusInternalServerError, adminviews.AdminLoginView{ErrorMessage: "خطا در ذخیره نشست تایید"})
+		return
+	}
+	renderAdminLogin(c, http.StatusOK, adminviews.AdminLoginView{
+		OTPRequired:  true,
+		Username:     user.Username,
+		ErrorMessage: "",
+	})
+}
+
+// completeLoginWithOTP verifies the pending OTP and opens the admin session.
+func (a *AdminAuth) completeLoginWithOTP(c *gin.Context) {
+	user, ok := a.pendingOTPUser(c)
+	if !ok {
+		renderAdminLogin(c, http.StatusUnauthorized, adminviews.AdminLoginView{ErrorMessage: "نشست تایید منقضی شده؛ دوباره وارد شوید"})
+		return
+	}
+	code := strings.TrimSpace(c.PostForm("otp_code"))
+	if code == "" {
+		renderAdminLogin(c, http.StatusBadRequest, adminviews.AdminLoginView{
+			OTPRequired:  true,
+			Username:     user.Username,
+			ErrorMessage: "کد تایید را وارد کنید",
+		})
+		return
+	}
+	if err := a.OTP.Verify(user.ID, code); err != nil {
+		msg := "کد تایید نادرست است"
+		switch err {
+		case ErrAdminOTPExpired, ErrAdminOTPNotFound:
+			a.clearPendingOTP(c)
+			renderAdminLogin(c, http.StatusUnauthorized, adminviews.AdminLoginView{ErrorMessage: "کد تایید منقضی شده؛ دوباره وارد شوید"})
+			return
+		case ErrAdminOTPTooManyAttempts:
+			a.clearPendingOTP(c)
+			renderAdminLogin(c, http.StatusTooManyRequests, adminviews.AdminLoginView{ErrorMessage: "تعداد تلاش‌ها بیش از حد مجاز است؛ دوباره وارد شوید"})
+			return
+		}
+		renderAdminLogin(c, http.StatusUnauthorized, adminviews.AdminLoginView{
+			OTPRequired:  true,
+			Username:     user.Username,
+			ErrorMessage: msg,
+		})
+		return
+	}
+	a.clearPendingOTP(c)
+	if err := a.setSession(c, user); err != nil {
+		c.String(http.StatusInternalServerError, "session error")
+		return
+	}
+	c.Redirect(http.StatusFound, homePathForRole(user.Role))
+}
+
+// sendLoginOTP پیامک کد ورود را برای سوپرادمین‌ها و کاربران تیک‌خورده مرکز می‌فرستد.
+func (a *AdminAuth) sendLoginOTP(ctx context.Context, user *models.AppointmentUser, code, clientIP string) error {
+	if a.Status == nil {
+		return fmt.Errorf("سرویس پیامک پیکربندی نشده است")
+	}
+	clinicID := uint(0)
+	if user.ClinicID != nil {
+		clinicID = *user.ClinicID
+	}
+	msg := fmt.Sprintf("کد ورود به پنل مدیریت: %s\nکاربر: %s", code, user.Username)
+	sendCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if err := a.Status.SendToRecipients(sendCtx, clinicID, 0, clientIP, msg); err != nil {
+		return fmt.Errorf("ارسال کد تایید ناموفق بود: %w", err)
+	}
+	return nil
+}
+
+func (a *AdminAuth) hasPendingOTP(c *gin.Context) bool {
+	_, ok := a.pendingOTPUser(c)
+	return ok
+}
+
+func (a *AdminAuth) pendingOTPUser(c *gin.Context) (*models.AppointmentUser, bool) {
+	cookie, err := c.Cookie(otpPendingCookie)
+	if err != nil || cookie == "" {
+		return nil, false
+	}
+	payload, err := a.verifySession(cookie)
+	if err != nil || payload.ExpiresAt < time.Now().Unix() {
+		return nil, false
+	}
+	user, err := a.Users.FindByID(payload.UserID)
+	if err != nil || user == nil || !user.IsActive {
+		return nil, false
+	}
+	return user, true
+}
+
+func (a *AdminAuth) setPendingOTP(c *gin.Context, user *models.AppointmentUser) error {
+	payload := sessionPayload{
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(otpPendingTTL).Unix(),
+	}
+	value, err := a.signPayload(payload)
+	if err != nil {
+		return err
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     otpPendingCookie,
+		Value:    value,
+		Path:     "/",
+		MaxAge:   int(otpPendingTTL.Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	return nil
+}
+
+func (a *AdminAuth) clearPendingOTP(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     otpPendingCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (a *AdminAuth) signPayload(payload sessionPayload) (string, error) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	body := base64.RawURLEncoding.EncodeToString(raw)
+	mac := hmac.New(sha256.New, a.Secret)
+	_, _ = mac.Write([]byte(body))
+	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return body + "." + sig, nil
+}
+
+// renderAdminLogin صفحه ورود ادمین را با کامپوننت templ و طراحی Glassmorphism رندر می‌کند.
+func renderAdminLogin(c *gin.Context, status int, view adminviews.AdminLoginView) {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Status(status)
+	_ = adminviews.AdminLogin(view).Render(c.Request.Context(), c.Writer)
 }

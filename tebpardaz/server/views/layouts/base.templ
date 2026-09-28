@@ -3,7 +3,7 @@ package layouts
 import "tebpardaz/server/views/components"
 
 // PageHead اطلاعات متاداده و سئوی صفحه در تگ head را نگه می‌دارد.
-type PageHead struct {
+type 	PageHead struct {
 	Title           string
 	MetaDescription string
 	CanonicalURL    string
@@ -11,14 +11,17 @@ type PageHead struct {
 	OGImage         string
 	OGType          string
 	JSONLD          string
+	FaviconURL      string
+	ManifestURL     string
 }
 
 // resolvePageHead مقادیر پیش‌فرض سئو را در صورت خالی بودن تنظیم می‌کند.
 // ورودی: slice اختیاری از PageHead. خروجی: PageHead پرشده با مقادیر معتبر پیش‌فرض.
+// og:title و og:description و og:url در Document از همین Title و MetaDescription و CanonicalURL ساخته می‌شوند.
 func resolvePageHead(heads []PageHead) PageHead {
 	h := PageHead{
 		Title:  "طب‌پرداز | سامانه نوبت‌دهی آنلاین مراکز درمانی",
-		Robots: "index, follow",
+		Robots: "index,follow",
 		OGType: "website",
 	}
 	if len(heads) > 0 {
@@ -44,6 +47,15 @@ func resolvePageHead(heads []PageHead) PageHead {
 		if custom.JSONLD != "" {
 			h.JSONLD = custom.JSONLD
 		}
+		if custom.FaviconURL != "" {
+			h.FaviconURL = custom.FaviconURL
+		}
+		if custom.ManifestURL != "" {
+			h.ManifestURL = custom.ManifestURL
+		}
+	}
+	if h.FaviconURL == "" {
+		h.FaviconURL = "/static/clinics/logo.jpg"
 	}
 	return h
 }
@@ -58,6 +70,7 @@ templ Document(heads ...PageHead) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ head.Title }</title>
+			<link rel="icon" href={ head.FaviconURL }/>
 			if head.MetaDescription != "" {
 				<meta name="description" content={ head.MetaDescription }/>
 			}
@@ -80,8 +93,15 @@ templ Document(heads ...PageHead) {
 			if head.OGImage != "" {
 				<meta property="og:image" content={ head.OGImage }/>
 			}
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+			<link rel="stylesheet" href="/static/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
 			<link rel="stylesheet" href="/static/css/output.css"/>
+			if head.ManifestURL != "" {
+				<link rel="manifest" href={ head.ManifestURL }/>
+				<meta name="theme-color" content="#0B6E4F"/>
+				<meta name="mobile-web-app-capable" content="yes"/>
+				<meta name="apple-mobile-web-app-capable" content="yes"/>
+				<meta name="apple-mobile-web-app-title" content="وضعیت نوبت"/>
+			}
 			if head.JSONLD != "" {
 				@templ.Raw("<script type=\"application/ld+json\">" + head.JSONLD + "</script>")
 			}
@@ -110,7 +130,7 @@ func platformNavbar() components.NavbarProps {
 		HomeURL:   "/",
 		NavLinks: []components.NavLink{
 			{Label: "صفحه اصلی", Href: "/", Active: true},
-			{Label: "مراکز", Href: "/clinics"},
+			{Label: "مراکز", Href: "/#clinics"},
 			{Label: "پزشکان", Href: "/doctors"},
 			{Label: "نوبت‌دهی", Href: "/doctors"},
 			{Label: "برنامه هفتگی پزشکان", Href: "/weekly-schedule"},
