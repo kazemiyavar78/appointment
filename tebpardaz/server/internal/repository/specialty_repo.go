@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"fmt"
+	"strings"
+
 	"tebpardaz/server/internal/models"
 
 	"gorm.io/gorm"
@@ -43,13 +46,70 @@ func (r *SpecialtyRepo) GetByID(id uint) (*models.Specialty, error) {
 	return &row, nil
 }
 
-// Create inserts a new specialty row.
+// Create تخصص را با اسلاگ نهایی و پایدار ذخیره می‌کند.
+// ورودی: ردیف با Name نرمال‌شده. خروجی: خطا. slug قبل از commit معتبر است و placeholder مشترک ندارد.
 func (r *SpecialtyRepo) Create(row *models.Specialty) error {
-	return r.DB.Create(row).Error
+	if r == nil || r.DB == nil || row == nil {
+		return fmt.Errorf("specialty repo unavailable")
+	}
+	if strings.TrimSpace(row.Slug) != "" {
+		if err := validateSpecialtySlug(row.Slug); err != nil {
+			return err
+		}
+		return r.DB.Transaction(func(tx *gorm.DB) error {
+			if err := lockSpecialtyCreates(tx); err != nil {
+				return err
+			}
+			return tx.Create(row).Error
+		})
+	}
+	return r.DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockSpecialtyCreates(tx); err != nil {
+			return err
+		}
+		var rows []models.Specialty
+		if err := tx.Unscoped().Find(&rows).Error; err != nil {
+			return err
+		}
+		chosen, explicitID, err := decideSpecialtyCreateSlug(row.Name, rows, nextSpecialtyID(rows))
+		if err != nil {
+			return err
+		}
+		row.Slug = chosen
+		if explicitID == 0 {
+			return tx.Create(row).Error
+		}
+		row.ID = explicitID
+		return insertSpecialtyWithID(tx, row)
+	})
 }
 
-// Update saves changes to an existing specialty.
+// Update نام تخصص را ذخیره می‌کند و اسلاگ موجود را نگه می‌دارد.
+// ورودی: ردیف بارگذاری‌شده. خروجی: خطا. اگر اسلاگ خالی باشد فقط همان‌جا ساخته می‌شود.
 func (r *SpecialtyRepo) Update(row *models.Specialty) error {
+	if r == nil || r.DB == nil || row == nil {
+		return fmt.Errorf("specialty repo unavailable")
+	}
+	if kept, ok := specialtySlugOnUpdate(row.Slug); ok {
+		row.Slug = kept
+		return r.DB.Save(row).Error
+	}
+	var rows []models.Specialty
+	if err := r.DB.Unscoped().Find(&rows).Error; err != nil {
+		return err
+	}
+	others := make([]models.Specialty, 0, len(rows))
+	for _, existing := range rows {
+		if existing.ID == row.ID {
+			continue
+		}
+		others = append(others, existing)
+	}
+	plan, err := PlanSpecialtySlugs(append(others, *row))
+	if err != nil {
+		return err
+	}
+	row.Slug = plan[row.ID]
 	return r.DB.Save(row).Error
 }
 

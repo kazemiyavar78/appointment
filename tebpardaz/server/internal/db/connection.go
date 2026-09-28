@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"tebpardaz/server/internal/models"
+	"tebpardaz/server/internal/repository"
 
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
@@ -87,6 +88,9 @@ func (c *Connections) MigrateAppointment() error {
 	}
 
 	ensureSpecialtyDisplayColumns(c.Appointment)
+	if err := migrateSpecialtySlugs(c.Appointment); err != nil {
+		return err
+	}
 	ensureSectionBannerGradientColumns(c.Appointment)
 
 	ensureDoctorUseClinicLogoColumn(c.Appointment)
@@ -194,6 +198,88 @@ func ensureSpecialtyDisplayColumns(db *gorm.DB) {
 	for _, query := range queries {
 		_ = db.Exec(query).Error
 	}
+}
+
+// specialtySlugColumnSQL ستون slug را ابتدا nullable می‌سازد تا backfill قبل از NOT NULL انجام شود.
+const specialtySlugColumnSQL = `
+IF OBJECT_ID(N'specialties', N'U') IS NOT NULL
+AND NOT EXISTS (
+	SELECT 1 FROM sys.columns
+	WHERE Name = N'slug' AND Object_ID = OBJECT_ID(N'specialties')
+)
+BEGIN
+	ALTER TABLE specialties ADD slug NVARCHAR(120) NULL;
+END`
+
+// specialtySlugNotNullSQL بعد از backfill ستون را اجباری می‌کند.
+const specialtySlugNotNullSQL = `
+IF OBJECT_ID(N'specialties', N'U') IS NOT NULL
+AND EXISTS (
+	SELECT 1 FROM sys.columns
+	WHERE Name = N'slug' AND Object_ID = OBJECT_ID(N'specialties') AND is_nullable = 1
+)
+BEGIN
+	ALTER TABLE specialties ALTER COLUMN slug NVARCHAR(120) NOT NULL;
+END`
+
+// specialtySlugUniqueSQL ایندکس یکتای slug را اگر نباشد می‌سازد.
+const specialtySlugUniqueSQL = `
+IF OBJECT_ID(N'specialties', N'U') IS NOT NULL
+AND NOT EXISTS (
+	SELECT 1 FROM sys.indexes
+	WHERE name = N'UX_specialties_slug' AND object_id = OBJECT_ID(N'specialties')
+)
+BEGIN
+	CREATE UNIQUE INDEX UX_specialties_slug ON specialties(slug);
+END`
+
+// migrateSpecialtySlugs ستون، backfill و constraint را به ترتیب امن اجرا می‌کند.
+// ورودی: اتصال appointment. خروجی: خطای اولین مرحله. شکست یعنی startup متوقف می‌شود.
+func migrateSpecialtySlugs(db *gorm.DB) error {
+	if err := ensureSpecialtySlugColumn(db); err != nil {
+		return err
+	}
+	if err := repository.BackfillSpecialtySlugs(db); err != nil {
+		return err
+	}
+	return ensureSpecialtySlugConstraint(db)
+}
+
+// ensureSpecialtySlugColumn ستون slug را nullable اضافه می‌کند.
+// ورودی: اتصال appointment. خروجی: خطا اگر جدول هست و ستون ساخته نشود. نبودن جدول خطا نیست.
+func ensureSpecialtySlugColumn(db *gorm.DB) error {
+	if db == nil || !db.Migrator().HasTable(&models.Specialty{}) {
+		return nil
+	}
+	if db.Migrator().HasColumn(&models.Specialty{}, "slug") {
+		return nil
+	}
+	if err := db.Exec(specialtySlugColumnSQL).Error; err != nil {
+		return err
+	}
+	if !db.Migrator().HasColumn(&models.Specialty{}, "slug") {
+		return fmt.Errorf("specialty slug column was not created")
+	}
+	return nil
+}
+
+// ensureSpecialtySlugConstraint یکتایی و NOT NULL را بعد از backfill اعمال می‌کند.
+// ورودی: اتصال appointment. خروجی: خطا اگر slug خالی مانده باشد.
+func ensureSpecialtySlugConstraint(db *gorm.DB) error {
+	if db == nil || !db.Migrator().HasTable(&models.Specialty{}) || !db.Migrator().HasColumn(&models.Specialty{}, "slug") {
+		return nil
+	}
+	var empty int64
+	if err := db.Raw(`SELECT COUNT(1) FROM specialties WHERE slug IS NULL OR LTRIM(RTRIM(slug)) = ''`).Scan(&empty).Error; err != nil {
+		return err
+	}
+	if empty > 0 {
+		return fmt.Errorf("specialty slug backfill left %d empty row(s)", empty)
+	}
+	if err := db.Exec(specialtySlugNotNullSQL).Error; err != nil {
+		return err
+	}
+	return db.Exec(specialtySlugUniqueSQL).Error
 }
 
 // ensureSectionBannerGradientColumns ستون‌های گرادیان پس‌زمینه و پوشش تصویر بنر بخش را اضافه می‌کند.

@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -84,6 +85,10 @@ func (h *SpecialtyHandler) Create(c *gin.Context) {
 	row := specialtyFromForm(c)
 	row.Name = name
 	if err := h.Specialties.Create(row); err != nil {
+		if errors.Is(err, repository.ErrSpecialtyNameTaken) {
+			h.renderWithMessage(c, user, "تخصصی با این نام قبلاً ثبت شده است.")
+			return
+		}
 		h.renderWithMessage(c, user, "خطا در ایجاد تخصص.")
 		return
 	}
