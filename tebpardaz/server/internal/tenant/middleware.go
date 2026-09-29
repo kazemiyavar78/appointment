@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"tebpardaz/server/internal/analytics"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/shared/constants"
 
 	"github.com/gin-gonic/gin"
@@ -48,18 +49,18 @@ func IsUnresolved(c *gin.Context) bool {
 // Unknown hosts or slugs continue with a platform fallback and UnresolvedKey
 // so callers can render the public 404 page instead of an empty status.
 // After layout is set, a visit is tracked asynchronously and never aborts the request.
-// Inputs: resolver (domain/slug mapper), tracker (optional; nil disables analytics).
+// Inputs: resolver (domain/slug mapper), tracker (optional; nil disables analytics), trust (same proxy list as public URLs; nil trusts nobody).
 // Output: gin.HandlerFunc that sets tenant + layout on the request context.
-func Middleware(resolver *Resolver, tracker analytics.VisitTracker) gin.HandlerFunc {
+func Middleware(resolver *Resolver, tracker analytics.VisitTracker, trust *seo.ProxyTrust) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if resolver == nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		host := c.Request.Host
-		if xf := c.GetHeader("X-Forwarded-Host"); xf != "" {
-			host = xf
+		host := ""
+		if c.Request != nil {
+			host = seo.PublicRequestHost(c.Request, trust)
 		}
 
 		tc, err := resolver.Resolve(host, c.Request.URL.Path)

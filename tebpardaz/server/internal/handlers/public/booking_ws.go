@@ -50,7 +50,7 @@ func (h *BookingHandler) ServeBookingWS(c *gin.Context) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}
-	
+
 	clinicSlug, doctorSlug, ok := bookingPathSlugs(c.Param("path"))
 	if !ok {
 		c.Status(http.StatusNotFound)
@@ -160,7 +160,7 @@ func (h *BookingHandler) resolveBookingTarget(tc *tenant.Context, clinicSlug, do
 		}
 		return clinic.ID, doctorSlug, nil
 	case doctorSlug != "" && tc.Layout == constants.LayoutPlatform:
-		clinic, e := h.Clinics.GetBySlug(clinicSlug)
+		clinic, e := h.resolveClinicByPathKey(clinicSlug)
 		if e != nil || clinic == nil {
 			return 0, "", e
 		}

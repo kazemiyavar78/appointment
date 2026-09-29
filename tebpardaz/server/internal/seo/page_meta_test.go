@@ -95,10 +95,48 @@ func TestDoctorsMetaFiltersAreNoindex(t *testing.T) {
 	}
 }
 
+func TestSpecialtyMetaCanonicalAndRobots(t *testing.T) {
+	base := "https://tebpardaz.ir"
+	index := SpecialtyIndexMeta(base)
+	if index.Title != "تخصص‌های پزشکی و نوبت‌دهی آنلاین | طب‌پرداز" || index.Robots != RobotsIndexFollow {
+		t.Fatalf("index meta = %#v", index)
+	}
+	if index.Canonical != "https://tebpardaz.ir/specialties" {
+		t.Fatalf("index canonical = %q", index.Canonical)
+	}
+	slug := "قلب-و-عروق"
+	page1 := SpecialtyDetailMeta("قلب و عروق", slug, base, 1, 3, true)
+	if page1.Canonical != AbsoluteURL(base, SpecialtyPath(slug)) || strings.Contains(page1.Canonical, "%25") {
+		t.Fatalf("detail canonical = %q", page1.Canonical)
+	}
+	if page1.Robots != RobotsIndexFollow || !strings.Contains(page1.Title, "قلب و عروق") {
+		t.Fatalf("page1 = %#v", page1)
+	}
+	page2 := SpecialtyDetailMeta("قلب و عروق", slug, base, 2, 3, true)
+	if page2.Canonical != page1.Canonical+"?page=2" || !strings.Contains(page2.Title, "صفحه 2") {
+		t.Fatalf("page2 = %#v", page2)
+	}
+	empty := SpecialtyDetailMeta("قلب و عروق", slug, base, 1, 0, false)
+	if empty.Robots != RobotsNoindexFollow {
+		t.Fatalf("empty robots = %q", empty.Robots)
+	}
+	clinic := ClinicDetailMeta("درمانگاه چمران", "مشهد", "", "چمران-مشهد", base, 1)
+	if clinic.Robots != RobotsIndexFollow || !strings.Contains(clinic.Title, "درمانگاه چمران") || strings.Contains(clinic.Canonical, "?page=") || strings.Contains(clinic.Canonical, "%25") {
+		t.Fatalf("clinic meta = %#v", clinic)
+	}
+	clinicPage := ClinicDetailMeta("درمانگاه چمران", "مشهد", "توضیح واقعی", "چمران-مشهد", base, 2)
+	if !strings.Contains(clinicPage.Title, "صفحه 2") || !strings.Contains(clinicPage.Canonical, "?page=2") || !strings.Contains(clinicPage.Description, "توضیح واقعی") {
+		t.Fatalf("clinic page = %#v", clinicPage)
+	}
+}
+
 func TestBookingMetaUsesRealFields(t *testing.T) {
 	meta := BookingMeta("رضا احمدی", "قلب و عروق", "درمانگاه چمران مشهد", "https://chamranclinic.ir/booking/reza-ahmadi")
-	if meta.Title != "نوبت دکتر رضا احمدی | قلب و عروق | درمانگاه چمران مشهد" {
+	if meta.Title != "رضا احمدی | قلب و عروق | نوبت‌دهی آنلاین" {
 		t.Fatalf("title = %q", meta.Title)
+	}
+	if strings.Contains(meta.Title, "نوبت دکتر") || strings.Contains(meta.Title, "دکتر دکتر") {
+		t.Fatalf("title added an honorific: %q", meta.Title)
 	}
 	if meta.Description == "" || meta.Description == meta.Title {
 		t.Fatalf("description = %q", meta.Description)
@@ -119,7 +157,7 @@ func TestBookingMetaUsesRealFields(t *testing.T) {
 
 func TestBookingMetaEmptySpecialtyHasNoBrokenSeparator(t *testing.T) {
 	meta := BookingMeta("دکتر سارا رضایی", "", "درمانگاه چمران", "https://chamranclinic.ir/booking/sara")
-	if meta.Title != "نوبت دکتر سارا رضایی | درمانگاه چمران" {
+	if meta.Title != "دکتر سارا رضایی | نوبت‌دهی آنلاین" {
 		t.Fatalf("title = %q", meta.Title)
 	}
 	if strings.Contains(meta.Title, "| |") || strings.HasSuffix(meta.Title, "|") || strings.Contains(meta.Title, "دکتر دکتر") {
@@ -130,11 +168,15 @@ func TestBookingMetaEmptySpecialtyHasNoBrokenSeparator(t *testing.T) {
 	}
 
 	nameOnly := BookingMeta("احمدی", "", "", "https://tebpardaz.ir/booking/chamran/ahmadi")
-	if nameOnly.Title != "نوبت دکتر احمدی" {
+	if nameOnly.Title != "احمدی | نوبت‌دهی آنلاین" {
 		t.Fatalf("title = %q", nameOnly.Title)
 	}
-	if strings.Contains(nameOnly.Title, "|") {
+	if strings.Contains(nameOnly.Title, "| |") || strings.HasSuffix(nameOnly.Title, "|") {
 		t.Fatalf("separator without data: %q", nameOnly.Title)
+	}
+	honored := BookingMeta("آقای دکتر جواد منزه", "داخلی", "چمران", "https://tebpardaz.ir/booking/center/x")
+	if honored.Title != "آقای دکتر جواد منزه | داخلی | نوبت‌دهی آنلاین" || strings.Contains(honored.Title, "دکتر دکتر") || strings.Contains(honored.Title, "نوبت دکتر") {
+		t.Fatalf("honorific title = %q", honored.Title)
 	}
 }
 
@@ -212,5 +254,20 @@ func TestSectionMetaOmitsEmptyClinic(t *testing.T) {
 	}
 	if !strings.Contains(hours.Title, "ساعات کاری") {
 		t.Fatalf("hours title = %q", hours.Title)
+	}
+}
+
+func TestSurfaceCanonicalsStayOnTheirHost(t *testing.T) {
+	platform := ClinicDetailMeta("درمانگاه چمران", "مشهد", "", "چمران-مشهد", "https://tebpardaz.ir", 1)
+	if !strings.HasPrefix(platform.Canonical, "https://tebpardaz.ir/clinics/") || strings.Contains(platform.Canonical, "chamranclinic.ir") || strings.Contains(platform.Canonical, "%25") {
+		t.Fatal(platform.Canonical)
+	}
+	organ := HomeMeta(SiteOrgan, "مهرشفا", "https://mehrshafaclinics.ir/")
+	if organ.Canonical != "https://mehrshafaclinics.ir/" || strings.Contains(organ.Canonical, "tebpardaz.ir") {
+		t.Fatal(organ.Canonical)
+	}
+	own := HomeMeta(SiteClinic, "چمران", "https://chamranclinic.ir/")
+	if own.Canonical != "https://chamranclinic.ir/" || strings.Contains(own.Canonical, "tebpardaz.ir") {
+		t.Fatal(own.Canonical)
 	}
 }

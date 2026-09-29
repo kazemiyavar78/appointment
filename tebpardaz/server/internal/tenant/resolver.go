@@ -87,14 +87,10 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 		return ctx, nil
 	}
 
-	// 2) Subdomain on platform base: {slug}.tebpardaz.ir
-	if base != "" && strings.HasSuffix(normalized, "."+base) {
-		slug := strings.TrimSuffix(normalized, "."+base)
-		slug = strings.TrimSuffix(slug, ".")
-		if slug != "" && slug != "www" {
-			ctx.Slug = slug
-			return r.resolveSlug(ctx, slug)
-		}
+	// زیردامنهٔ پلتفرم ({slug}.tebpardaz.ir) سطح عمومی نیست.
+	// نه کلینیک و نه سازمان از روی اسلاگ این هاست ساخته نمی‌شوند و به دامنهٔ سفارشی هم نمی‌افتند.
+	if platformSubdomain(normalized, base) {
+		return nil, ErrTenantNotFound
 	}
 
 	// 3) Custom clinic domain.
@@ -116,7 +112,16 @@ func (r *Resolver) Resolve(host, path string) (*Context, error) {
 	return nil, ErrTenantNotFound
 }
 
-// resolveSlug اول کلینیک و بعد سازمان را با اسلاگ پیدا می‌کند.
+// platformSubdomain می‌گوید هاست زیردامنهٔ دامنهٔ پایه است (غیر از خود دامنه و www).
+// ورودی: host نرمال‌شده و base. خروجی: true برای شکل‌هایی مثل foo.tebpardaz.ir.
+func platformSubdomain(host, base string) bool {
+	if base == "" || host == "" || host == base || host == "www."+base {
+		return false
+	}
+	return strings.HasSuffix(host, "."+base)
+}
+
+// resolveSlug اول کلینیک و بعد سازمان را با اسلاگ مسیر روی هاست اصلی پیدا می‌کند.
 // ورودی: ctx و slug. خروجی: Context یا خطا.
 func (r *Resolver) resolveSlug(ctx *Context, slug string) (*Context, error) {
 	clinic, err := r.lookupClinicBySlug(slug)

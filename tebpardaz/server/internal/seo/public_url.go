@@ -3,6 +3,8 @@ package seo
 import (
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -151,6 +153,76 @@ func AbsoluteURL(baseURL, path string) string {
 		path = "/" + path
 	}
 	return baseURL + path
+}
+
+// SpecialtyPath مسیر نسبی landing تخصص را می‌سازد.
+// ورودی: slug ذخیره‌شده. خروجی: /specialties/{escaped} یا خالی. یک‌بار PathEscape می‌شود.
+func SpecialtyPath(slug string) string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return ""
+	}
+	return "/specialties/" + url.PathEscape(slug)
+}
+
+// SpecialtyIndexable می‌گوید landing تخصص در فهرست و sitemap بیاید یا نه.
+// ورودی: slug ذخیره‌شده و تعداد پزشک عمومی. خروجی: true فقط وقتی slug معتبر و حداقل یک پزشک باشد.
+func SpecialtyIndexable(slug string, publicDoctorCount int) bool {
+	return publicDoctorCount > 0 && SpecialtyPath(slug) != ""
+}
+
+// ClinicPath مسیر نسبی landing مرکز را از slug ذخیره‌شده می‌سازد.
+// ورودی: slug ذخیره‌شده. خروجی: /clinics/{escaped} یا خالی. یک‌بار PathEscape می‌شود.
+// slug خالی مسیر ساختگی مثل c{id} نمی‌سازد.
+func ClinicPath(slug string) string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return ""
+	}
+	return "/clinics/" + url.PathEscape(slug)
+}
+
+// ClinicPagePath مسیر detail مرکز را با page استاندارد می‌سازد.
+// ورودی: slug و شماره صفحه. خروجی: مسیر بدون query برای صفحه ۱، وگرنه ?page=N.
+func ClinicPagePath(slug string, page int) string {
+	path := ClinicPath(slug)
+	if path == "" {
+		return ""
+	}
+	if page > 1 {
+		return path + "?page=" + strconv.Itoa(page)
+	}
+	return path
+}
+
+// ClinicIndexable می‌گوید مرکز در فهرست، sitemap و لینک پلتفرم بیاید یا نه.
+// ورودی: فعال‌بودن روی وب و slug ذخیره‌شده. خروجی: true فقط با همان شرط عمومی و slug غیرخالی.
+// تعداد پزشک و شناسه سازمان در این تصمیم نیست.
+func ClinicIndexable(activeOnWebsite bool, slug *string) bool {
+	if !activeOnWebsite || slug == nil {
+		return false
+	}
+	return ClinicPath(*slug) != ""
+}
+
+// SpecialtyPagePath مسیر detail را با page استاندارد می‌سازد.
+// ورودی: slug و شماره صفحه. خروجی: مسیر بدون query برای صفحه ۱، وگرنه ?page=N.
+func SpecialtyPagePath(slug string, page int) string {
+	path := SpecialtyPath(slug)
+	if path == "" {
+		return ""
+	}
+	if page > 1 {
+		return path + "?page=" + strconv.Itoa(page)
+	}
+	return path
+}
+
+// PublicRequestHost هاست عمومی را با همان سیاست اعتماد URL برمی‌گرداند.
+// ورودی: درخواست و فهرست پروکسی. خروجی: X-Forwarded-Host فقط اگر peer مورد اعتماد باشد، وگرنه Host.
+func PublicRequestHost(r *http.Request, trust *ProxyTrust) string {
+	trusted := trust != nil && r != nil && trust.Trusts(r.RemoteAddr)
+	return publicHost(RequestInfoFromHTTP(r, trusted))
 }
 
 // publicHost هاست عمومی را برمی‌گرداند.

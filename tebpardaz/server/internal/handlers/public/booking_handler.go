@@ -24,10 +24,23 @@ import (
 	"gorm.io/gorm"
 )
 
+// bookingClinicSource خواندن مرکز برای رزرو است. پیاده‌سازی تولیدی ClinicRepo است.
+type bookingClinicSource interface {
+	GetByID(id uint) (*models.Clinic, error)
+	GetBySlug(slug string) (*models.Clinic, error)
+}
+
+// bookingDoctorSource پزشک عمومی صفحه رزرو را می‌خواند.
+// پیاده‌سازی تولیدی DoctorRepo است و همان قرارداد ListPublic/GetPublic را دارد.
+type bookingDoctorSource interface {
+	GetPublicByClinicAndSlug(clinicID uint, slug string) (*models.Doctor, error)
+	EnsureSlug(doctor *models.Doctor) error
+}
+
 // BookingHandler serves dedicated public booking pages per tenant layout.
 type BookingHandler struct {
-	Doctors  *repository.DoctorRepo
-	Clinics  *repository.ClinicRepo
+	Doctors  bookingDoctorSource
+	Clinics  bookingClinicSource
 	Slots    *cache.SlotCache
 	Bookings *booking.Service
 	CSRF     *csrf.Manager
@@ -86,6 +99,10 @@ func (h *BookingHandler) Get(c *gin.Context) {
 
 	switch {
 	case doctorSlug == "" && tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil:
+		if !tenant.ClinicVisibleOnOwnDomain(tc.Clinic, tc.Host) {
+			NotFound(c)
+			return
+		}
 		h.renderBooking(c, tc, tc.Clinic, *tc.ClinicID, clinicName(tc), clinicSlug, false)
 	case doctorSlug != "" && tc.Layout == constants.LayoutOrgan:
 		clinic, err := h.resolveOrganClinic(tc, clinicSlug)
@@ -147,11 +164,11 @@ func (h *BookingHandler) resolveOrganClinic(tc *tenant.Context, clinicKey string
 		return nil, gorm.ErrRecordNotFound
 	}
 	clinic, err := h.resolveClinicByPathKey(clinicKey)
-	if err != nil || clinic == nil {
+	if err != nil || clinic == nil || !tenant.ClinicVisibleOnOrganization(clinic, *tc.OrganizationID) {
+		if err == nil {
+			err = gorm.ErrRecordNotFound
+		}
 		return nil, err
-	}
-	if clinic.OrganizationID != *tc.OrganizationID {
-		return nil, gorm.ErrRecordNotFound
 	}
 	return clinic, nil
 }
@@ -165,10 +182,20 @@ func (h *BookingHandler) resolveClinicByPathKey(key string) (*models.Clinic, err
 	if key == "" {
 		return nil, gorm.ErrRecordNotFound
 	}
+	var clinic *models.Clinic
+	var err error
 	if id := booking.ParseClinicPathKey(key); id > 0 {
-		return h.Clinics.GetByID(id)
+		clinic, err = h.Clinics.GetByID(id)
+	} else {
+		clinic, err = h.Clinics.GetBySlug(key)
 	}
-	return h.Clinics.GetBySlug(key)
+	if err != nil || clinic == nil || !tenant.ClinicVisibleOnPlatform(clinic) {
+		if err == nil {
+			err = gorm.ErrRecordNotFound
+		}
+		return nil, err
+	}
+	return clinic, nil
 }
 
 func (h *BookingHandler) renderBooking(
@@ -214,9 +241,17 @@ func (h *BookingHandler) renderBooking(
 
 	reviews := h.buildDoctorReviews(c, doctor, csrfToken)
 	services := h.buildDoctorServices(clinicID, doctor.ID)
+	specialtyURL := bookingSpecialtyURL(tc, doctor.Specialty.Slug)
+	clinicURL := bookingClinicURL(tc, clinic)
+	if tc != nil && tc.Layout == constants.LayoutPrivate && strings.TrimSpace(clinicName) != "" {
+		showClinic = true
+		clinicURL = "/"
+	}
 	view := pages.BookingView{
 		DoctorName:    doctorDisplayName(*doctor),
 		SpecialtyName: doctor.Specialty.Name,
+		SpecialtyURL:  specialtyURL,
+		ClinicURL:     clinicURL,
 		ClinicName:    clinicName,
 		ClinicPath:    clinicPathKey,
 		PhotoURL:      resolveDoctorPhoto(doctor),
@@ -243,7 +278,8 @@ func (h *BookingHandler) renderBooking(
 
 // bookingSchemaInput ورودی گراف پزشک را از رکورد همان صفحه می‌سازد.
 // ورودی: درخواست، مستأجر، مرکز، پزشک، نام مرکز و متادیتای فاز 1B. خروجی: BookingPageInput.
-// @id پزشک همان canonical صفحه است. ClinicOrigin فقط برای worksFor است.
+// @id پزشک همان canonical صفحه است.
+// worksFor روی پلتفرم به /clinics/{slug}#clinic همان هاست می‌رود، نه به Clinic.Domain.
 func bookingSchemaInput(c *gin.Context, tc *tenant.Context, clinic *models.Clinic, doctor *models.Doctor, clinicName, title, description, canonical string) seo.BookingPageInput {
 	in := seo.BookingPageInput{
 		BaseURL:       publicBaseURL(c),
@@ -267,7 +303,26 @@ func bookingSchemaInput(c *gin.Context, tc *tenant.Context, clinic *models.Clini
 		in.ClinicOrigin = seo.ClinicSchemaOrigin(in.BaseURL, clinic.Domain, clinic.IsActiveOnWebsite)
 		return in
 	}
-	in.ClinicOrigin = seo.OfficialClinicOrigin(clinic.Domain, clinic.IsActiveOnWebsite)
+	if origin := organizationSurfaceOrigin(c, tc); origin != "" && tc.OrganizationID != nil && tenant.ClinicVisibleOnOrganization(clinic, *tc.OrganizationID) {
+		id, pageURL := seo.OrganizationClinicRef(origin, viewSlug(clinic))
+		if id != "" {
+			in.ClinicEntityID = id
+			in.ClinicEntityURL = pageURL
+			in.ParentOrganizationID = seo.OriginID(origin, "organization")
+			in.ClinicDescription = seo.PlainText(clinic.Description)
+			in.ClinicPhone = strings.TrimSpace(clinic.Phone)
+			in.ClinicLogo = seo.AbsoluteSchemaURL(origin, clinic.LogoURL)
+			in.ClinicAddress = clinicPostalAddress(clinic)
+		}
+		return in
+	}
+	if tc != nil && tc.Layout == constants.LayoutPlatform && seo.ClinicIndexable(clinic.IsActiveOnWebsite, clinic.Slug) {
+		id, pageURL := seo.OrganizationClinicRef(in.BaseURL, viewSlug(clinic))
+		if id != "" {
+			in.ClinicEntityID = id
+			in.ClinicEntityURL = pageURL
+		}
+	}
 	return in
 }
 
@@ -366,7 +421,7 @@ func clinicName(tc *tenant.Context) string {
 	return ""
 }
 
-func clinicSlugFromClinicID(clinics *repository.ClinicRepo, clinicID uint) string {
+func clinicSlugFromClinicID(clinics bookingClinicSource, clinicID uint) string {
 	if clinics == nil || clinicID == 0 {
 		return ""
 	}
@@ -375,6 +430,30 @@ func clinicSlugFromClinicID(clinics *repository.ClinicRepo, clinicID uint) strin
 		return ""
 	}
 	return booking.ClinicPathKey(c)
+}
+
+// bookingSpecialtyURL لینک تخصص را فقط روی پلتفرم و برای landing قابل‌ایندکس می‌سازد.
+// ورودی: مستأجر و اسلاگ تخصص. خروجی: مسیر نسبی یا خالی. دامنهٔ دیگر لینک نمی‌گیرد.
+func bookingSpecialtyURL(tc *tenant.Context, slug string) string {
+	if tc == nil || tc.Layout != constants.LayoutPlatform || !seo.SpecialtyIndexable(slug, 1) {
+		return ""
+	}
+	return seo.SpecialtyPath(slug)
+}
+
+// bookingClinicURL لینک مرکز را روی پلتفرم یا دامنهٔ سازمان می‌سازد.
+// ورودی: مستأجر و مرکز. خروجی: /clinics/{slug} یا خالی. own-domain اینجا / نمی‌سازد.
+func bookingClinicURL(tc *tenant.Context, clinic *models.Clinic) string {
+	if tc == nil || clinic == nil {
+		return ""
+	}
+	if tc.Layout != constants.LayoutPlatform && !organizationDomainSurface(tc) {
+		return ""
+	}
+	if !seo.ClinicIndexable(clinic.IsActiveOnWebsite, clinic.Slug) {
+		return ""
+	}
+	return seo.ClinicPath(*clinic.Slug)
 }
 
 func doctorDisplayName(d models.Doctor) string {

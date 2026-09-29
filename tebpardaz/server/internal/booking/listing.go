@@ -27,24 +27,26 @@ type ListFilter struct {
 
 // DoctorCard یک ردیف پزشک برای لیست عمومی رزرو است.
 type DoctorCard struct {
-	ID              uint
-	Name            string
-	SpecialtyName   string
-	DoctorSystemID  int
-	PhotoURL        string
-	Photo300        string
-	Photo600        string
-	Photo900        string
-	Photo1200       string
-	ShortDesc       string
-	ClinicID        uint
-	ClinicName      string
-	ClinicSlug      string
-	DoctorSlug      string
-	ShowClinicBadge bool
-	HasSlot         bool
-	NearestStartsAt time.Time
-	BookingURL      string
+	ID                uint
+	Name              string
+	SpecialtyName     string
+	SpecialtySlug     string
+	DoctorSystemID    int
+	PhotoURL          string
+	Photo300          string
+	Photo600          string
+	Photo900          string
+	Photo1200         string
+	ShortDesc         string
+	ClinicID          uint
+	ClinicName        string
+	ClinicSlug        string
+	ClinicLandingSlug string
+	DoctorSlug        string
+	ShowClinicBadge   bool
+	HasSlot           bool
+	NearestStartsAt   time.Time
+	BookingURL        string
 }
 
 // SpecialtyOption گزینه دراپ‌داون تخصص است.
@@ -200,22 +202,24 @@ func buildDoctorCards(
 	for _, d := range doctors {
 		meta := metaByClinic[d.ClinicID]
 		card := DoctorCard{
-			ID:              d.ID,
-			Name:            doctorDisplayName(d),
-			SpecialtyName:   d.Specialty.Name,
-			DoctorSystemID:  d.DoctorSystemID,
-			PhotoURL:        d.PhotoURL,
-			Photo300:        d.Photo300,
-			Photo600:        d.Photo600,
-			Photo900:        d.Photo900,
-			Photo1200:       d.Photo1200,
-			ShortDesc:       strings.TrimSpace(d.ShortDesc),
-			ClinicID:        d.ClinicID,
-			ClinicName:      meta.Name,
-			ClinicSlug:      meta.Slug,
-			DoctorSlug:      d.Slug,
-			ShowClinicBadge: showClinicBadge,
-			BookingURL:      BuildBookingURL(layout, meta.Slug, d.Slug),
+			ID:                d.ID,
+			Name:              doctorDisplayName(d),
+			SpecialtyName:     d.Specialty.Name,
+			SpecialtySlug:     strings.TrimSpace(d.Specialty.Slug),
+			DoctorSystemID:    d.DoctorSystemID,
+			PhotoURL:          d.PhotoURL,
+			Photo300:          d.Photo300,
+			Photo600:          d.Photo600,
+			Photo900:          d.Photo900,
+			Photo1200:         d.Photo1200,
+			ShortDesc:         strings.TrimSpace(d.ShortDesc),
+			ClinicID:          d.ClinicID,
+			ClinicName:        meta.Name,
+			ClinicSlug:        meta.Slug,
+			ClinicLandingSlug: meta.LandingSlug,
+			DoctorSlug:        d.Slug,
+			ShowClinicBadge:   showClinicBadge,
+			BookingURL:        BuildBookingURL(layout, meta.Slug, d.Slug),
 		}
 		if slot, ok := nearest[d.ID]; ok {
 			card.HasSlot = true
@@ -224,6 +228,25 @@ func buildDoctorCards(
 		cards = append(cards, card)
 	}
 	return cards
+}
+
+// PublicDoctorCards کارت عمومی پزشک را بدون query اضافه می‌سازد.
+// ورودی: پزشکان، مراکز از قبل خوانده‌شده، نزدیک‌ترین نوبت، چیدمان و نشان مرکز.
+// خروجی: کارت‌ها به همان ترتیب پزشکان. مسیر رزرو از BuildBookingURL است.
+func PublicDoctorCards(doctors []models.Doctor, clinics []models.Clinic, nearest map[uint]models.DoctorSlot, layout constants.LayoutKind, showClinicBadge bool) []DoctorCard {
+	meta := make(map[uint]clinicListMeta, len(clinics))
+	for i := range clinics {
+		clinic := &clinics[i]
+		meta[clinic.ID] = clinicListMeta{
+			Name:        clinic.Name,
+			Slug:        ClinicPathKey(clinic),
+			LandingSlug: storedClinicSlug(clinic),
+		}
+	}
+	if nearest == nil {
+		nearest = map[uint]models.DoctorSlot{}
+	}
+	return buildDoctorCards(doctors, meta, nearest, layout, showClinicBadge)
 }
 
 // ListHomeDoctors حداکثر limit پزشک برای صفحه اول را برمی‌گرداند.
@@ -330,8 +353,9 @@ func (s *ListingService) fillFilterOptions(result *ListResult, orgClinicIDs []ui
 }
 
 type clinicListMeta struct {
-	Name string
-	Slug string
+	Name        string
+	Slug        string
+	LandingSlug string
 }
 
 func (s *ListingService) clinicMeta(clinicIDs []uint) map[uint]clinicListMeta {
@@ -344,11 +368,20 @@ func (s *ListingService) clinicMeta(clinicIDs []uint) map[uint]clinicListMeta {
 		if err != nil || c == nil {
 			continue
 		}
-		meta := clinicListMeta{Name: c.Name}
+		meta := clinicListMeta{Name: c.Name, LandingSlug: storedClinicSlug(c)}
 		meta.Slug = ClinicPathKey(c)
 		out[id] = meta
 	}
 	return out
+}
+
+// storedClinicSlug اسلاگ ذخیره‌شده را برمی‌گرداند و کلید c{id} نمی‌سازد.
+// ورودی: مرکز. خروجی: slug غیرخالی یا رشته خالی.
+func storedClinicSlug(clinic *models.Clinic) string {
+	if clinic == nil || clinic.Slug == nil {
+		return ""
+	}
+	return strings.TrimSpace(*clinic.Slug)
 }
 
 // slotWindow تاریخ اختیاری تقویمی را به بازه [from, to) برای جستجوی اسلات تبدیل می‌کند.

@@ -21,6 +21,16 @@ type SpecialtyCardView struct {
 	Description      string
 	Icon             string
 	Color            string
+	Href             string
+}
+
+// specialtyCardHref لینک کارت را برمی‌گرداند.
+// Href فقط برای تخصص public و indexable پلتفرم ست می‌شود؛ وگرنه فیلتر پزشکان می‌ماند.
+func specialtyCardHref(view SpecialtyCardView) string {
+	if href := strings.TrimSpace(view.Href); href != "" {
+		return href
+	}
+	return specialtyFilterURL(view.ID)
 }
 
 // SpecialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
@@ -106,9 +116,9 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 templ.SafeURL
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(specialtyFilterURL(view.ID)))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(specialtyCardHref(view)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 78, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 88, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -121,7 +131,7 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("--sp-icon-color: " + SpecialtyIconColor(view.Color))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 79, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 89, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -139,7 +149,7 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.Icon)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 83, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 93, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -180,7 +190,7 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(view.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 88, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 98, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -198,7 +208,7 @@ func SpecialtyCard(view SpecialtyCardView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(view.ShortDescription)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 90, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `views/components/specialty_card.templ`, Line: 100, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {

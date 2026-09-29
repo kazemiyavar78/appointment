@@ -419,6 +419,12 @@
     outline-offset: 3px;
 }
 
+.doctor-card-photo-link {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
 .doctor-card-photo {
     position: relative;
     width: 100%;
@@ -467,6 +473,19 @@
     max-width: calc(100% - 24px);
 }
 
+a.doctor-card-badge {
+    position: relative;
+    z-index: 2;
+    text-decoration: none;
+}
+
+a.doctor-card-photo-link:focus-visible,
+a.doctor-card-badge:focus-visible,
+a.doctor-card-info:focus-visible {
+    outline: 2px solid #3b5bdb;
+    outline-offset: 3px;
+}
+
 .doctor-card-badge {
     display: inline-flex;
     align-items: center;
@@ -493,6 +512,11 @@
     flex-shrink: 0;
     font-size: 13px;
     line-height: 1;
+}
+
+a.doctor-card-info {
+    text-decoration: none;
+    color: inherit;
 }
 
 .doctor-card-info {

@@ -1,0 +1,77 @@
+package pages
+
+import "tebpardaz/server/views/components"
+
+// ClinicDetail پروفایل یک مرکز را روی پلتفرم رندر می‌کند.
+templ ClinicDetail(view ClinicDetailView) {
+	<div class="ui-fade-in mx-auto max-w-6xl">
+		<nav class="mb-4 text-sm text-ink-muted" aria-label="مسیر">
+			<a class="ui-link" href="/">خانه</a>
+			if view.ShowDirectory {
+				<span aria-hidden="true"> / </span>
+				<a class="ui-link" href="/clinics">مراکز درمانی</a>
+			}
+			<span aria-hidden="true"> / </span>
+			<span>{ view.Name }</span>
+		</nav>
+		<section class="ui-section mb-5">
+			if view.LogoURL != "" {
+				<img class="mb-4 h-16 w-16 rounded-2xl object-cover" src={ view.LogoURL } alt="" width="64" height="64"/>
+			}
+			<h1 class="ui-page-title">{ view.Name }</h1>
+			if view.Description != "" {
+				<p class="ui-page-desc">{ view.Description }</p>
+			}
+			if view.Address != "" || view.City != "" || view.Province != "" || view.Phone != "" {
+				<ul class="mt-4 space-y-1 text-sm text-ink-muted">
+					if view.Province != "" || view.City != "" {
+						<li>
+							if view.Province != "" && view.City != "" {
+								{ view.Province } — { view.City }
+							} else if view.City != "" {
+								{ view.City }
+							} else {
+								{ view.Province }
+							}
+						</li>
+					}
+					if view.Address != "" {
+						<li>{ view.Address }</li>
+					}
+					if view.Phone != "" {
+						<li dir="ltr">{ view.Phone }</li>
+					}
+				</ul>
+			}
+		</section>
+		if view.Empty {
+			<p class="rounded-xl border border-dashed border-surface-border bg-white px-5 py-10 text-center text-base text-ink-muted">در حال حاضر پزشک فعالی برای نوبت‌دهی آنلاین در این مرکز موجود نیست.</p>
+		} else {
+			@components.DoctorCardAssets()
+			<div class="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				for _, item := range view.Doctors {
+					@components.DoctorCard(item)
+				}
+			</div>
+			if view.TotalPages > 1 {
+				<nav class="doctor-list-pager mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="صفحه‌بندی">
+					if view.Page > 1 {
+						<a href={ templ.SafeURL(clinicDetailPageURL(view.Slug, view.Page-1)) }>قبلی</a>
+					}
+					for _, p := range doctorListPaginationPages(view.Page, view.TotalPages) {
+						if p == 0 {
+							<span class="text-ink-faint">…</span>
+						} else if p == view.Page {
+							<span class="is-current tabular-nums" aria-current="page">{ intToString(p) }</span>
+						} else {
+							<a class="tabular-nums" href={ templ.SafeURL(clinicDetailPageURL(view.Slug, p)) }>{ intToString(p) }</a>
+						}
+					}
+					if view.Page < view.TotalPages {
+						<a href={ templ.SafeURL(clinicDetailPageURL(view.Slug, view.Page+1)) }>بعدی</a>
+					}
+				</nav>
+			}
+		}
+	</div>
+}

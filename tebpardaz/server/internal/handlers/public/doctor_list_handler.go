@@ -91,7 +91,7 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		PageSize:         doctorListPageSize,
 	}
 	returnURL := pages.DoctorListURL(view, page)
-	view.Doctors = toDoctorCards(pageDoctors, returnURL)
+	view.Doctors = toDoctorCards(pageDoctors, returnURL, tc.Layout == constants.LayoutPlatform, tc.Layout == constants.LayoutPlatform || organizationDomainSurface(tc))
 	kind, place := publicSite(tc)
 	meta := seo.DoctorsMeta(kind, place, publicBaseURL(c), seo.DoctorListQuery{
 		Q:           c.Query("q"),
@@ -101,27 +101,61 @@ func (h *DoctorListHandler) Get(c *gin.Context) {
 		Page:        page,
 	})
 	head := headFromMeta(meta)
-	head.JSONLD = doctorsJSONLD(c, pageDoctors, page, meta.Robots == seo.RobotsIndexFollow, len(result.Doctors))
+	head.JSONLD = doctorsJSONLD(c, tc, pageDoctors, page, meta.Robots == seo.RobotsIndexFollow, len(result.Doctors))
 	RenderPublicLayoutWithHead(c, tc, pages.DoctorList(view), "doctors", head)
 }
 
 // doctorsJSONLD مسیر و در صورت ایندکس بودن ItemList همان صفحه را می‌سازد.
-// ورودی: درخواست، کارت‌های همین صفحه، شماره صفحه، مجاز بودن فهرست، و تعداد کل listing از قبل بارگذاری‌شده. خروجی: JSON-LD.
-func doctorsJSONLD(c *gin.Context, cards []booking.DoctorCard, page int, includeList bool, total int) string {
+// ورودی: درخواست، مستأجر، کارت‌های همین صفحه، شماره صفحه، مجاز بودن فهرست، و تعداد کل listing. خروجی: JSON-LD.
+// worksFor هویت MedicalClinic همان surface است: پلتفرم /clinics/{slug}#clinic، سازمان همان مسیر روی دامنهٔ سازمان، و own-domain ریشهٔ دامنه.
+func doctorsJSONLD(c *gin.Context, tc *tenant.Context, cards []booking.DoctorCard, page int, includeList bool, total int) string {
+	origin := organizationSurfaceOrigin(c, tc)
+	parentID := ""
+	if origin != "" {
+		parentID = seo.OriginID(origin, "organization")
+	}
+	ownClinicID := ownDomainClinicID(c, tc)
 	items := make([]seo.ItemListElementDTO, 0, len(cards))
 	if includeList {
 		for i, card := range cards {
 			if strings.TrimSpace(card.Name) == "" || strings.TrimSpace(card.BookingURL) == "" {
 				continue
 			}
-			items = append(items, seo.ItemListElementDTO{
+			item := seo.ItemListElementDTO{
 				Position: seo.ListPosition(page, doctorListPageSize, i),
 				Name:     card.Name,
 				URL:      absolutePublicURL(c, card.BookingURL),
-			})
+			}
+			switch {
+			case origin != "":
+				if id, _ := seo.OrganizationClinicRef(origin, card.ClinicLandingSlug); id != "" {
+					item.WorksForID = id
+				}
+				item.WorksForName = strings.TrimSpace(card.ClinicName)
+				item.ParentOrganizationID = parentID
+			case tc != nil && tc.Layout == constants.LayoutPlatform:
+				if id, _ := seo.OrganizationClinicRef(publicBaseURL(c), card.ClinicLandingSlug); id != "" {
+					item.WorksForID = id
+				}
+				item.WorksForName = strings.TrimSpace(card.ClinicName)
+			case ownClinicID != "":
+				item.WorksForID = ownClinicID
+				item.WorksForName = strings.TrimSpace(card.ClinicName)
+			}
+			items = append(items, item)
 		}
 	}
 	return seo.DoctorsPageGraph(absolutePublicURL(c, "/"), absolutePublicURL(c, "/doctors"), items, includeList && len(items) > 0, total)
+}
+
+// ownDomainClinicID شناسهٔ MedicalClinic صفحهٔ اصلی دامنهٔ اختصاصی را برمی‌گرداند.
+// ورودی: درخواست و مستأجر. خروجی: https://{clinic-domain}/#clinic یا خالی روی سطح‌های دیگر.
+func ownDomainClinicID(c *gin.Context, tc *tenant.Context) string {
+	if tc == nil || tc.Layout != constants.LayoutPrivate || tc.Clinic == nil {
+		return ""
+	}
+	origin := seo.ClinicSchemaOrigin(publicBaseURL(c), tc.Clinic.Domain, tc.Clinic.IsActiveOnWebsite)
+	return seo.OriginID(origin, "clinic")
 }
 
 // paginateDoctorCards slices doctors for the requested page.
@@ -155,12 +189,22 @@ func paginateDoctorCards(all []booking.DoctorCard, page, pageSize int) (int, int
 // toDoctorCards transforms booking.DoctorCard slice into components.DoctorCardView slice.
 // Inputs: items ([]booking.DoctorCard), returnURL (string).
 // Output: []components.DoctorCardView.
-func toDoctorCards(items []booking.DoctorCard, returnURL string) []components.DoctorCardView {
+func toDoctorCards(items []booking.DoctorCard, returnURL string, linkSpecialty, linkClinic bool) []components.DoctorCardView {
 	out := make([]components.DoctorCardView, 0, len(items))
 	for _, item := range items {
+		specialtyURL := ""
+		if linkSpecialty {
+			specialtyURL = seo.SpecialtyPath(item.SpecialtySlug)
+		}
+		clinicURL := ""
+		if linkClinic {
+			clinicURL = seo.ClinicPath(item.ClinicLandingSlug)
+		}
 		out = append(out, components.DoctorCardView{
 			Name:            item.Name,
 			SpecialtyName:   item.SpecialtyName,
+			SpecialtyURL:    specialtyURL,
+			ClinicURL:       clinicURL,
 			DoctorSystemID:  item.DoctorSystemID,
 			PhotoURL:        item.PhotoURL,
 			Photo300:        item.Photo300,

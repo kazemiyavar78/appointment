@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/shared/constants"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,7 @@ func TestFallbackPlatformSetsPlatformLayout(t *testing.T) {
 func TestMiddlewareUnknownHostMarksUnresolved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil))
+	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil, nil))
 	r.GET("/", func(c *gin.Context) {
 		if !IsUnresolved(c) {
 			t.Error("expected unresolved tenant")
@@ -57,7 +58,7 @@ func TestMiddlewareUnknownHostMarksUnresolved(t *testing.T) {
 func TestMiddlewarePlatformUnknownSlugMarksUnresolved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil))
+	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil, nil))
 	r.NoRoute(func(c *gin.Context) {
 		if !IsUnresolved(c) {
 			t.Error("expected unresolved tenant for unknown slug")
@@ -82,7 +83,7 @@ func TestMiddlewarePlatformUnknownSlugMarksUnresolved(t *testing.T) {
 func TestMiddlewareReservedPathStaysResolved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil))
+	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil, nil))
 	r.GET("/doctors", func(c *gin.Context) {
 		if IsUnresolved(c) {
 			t.Error("reserved /doctors should resolve as platform")
@@ -107,7 +108,7 @@ func TestMiddlewareReservedPathStaysResolved(t *testing.T) {
 func TestMiddlewareSectionsPathStaysResolved(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil))
+	r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil, nil))
 	r.GET("/sections", func(c *gin.Context) {
 		if IsUnresolved(c) {
 			t.Error("reserved /sections should resolve as platform")
@@ -126,4 +127,49 @@ func TestMiddlewareSectionsPathStaysResolved(t *testing.T) {
 	if got := w.Body.String(); got != "sections" {
 		t.Fatalf("body = %q", got)
 	}
+}
+
+func TestMiddlewareForwardedHostFollowsProxyTrust(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	trust, err := seo.NewProxyTrust([]string{"127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	newEngine := func() *gin.Engine {
+		r := gin.New()
+		r.Use(Middleware(NewResolver("tebpardaz.ir", nil, nil), nil, trust))
+		r.GET("/", func(c *gin.Context) {
+			tc, ok := FromGin(c)
+			if !ok || tc == nil {
+				t.Fatal("missing tenant")
+			}
+			c.String(http.StatusOK, string(tc.Layout)+"|"+tc.Host+"|"+boolText(IsUnresolved(c)))
+		})
+		return r
+	}
+	untrusted := httptest.NewRequest(http.MethodGet, "/", nil)
+	untrusted.Host = "tebpardaz.ir"
+	untrusted.RemoteAddr = "203.0.113.8:443"
+	untrusted.Header.Set("X-Forwarded-Host", "evil.example")
+	w := httptest.NewRecorder()
+	newEngine().ServeHTTP(w, untrusted)
+	if w.Body.String() != "platform|tebpardaz.ir|false" {
+		t.Fatalf("untrusted = %q", w.Body.String())
+	}
+	trusted := httptest.NewRequest(http.MethodGet, "/", nil)
+	trusted.Host = "origin.internal"
+	trusted.RemoteAddr = "127.0.0.1:9"
+	trusted.Header.Set("X-Forwarded-Host", "tebpardaz.ir")
+	w = httptest.NewRecorder()
+	newEngine().ServeHTTP(w, trusted)
+	if w.Body.String() != "platform|tebpardaz.ir|false" {
+		t.Fatalf("trusted = %q", w.Body.String())
+	}
+}
+
+func boolText(v bool) string {
+	if v {
+		return "true"
+	}
+	return "false"
 }

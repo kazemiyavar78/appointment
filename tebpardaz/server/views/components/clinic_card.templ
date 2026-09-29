@@ -14,6 +14,16 @@ type ClinicCardView struct {
 	Phone    string
 	Province string
 	City     string
+	Href     string
+}
+
+// clinicCardHref لینک کارت مرکز را برمی‌گرداند.
+// Href لندینگ مرکز روی پلتفرم یا دامنهٔ سازمان است؛ وگرنه فیلتر پزشکان می‌ماند.
+func clinicCardHref(view ClinicCardView) string {
+	if href := strings.TrimSpace(view.Href); href != "" {
+		return href
+	}
+	return clinicFilterURL(view.Slug)
 }
 
 // clinicFilterURL آدرس فیلتر پزشکان بر اساس slug مرکز را می‌سازد.
@@ -30,7 +40,7 @@ func clinicFilterURL(slug string) string {
 templ ClinicCard(view ClinicCardView) {
 	<a
 		class="ui-card group flex flex-col"
-		href={ templ.SafeURL(clinicFilterURL(view.Slug)) }
+		href={ templ.SafeURL(clinicCardHref(view)) }
 	>
 		<div class="flex min-w-0 flex-1 flex-col gap-2.5 p-4">
 			<h3 class="break-words text-base font-bold leading-snug text-ink [overflow-wrap:anywhere]">

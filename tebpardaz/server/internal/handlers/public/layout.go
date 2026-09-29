@@ -3,9 +3,11 @@ package public
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"tebpardaz/server/internal/branding"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	"tebpardaz/server/internal/tenant"
 	"tebpardaz/server/views/components"
 	"tebpardaz/server/views/layouts"
@@ -107,6 +109,7 @@ func RenderPublicLayoutWithHead(c *gin.Context, tc *tenant.Context, child templ.
 		}
 		err = layouts.PlatformLayout(view).Render(ctx, c.Writer)
 	case constants.LayoutOrgan:
+		head = attachOrganizationSurface(c, tc, head)
 		if head.Title == "" && tc.Organization != nil {
 			head.Title = tc.Organization.Name + " | سامانه نوبت‌دهی آنلاین"
 		}
@@ -154,6 +157,22 @@ func RenderPublicLayoutWithHead(c *gin.Context, tc *tenant.Context, child templ.
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 	}
+}
+
+// attachOrganizationSurface هویت سازمان را فقط روی دامنهٔ خود سازمان به گراف صفحه اضافه می‌کند.
+// ورودی: درخواست، مستأجر و head. خروجی: همان head؛ صفحات noindex و هاست‌های دیگر تغییر نمی‌کنند.
+func attachOrganizationSurface(c *gin.Context, tc *tenant.Context, head layouts.PageHead) layouts.PageHead {
+	if strings.Contains(head.Robots, "noindex") || tc == nil || tc.Organization == nil {
+		return head
+	}
+	origin := organizationSurfaceOrigin(c, tc)
+	name := strings.TrimSpace(tc.Organization.Name)
+	if origin == "" || name == "" {
+		return head
+	}
+	logo := seo.AbsoluteSchemaURL(origin, strings.TrimSpace(tc.Organization.LogoURL))
+	head.JSONLD = seo.AttachOrganizationSurface(head.JSONLD, origin, name, seo.PlainText(tc.Organization.Description), logo)
+	return head
 }
 
 // publicNavLinks لیست لینک‌های ناوبری هدر عمومی پیش‌فرض را برمی‌گرداند.

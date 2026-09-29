@@ -256,7 +256,7 @@ func (h *BookingHandler) resolveOTPClinic(tc *tenant.Context, clinicPath string)
 		}
 		return clinic.ID, clinic.Code, clinic.Name, nil
 	case tc.Layout == constants.LayoutPlatform && clinicPath != "":
-		clinic, e := h.Clinics.GetBySlug(clinicPath)
+		clinic, e := h.resolveClinicByPathKey(clinicPath)
 		if e != nil || clinic == nil {
 			return 0, 0, "", e
 		}

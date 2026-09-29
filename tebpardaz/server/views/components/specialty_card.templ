@@ -13,6 +13,16 @@ type SpecialtyCardView struct {
 	Description      string
 	Icon             string
 	Color            string
+	Href             string
+}
+
+// specialtyCardHref لینک کارت را برمی‌گرداند.
+// Href فقط برای تخصص public و indexable پلتفرم ست می‌شود؛ وگرنه فیلتر پزشکان می‌ماند.
+func specialtyCardHref(view SpecialtyCardView) string {
+	if href := strings.TrimSpace(view.Href); href != "" {
+		return href
+	}
+	return specialtyFilterURL(view.ID)
 }
 
 // SpecialtyFilterURL آدرس فیلتر پزشکان بر اساس specialty_id را می‌سازد.
@@ -75,7 +85,7 @@ func SpecialtyFAClass(icon string) string {
 templ SpecialtyCard(view SpecialtyCardView) {
 	<a
 		class="specialty-cat-card"
-		href={ templ.SafeURL(specialtyFilterURL(view.ID)) }
+		href={ templ.SafeURL(specialtyCardHref(view)) }
 		style={ "--sp-icon-color: " + SpecialtyIconColor(view.Color) }
 	>
 		<div class="specialty-cat-card__icon" aria-hidden="true">

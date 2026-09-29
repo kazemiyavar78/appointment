@@ -17,10 +17,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// sectionClinicSource خواندن مرکز برای صفحات بخش است. پیاده‌سازی تولیدی ClinicRepo است.
+type sectionClinicSource interface {
+	GetBySlug(slug string) (*models.Clinic, error)
+	GetByID(id uint) (*models.Clinic, error)
+	ListAll() ([]models.Clinic, error)
+	ListByOrganizationID(orgID uint) ([]models.Clinic, error)
+}
+
+// sectionListAliasNoindexKey یعنی این درخواست از مسیر جایگزین ساعات/پیام/تجهیزات/معرفی آمده و فهرست بخش‌ها را نشان می‌دهد.
+const sectionListAliasNoindexKey = "section_list_alias_noindex"
+
+// listAsSupportingAlias فهرست بخش‌ها را برای مسیر بدون اسلاگ بخش با noindex,follow رندر می‌کند.
+// ورودی: درخواست. خروجی: ندارد. canonical همان مسیر درخواست می‌ماند و /sections عوض نمی‌شود.
+func (h *SectionPublicHandler) listAsSupportingAlias(c *gin.Context) {
+	c.Set(sectionListAliasNoindexKey, true)
+	h.ListSections(c)
+}
+
+// sectionPublicSource خواندن بخش برای صفحات عمومی است. پیاده‌سازی تولیدی SectionRepo است.
+type sectionPublicSource interface {
+	GetSectionByClinicAndSlug(clinicID uint, slug string) (*models.AppointmentClinicSection, error)
+	ListActiveSectionsWithBannerByClinic(clinicID uint) ([]models.AppointmentClinicSection, error)
+	ListAssignedPublicDoctors(sectionID uint) ([]models.Doctor, error)
+}
+
 // SectionPublicHandler مدیریت و نمایش صفحات عمومی بخش‌ها و زیرصفحات تخصصی آن‌ها را بر عهده دارد.
 type SectionPublicHandler struct {
-	Sections *repository.SectionRepo
-	Clinics  *repository.ClinicRepo
+	Sections sectionPublicSource
+	Clinics  sectionClinicSource
 	Listing  *booking.ListingService
 	Services *repository.ServiceRepo
 }
@@ -41,17 +66,24 @@ func NewSectionPublicHandler(sections *repository.SectionRepo, clinics *reposito
 // ورودی: کانتکست Gin و کانتکست مستأجر.
 // خروجی: اشاره‌گر به مدل کلینیک، شناسه کلینیک یا خطا در صورت عدم وجود.
 func (h *SectionPublicHandler) resolveClinicForRequest(c *gin.Context, tc *tenant.Context) (*models.Clinic, uint, error) {
+	clinicSlug := strings.TrimSpace(c.Param("clinic_slug"))
 	if tc != nil && tc.Layout == constants.LayoutPrivate && tc.ClinicID != nil && tc.Clinic != nil {
+		if clinicSlug != "" && !clinicSlugMatches(tc.Clinic, clinicSlug) {
+			return nil, 0, fmt.Errorf("clinic not found")
+		}
+		if !clinicVisibleForTenant(tc, tc.Clinic) {
+			return nil, 0, fmt.Errorf("clinic not found")
+		}
 		return tc.Clinic, *tc.ClinicID, nil
 	}
-	clinicSlug := strings.TrimSpace(c.Param("clinic_slug"))
 	if clinicSlug != "" && h.Clinics != nil {
 		clinic, err := h.Clinics.GetBySlug(clinicSlug)
-		if err == nil && clinic != nil {
-			return clinic, clinic.ID, nil
+		if err != nil || clinic == nil || !clinicVisibleForTenant(tc, clinic) {
+			return nil, 0, fmt.Errorf("clinic not found")
 		}
+		return clinic, clinic.ID, nil
 	}
-	if tc != nil && tc.ClinicID != nil && tc.Clinic != nil {
+	if tc != nil && tc.ClinicID != nil && tc.Clinic != nil && clinicVisibleForTenant(tc, tc.Clinic) {
 		return tc.Clinic, *tc.ClinicID, nil
 	}
 	return nil, 0, fmt.Errorf("clinic not found")
@@ -67,7 +99,7 @@ func (h *SectionPublicHandler) resolveSectionForRequest(c *gin.Context, tc *tena
 	}
 
 	clinic, clinicID, err := h.resolveClinicForRequest(c, tc)
-	if err == nil && clinic != nil && clinicID > 0 {
+	if err == nil && clinic != nil && clinicID > 0 && h.Sections != nil {
 		sec, secErr := h.Sections.GetSectionByClinicAndSlug(clinicID, slug)
 		if secErr == nil && sec != nil && sec.IsActive {
 			prefix := "/section/" + sec.Slug
@@ -77,8 +109,15 @@ func (h *SectionPublicHandler) resolveSectionForRequest(c *gin.Context, tc *tena
 			return sec, clinic, prefix, nil
 		}
 	}
+	// دامنهٔ اختصاصی و URL دارای اسلاگ مرکز به مرکز دیگری سقوط نمی‌کنند.
+	if tc != nil && tc.Layout == constants.LayoutPrivate {
+		return nil, nil, "", fmt.Errorf("section not found")
+	}
+	if strings.TrimSpace(c.Param("clinic_slug")) != "" {
+		return nil, nil, "", fmt.Errorf("section not found")
+	}
 
-	// در حالت ارگان یا پلتفرم، ممکن است تمام مراکز را برای پیدا کردن بخش با این اسلاگ جستجو کنیم
+	// در حالت ارگان یا پلتفرم، ممکن است تمام مراکز همان سطح را برای پیدا کردن بخش با این اسلاگ جستجو کنیم
 	if h.Clinics != nil && h.Sections != nil {
 		var candidateClinics []models.Clinic
 		if tc != nil && tc.Layout == constants.LayoutOrgan && tc.OrganizationID != nil {
@@ -88,6 +127,9 @@ func (h *SectionPublicHandler) resolveSectionForRequest(c *gin.Context, tc *tena
 		}
 
 		for _, cl := range candidateClinics {
+			if !clinicVisibleForTenant(tc, &cl) {
+				continue
+			}
 			sec, secErr := h.Sections.GetSectionByClinicAndSlug(cl.ID, slug)
 			if secErr == nil && sec != nil && sec.IsActive {
 				prefix := "/section/" + sec.Slug
@@ -145,13 +187,15 @@ func (h *SectionPublicHandler) ListSections(c *gin.Context) {
 	subtitle := "معرفی دپارتمان‌ها، تجهیزات پیشرفته و ساعات کاری بخش‌های درمانی"
 	seoPlace := ""
 
+	var scopedClinic *models.Clinic
 	clinicSlug := strings.TrimSpace(c.Param("clinic_slug"))
 	if clinicSlug != "" && h.Clinics != nil {
 		cl, err := h.Clinics.GetBySlug(clinicSlug)
-		if err != nil || cl == nil {
+		if err != nil || cl == nil || !clinicVisibleForTenant(tc, cl) {
 			NotFound(c)
 			return
 		}
+		scopedClinic = cl
 		targetClinicIDs = []uint{cl.ID}
 		title = fmt.Sprintf("بخش‌های درمانی %s", cl.Name)
 		subtitle = fmt.Sprintf("لیست بخش‌ها و امکانات تخصصی فعال در %s", cl.Name)
@@ -269,7 +313,14 @@ func (h *SectionPublicHandler) ListSections(c *gin.Context) {
 
 	pageURL := absolutePublicURL(c, c.Request.URL.Path)
 	kind, _ := publicSite(tc)
-	head := headFromMeta(seo.SectionListMeta(kind, seoPlace, pageURL))
+	listMeta := seo.SectionListMeta(kind, seoPlace, pageURL)
+	if sectionListAlias, _ := c.Get(sectionListAliasNoindexKey); sectionListAlias == true {
+		listMeta = seo.ApplySupportingSectionPolicy(listMeta)
+	}
+	head := headFromMeta(listMeta)
+	if scopedClinic != nil {
+		head.JSONLD = organizationClinicJSONLD(c, tc, scopedClinic)
+	}
 
 	RenderPublicLayoutWithHead(c, tc, pages.SectionsList(pageView), "sections", head)
 }
@@ -296,8 +347,9 @@ func (h *SectionPublicHandler) Get(c *gin.Context) {
 	}
 
 	bannerDisplay := h.toBannerDisplay(sec.Banner, sec.Title)
+	bannerDisplay.Heading = strings.TrimSpace(sec.Title)
 	schedulesDisplay := h.toSchedulesDisplay(sec.Schedules)
-	doctorsDisplay := h.loadSectionDoctorCards(sec.ID, tc)
+	doctorsDisplay, doctorCount := h.loadSectionDoctorCards(sec.ID, tc, clinic)
 	catalogDisplay := h.loadSectionCatalog(sec.ID)
 	messagesDisplay := h.toMessagesDisplay(sec.Messages)
 	equipmentDisplay := h.toEquipmentDisplay(sec.Equipment)
@@ -318,6 +370,9 @@ func (h *SectionPublicHandler) Get(c *gin.Context) {
 	breadSchema := sectionBreadcrumb(c, basePath, sec.Title, "", "")
 
 	meta := seo.SectionDetailMeta(seo.SectionOverview, sec.Title, clinicName, "", pageURL)
+	if !seo.SectionDetailIndexable(sectionDetailContent(sec, doctorCount, len(catalogDisplay))) {
+		meta.Robots = seo.RobotsNoindexFollow
+	}
 	head := headFromMeta(meta)
 	head.JSONLD = seo.BuildGraph(breadSchema)
 
@@ -336,7 +391,7 @@ func (h *SectionPublicHandler) GetWorkingHours(c *gin.Context) {
 			NotFound(c)
 			return
 		}
-		h.ListSections(c)
+		h.listAsSupportingAlias(c)
 		return
 	}
 
@@ -351,7 +406,7 @@ func (h *SectionPublicHandler) GetWorkingHours(c *gin.Context) {
 	pageURL := absolutePublicURL(c, basePath+"/ساعات-کاری")
 	breadSchema := sectionBreadcrumb(c, basePath, sec.Title, "ساعات کاری", basePath+"/ساعات-کاری")
 
-	meta := seo.SectionDetailMeta(seo.SectionHours, sec.Title, clinic.Name, clinic.Address, pageURL)
+	meta := seo.ApplySupportingSectionPolicy(seo.SectionDetailMeta(seo.SectionHours, sec.Title, clinic.Name, clinic.Address, pageURL))
 	head := headFromMeta(meta)
 	head.JSONLD = seo.BuildGraph(breadSchema)
 
@@ -369,7 +424,7 @@ func (h *SectionPublicHandler) GetMessages(c *gin.Context) {
 			NotFound(c)
 			return
 		}
-		h.ListSections(c)
+		h.listAsSupportingAlias(c)
 		return
 	}
 
@@ -397,7 +452,7 @@ func (h *SectionPublicHandler) GetMessages(c *gin.Context) {
 	})
 	breadSchema := sectionBreadcrumb(c, basePath, sec.Title, "پیام به مراجعین", basePath+"/پیام-به-مراجعین")
 
-	meta := seo.SectionDetailMeta(seo.SectionMessages, sec.Title, clinic.Name, "", pageURL)
+	meta := seo.ApplySupportingSectionPolicy(seo.SectionDetailMeta(seo.SectionMessages, sec.Title, clinic.Name, "", pageURL))
 	head := headFromMeta(meta)
 	head.JSONLD = seo.BuildGraph(artSchema, breadSchema)
 
@@ -415,7 +470,7 @@ func (h *SectionPublicHandler) GetEquipment(c *gin.Context) {
 			NotFound(c)
 			return
 		}
-		h.ListSections(c)
+		h.listAsSupportingAlias(c)
 		return
 	}
 
@@ -444,7 +499,7 @@ func (h *SectionPublicHandler) GetEquipment(c *gin.Context) {
 	eqSchema := seo.BuildEquipmentListSchema(pageURL, eqDTOs)
 	breadSchema := sectionBreadcrumb(c, basePath, sec.Title, "تجهیزات", basePath+"/تجهیزات")
 
-	meta := seo.SectionDetailMeta(seo.SectionEquipment, sec.Title, clinic.Name, "", pageURL)
+	meta := seo.ApplySupportingSectionPolicy(seo.SectionDetailMeta(seo.SectionEquipment, sec.Title, clinic.Name, "", pageURL))
 	head := headFromMeta(meta)
 	head.JSONLD = seo.BuildGraph(eqSchema, breadSchema)
 
@@ -462,7 +517,7 @@ func (h *SectionPublicHandler) GetBannerIntro(c *gin.Context) {
 			NotFound(c)
 			return
 		}
-		h.ListSections(c)
+		h.listAsSupportingAlias(c)
 		return
 	}
 
@@ -477,7 +532,7 @@ func (h *SectionPublicHandler) GetBannerIntro(c *gin.Context) {
 	pageURL := absolutePublicURL(c, basePath+"/معرفی")
 	breadSchema := sectionBreadcrumb(c, basePath, sec.Title, "معرفی", basePath+"/معرفی")
 
-	meta := seo.SectionDetailMeta(seo.SectionIntro, sec.Title, clinic.Name, "", pageURL)
+	meta := seo.ApplySupportingSectionPolicy(seo.SectionDetailMeta(seo.SectionIntro, sec.Title, clinic.Name, "", pageURL))
 	head := headFromMeta(meta)
 	head.JSONLD = seo.BuildGraph(breadSchema)
 
@@ -509,15 +564,64 @@ func (h *SectionPublicHandler) loadSectionCatalog(sectionID uint) []pages.Sectio
 	return out
 }
 
+// sectionDetailContent سیگنال ایندکس صفحهٔ اصلی را از همان بخش و شمارش‌های از قبل بارگذاری‌شده می‌سازد.
+// ورودی: بخش با بنر و روابط، تعداد پزشک عمومی و تعداد خدمت کاتالوگ. خروجی: ورودی SectionDetailIndexable.
+func sectionDetailContent(sec *models.AppointmentClinicSection, publicDoctors, catalogServices int) seo.SectionDetailContent {
+	in := seo.SectionDetailContent{
+		PublicDoctors:   publicDoctors,
+		CatalogServices: catalogServices,
+	}
+	if sec == nil {
+		return in
+	}
+	in.Title = sec.Title
+	if sec.Banner != nil {
+		in.HasBanner = true
+		in.Slogan = sec.Banner.Slogan
+		in.Description = sec.Banner.Description
+		in.ServiceLines = nonEmptyLines(sec.Banner.Services)
+	}
+	for _, item := range sec.Equipment {
+		if !item.IsActive {
+			continue
+		}
+		if title := strings.TrimSpace(item.Title); title != "" {
+			in.EquipmentTitles = append(in.EquipmentTitles, title)
+		}
+	}
+	for _, msg := range sec.Messages {
+		if !msg.IsActive {
+			continue
+		}
+		if body := strings.TrimSpace(msg.Content); body != "" {
+			in.MessageBodies = append(in.MessageBodies, body)
+		}
+	}
+	return in
+}
+
+// nonEmptyLines متن چندخطی را به خطوط trimشدهٔ غیرخالی تبدیل می‌کند.
+// ورودی: متن خام. خروجی: خطوط قابل مقایسه با خدمات قالب.
+func nonEmptyLines(raw string) []string {
+	var out []string
+	for _, line := range strings.Split(raw, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
 // loadSectionDoctorCards پزشکان منتسب به بخش را به کارت‌های رزرو عمومی تبدیل می‌کند.
-// ورودی: شناسه بخش و کانتکست مستأجر. خروجی: اسلایس DoctorCardView برای صفحه بخش.
-func (h *SectionPublicHandler) loadSectionDoctorCards(sectionID uint, tc *tenant.Context) []components.DoctorCardView {
+// ورودی: شناسه بخش، مستأجر، و مرکز از قبل resolveشدهٔ همین بخش. خروجی: کارت‌ها و تعداد پزشک عمومی.
+// مرکز دوباره از دیتابیس خوانده نمی‌شود. تعداد همان فهرست صفحه است و query جدا برای ایندکس نمی‌زند.
+func (h *SectionPublicHandler) loadSectionDoctorCards(sectionID uint, tc *tenant.Context, clinic *models.Clinic) ([]components.DoctorCardView, int) {
 	if h == nil || h.Sections == nil || sectionID == 0 {
-		return nil
+		return nil, 0
 	}
 	doctors, err := h.Sections.ListAssignedPublicDoctors(sectionID)
 	if err != nil || len(doctors) == 0 {
-		return nil
+		return nil, 0
 	}
 
 	layout := constants.LayoutPrivate
@@ -530,24 +634,21 @@ func (h *SectionPublicHandler) loadSectionDoctorCards(sectionID uint, tc *tenant
 	if h.Listing != nil {
 		cards, listErr := h.Listing.CardsFromDoctors(doctors, layout, showClinicBadge)
 		if listErr == nil && len(cards) > 0 {
-			return toSectionDoctorCardViews(cards)
+			return toSectionDoctorCardViews(cards), len(doctors)
 		}
 	}
-	return toSectionDoctorCardViews(fallbackSectionDoctorCards(doctors, layout, showClinicBadge, clinicNameFromTenant(tc)))
-}
-
-// clinicNameFromTenant نام مرکز را از کانتکست مستأجر برمی‌گرداند.
-// ورودی: کانتکست مستأجر. خروجی: نام مرکز یا رشته خالی.
-func clinicNameFromTenant(tc *tenant.Context) string {
-	if tc != nil && tc.Clinic != nil {
-		return tc.Clinic.Name
-	}
-	return ""
+	return toSectionDoctorCardViews(fallbackSectionDoctorCards(doctors, layout, showClinicBadge, clinic)), len(doctors)
 }
 
 // fallbackSectionDoctorCards کارت پزشک را بدون سرویس لیست/اسلات می‌سازد.
-// ورودی: پزشکان، چیدمان، نشان مرکز و نام مرکز. خروجی: کارت‌های رزرو ساده.
-func fallbackSectionDoctorCards(doctors []models.Doctor, layout constants.LayoutKind, showClinicBadge bool, clinicName string) []booking.DoctorCard {
+// ورودی: پزشکان، چیدمان، نشان مرکز، و مرکز از قبل بارگذاری‌شده. خروجی: کارت‌های رزرو.
+// کلید مسیر همان ClinicPathKey مسیر عادی است و query جدیدی نمی‌زند.
+func fallbackSectionDoctorCards(doctors []models.Doctor, layout constants.LayoutKind, showClinicBadge bool, clinic *models.Clinic) []booking.DoctorCard {
+	clinicName := ""
+	if clinic != nil {
+		clinicName = clinic.Name
+	}
+	clinicKey := booking.ClinicPathKey(clinic)
 	out := make([]booking.DoctorCard, 0, len(doctors))
 	for _, d := range doctors {
 		name := strings.TrimSpace(d.Name)
@@ -569,7 +670,7 @@ func fallbackSectionDoctorCards(doctors []models.Doctor, layout constants.Layout
 			ClinicName:      clinicName,
 			DoctorSlug:      d.Slug,
 			ShowClinicBadge: showClinicBadge,
-			BookingURL:      booking.BuildBookingURL(layout, "", d.Slug),
+			BookingURL:      booking.BuildBookingURL(layout, clinicKey, d.Slug),
 		})
 	}
 	return out

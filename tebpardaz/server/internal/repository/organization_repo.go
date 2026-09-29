@@ -34,7 +34,7 @@ func (r *OrganizationRepo) GetByDomain(domain string) (*models.Organization, err
 }
 
 // GetBySlug finds an organization by its unique slug.
-// Inputs: slug (subdomain or path segment on the platform base domain).
+// Inputs: slug (path segment on the platform base domain).
 // Output: organization pointer or DB error.
 func (r *OrganizationRepo) GetBySlug(slug string) (*models.Organization, error) {
 	if r.DB == nil {

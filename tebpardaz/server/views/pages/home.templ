@@ -20,9 +20,16 @@ templ Home(view HomeView) {
 	
 		if len(view.Specialties) > 0 {
 			<section class="ui-section">
-				<div class="ui-section-head">
-					<h2 class="ui-section-title">تخصص‌ها</h2>
-					<p class="ui-section-desc">تخصص را انتخاب کنید تا پزشکان همان رشته را ببینید.</p>
+				<div class="mb-4 flex items-end justify-between gap-3">
+					<div class="ui-section-head mb-0 min-w-0">
+						<h2 class="ui-section-title">تخصص‌ها</h2>
+						<p class="ui-section-desc">تخصص را انتخاب کنید تا پزشکان همان رشته را ببینید.</p>
+					</div>
+					if view.ShowSpecialtiesLink {
+						<a class="ui-link shrink-0 text-sm" href={ templ.SafeURL(view.SpecialtiesListURL) }>
+							مشاهده همه تخصص‌ها
+						</a>
+					}
 				</div>
 				@components.SpecialtyCardGrid(view.Specialties)
 			</section>
@@ -43,9 +50,16 @@ templ Home(view HomeView) {
 		if view.ShowClinicCards {
 			if len(view.Clinics) > 0 {
 				<section id="clinics" class="ui-section" style="scroll-margin-top: 5.5rem;">
-					<div class="ui-section-head">
-						<h2 class="ui-section-title">مراکز درمانی</h2>
-						<p class="ui-section-desc">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>
+					<div class="mb-4 flex items-end justify-between gap-3">
+						<div class="ui-section-head mb-0 min-w-0">
+							<h2 class="ui-section-title">مراکز درمانی</h2>
+							<p class="ui-section-desc">کلینیک را انتخاب کنید تا پزشکان همان مرکز را ببینید.</p>
+						</div>
+						if view.ShowClinicsLink {
+							<a class="ui-link shrink-0 text-sm" href={ templ.SafeURL(view.ClinicsListURL) }>
+								مشاهده همه مراکز درمانی
+							</a>
+						}
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						for _, cl := range view.Clinics {

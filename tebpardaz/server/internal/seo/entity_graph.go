@@ -31,17 +31,24 @@ type TenantHomeInput struct {
 
 // BookingPageInput دادهٔ صفحهٔ رزرو برای WebPage، Physician و Breadcrumb است.
 type BookingPageInput struct {
-	BaseURL       string
-	Canonical     string
-	Title         string
-	Description   string
-	DoctorName    string
-	DoctorSlug    string
-	Specialty     string
-	PhotoURL      string
-	UseClinicLogo bool
-	ClinicName    string
-	ClinicOrigin  string
+	BaseURL              string
+	Canonical            string
+	Title                string
+	Description          string
+	DoctorName           string
+	DoctorSlug           string
+	Specialty            string
+	PhotoURL             string
+	UseClinicLogo        bool
+	ClinicName           string
+	ClinicOrigin         string
+	ClinicEntityID       string
+	ClinicEntityURL      string
+	ParentOrganizationID string
+	ClinicDescription    string
+	ClinicPhone          string
+	ClinicLogo           string
+	ClinicAddress        *PostalAddressDTO
 }
 
 // AbsoluteSchemaURL مسیر نسبی را با مبدأ درخواست مطلق می‌کند.
@@ -285,9 +292,11 @@ func BookingPageGraph(in BookingPageInput) string {
 		return ""
 	}
 	physicianID := PageFragmentID(canonical, "physician")
-	clinicID := ""
-	if origin := strings.TrimRight(strings.TrimSpace(in.ClinicOrigin), "/"); origin != "" {
-		clinicID = OriginID(origin, "clinic")
+	clinicID := strings.TrimSpace(in.ClinicEntityID)
+	if clinicID == "" {
+		if origin := strings.TrimRight(strings.TrimSpace(in.ClinicOrigin), "/"); origin != "" {
+			clinicID = OriginID(origin, "clinic")
+		}
 	}
 	home := AbsoluteURL(in.BaseURL, "/")
 	doctors := AbsoluteURL(in.BaseURL, "/doctors")
@@ -306,7 +315,20 @@ func BookingPageGraph(in BookingPageInput) string {
 		{Name: "پزشکان", URL: doctors},
 		{Name: name, URL: canonical},
 	})
-	return BuildGraph(page, physician, crumb)
+	nodes := []string{page, physician, crumb}
+	if entityID := strings.TrimSpace(in.ClinicEntityID); entityID != "" && strings.TrimSpace(in.ClinicEntityURL) != "" && strings.TrimSpace(in.ClinicName) != "" {
+		nodes = append(nodes, BuildMedicalClinicSchema(MedicalClinicDTO{
+			ID:          entityID,
+			Name:        strings.TrimSpace(in.ClinicName),
+			URL:         strings.TrimSpace(in.ClinicEntityURL),
+			Description: strings.TrimSpace(in.ClinicDescription),
+			Telephone:   strings.TrimSpace(in.ClinicPhone),
+			LogoURL:     strings.TrimSpace(in.ClinicLogo),
+			Address:     in.ClinicAddress,
+			ParentID:    strings.TrimSpace(in.ParentOrganizationID),
+		}))
+	}
+	return BuildGraph(nodes...)
 }
 
 // DoctorsPageGraph مسیر پزشکان و در صورت ایندکس بودن ItemList همان صفحه را می‌سازد.
@@ -325,7 +347,164 @@ func DoctorsPageGraph(homeURL, doctorsURL string, items []ItemListElementDTO, in
 			items[i].Type = "Physician"
 		}
 	}
-	return BuildGraph(crumb, BuildItemListSchema("پزشکان", items, total))
+	nodes := []string{crumb, BuildItemListSchema("پزشکان", items, total)}
+	seen := map[string]struct{}{}
+	for _, it := range items {
+		id := strings.TrimSpace(it.WorksForID)
+		if id == "" || strings.Contains(id, "?") {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		pageURL := strings.TrimSuffix(id, "#clinic")
+		if pageURL == id || strings.TrimSpace(it.WorksForName) == "" {
+			continue
+		}
+		nodes = append(nodes, BuildMedicalClinicSchema(MedicalClinicDTO{
+			ID:       id,
+			Name:     strings.TrimSpace(it.WorksForName),
+			URL:      pageURL,
+			ParentID: strings.TrimSpace(it.ParentOrganizationID),
+		}))
+	}
+	return BuildGraph(nodes...)
+}
+
+// SpecialtyIndexGraph صفحهٔ فهرست تخصص‌ها، مسیر و ItemList لندینگ‌ها را می‌سازد.
+// ورودی: URL خانه و صفحه، عنوان، توضیح، و آیتم‌های WebPage. خروجی: @graph.
+func SpecialtyIndexGraph(homeURL, pageURL, title, description string, items []ItemListElementDTO) string {
+	page := BuildWebPageSchema(PageFragmentID(pageURL, "webpage"), pageURL, title, description, "")
+	crumb := BuildBreadcrumbSchema([]BreadcrumbItemDTO{
+		{Name: "خانه", URL: homeURL},
+		{Name: "تخصص‌های پزشکی", URL: pageURL},
+	})
+	if len(items) == 0 {
+		return BuildGraph(page, crumb)
+	}
+	for i := range items {
+		items[i].Type = "WebPage"
+	}
+	return BuildGraph(page, crumb, BuildItemListSchema("تخصص‌های پزشکی", items, len(items)))
+}
+
+// SpecialtyDetailGraph صفحهٔ تخصص، مسیر و ItemList پزشکان همین صفحه را می‌سازد.
+// ورودی: URLها، عنوان صفحه، توضیح، نام تخصص برای breadcrumb، پزشکان با position، مجاز بودن فهرست، و تعداد کل.
+// خروجی: @graph. شماره صفحه breadcrumb جدا نمی‌شود. total صفر یعنی numberOfItems نوشته نمی‌شود.
+func SpecialtyDetailGraph(homeURL, indexURL, entityURL, pageURL, title, description, specialtyName string, doctors []PhysicianDTO, positions []int, includeList bool, total int) string {
+	page := BuildWebPageSchema(PageFragmentID(pageURL, "webpage"), pageURL, title, description, "")
+	crumb := BuildBreadcrumbSchema([]BreadcrumbItemDTO{
+		{Name: "خانه", URL: homeURL},
+		{Name: "تخصص‌های پزشکی", URL: indexURL},
+		{Name: strings.TrimSpace(specialtyName), URL: entityURL},
+	})
+	if !includeList || len(doctors) == 0 {
+		return BuildGraph(page, crumb)
+	}
+	return BuildGraph(page, crumb, buildPhysicianItemList(doctors, positions, total))
+}
+
+// ClinicIndexGraph صفحهٔ فهرست مراکز، مسیر و ItemList لندینگ‌ها را می‌سازد.
+// ورودی: URL خانه و صفحه، عنوان، توضیح، و آیتم‌های MedicalClinic. خروجی: @graph.
+func ClinicIndexGraph(homeURL, pageURL, title, description string, items []ItemListElementDTO) string {
+	page := BuildWebPageSchema(PageFragmentID(pageURL, "webpage"), pageURL, title, description, "")
+	crumb := BuildBreadcrumbSchema([]BreadcrumbItemDTO{
+		{Name: "خانه", URL: homeURL},
+		{Name: "مراکز درمانی", URL: pageURL},
+	})
+	if len(items) == 0 {
+		return BuildGraph(page, crumb)
+	}
+	for i := range items {
+		if items[i].Type == "" {
+			items[i].Type = "MedicalClinic"
+		}
+	}
+	return BuildGraph(page, crumb, BuildItemListSchema("مراکز درمانی", items, len(items)))
+}
+
+// ClinicDetailGraph صفحهٔ مرکز، موجودیت محلی و در صورت وجود پزشکان ItemList را می‌سازد.
+// ورودی: URLها، عنوان، توضیح، دادهٔ مرکز، پزشکان صفحه، مجاز بودن فهرست و تعداد کل.
+// خروجی: @graph. WebPage از pageURL است؛ @id و url مرکز همیشه entityURL بدون page است.
+// parentOrganization فقط اگر caller آن را در clinic گذاشته باشد نوشته می‌شود. sameAs نوشته نمی‌شود.
+// indexURL خالی یعنی فهرست /clinics روی این سطح نیست و از breadcrumb حذف می‌شود.
+func ClinicDetailGraph(homeURL, indexURL, entityURL, pageURL, title, description string, clinic MedicalClinicDTO, doctors []PhysicianDTO, positions []int, includeList bool, total int) string {
+	clinicID := PageFragmentID(entityURL, "clinic")
+	clinic.ID = clinicID
+	clinic.URL = entityURL
+	for i := range doctors {
+		doctors[i].ClinicID = clinicID
+	}
+	page := BuildWebPageSchema(PageFragmentID(pageURL, "webpage"), pageURL, title, description, clinicID)
+	crumbs := []BreadcrumbItemDTO{{Name: "خانه", URL: homeURL}}
+	if strings.TrimSpace(indexURL) != "" {
+		crumbs = append(crumbs, BreadcrumbItemDTO{Name: "مراکز درمانی", URL: indexURL})
+	}
+	crumbs = append(crumbs, BreadcrumbItemDTO{Name: strings.TrimSpace(clinic.Name), URL: entityURL})
+	crumb := BuildBreadcrumbSchema(crumbs)
+	nodes := []string{page, BuildMedicalClinicSchema(clinic), crumb}
+	if includeList && len(doctors) > 0 {
+		nodes = append(nodes, buildPhysicianItemList(doctors, positions, total))
+	}
+	return BuildGraph(nodes...)
+}
+
+// buildPhysicianItemList پزشکان را با جایگاه صفحه‌بندی‌شده در ItemList می‌گذارد.
+// ورودی: پزشکان، position هر کدام، و تعداد کل. خروجی: JSON-LD. sameAs و کد ملی نوشته نمی‌شود.
+func buildPhysicianItemList(doctors []PhysicianDTO, positions []int, total int) string {
+	elements := make([]map[string]interface{}, 0, len(doctors))
+	for i, doctor := range doctors {
+		if strings.TrimSpace(doctor.Name) == "" || strings.TrimSpace(doctor.URL) == "" {
+			continue
+		}
+		pos := i + 1
+		if i < len(positions) && positions[i] > 0 {
+			pos = positions[i]
+		}
+		item := map[string]interface{}{
+			"@type": "Physician",
+			"name":  doctor.Name,
+			"url":   doctor.URL,
+		}
+		if doctor.ID != "" {
+			item["@id"] = doctor.ID
+		}
+		if doctor.Specialty != "" {
+			item["medicalSpecialty"] = doctor.Specialty
+		}
+		if doctor.ImageURL != "" {
+			item["image"] = doctor.ImageURL
+		}
+		if doctor.ClinicID != "" || doctor.ClinicName != "" {
+			worksFor := map[string]interface{}{"@type": "MedicalClinic"}
+			if doctor.ClinicID != "" {
+				worksFor["@id"] = doctor.ClinicID
+			}
+			if doctor.ClinicName != "" {
+				worksFor["name"] = doctor.ClinicName
+			}
+			item["worksFor"] = worksFor
+		}
+		elements = append(elements, map[string]interface{}{
+			"@type":    "ListItem",
+			"position": pos,
+			"item":     item,
+		})
+	}
+	if len(elements) == 0 {
+		return ""
+	}
+	data := map[string]interface{}{
+		"@context":        "https://schema.org",
+		"@type":           "ItemList",
+		"name":            "پزشکان",
+		"itemListElement": elements,
+	}
+	if total > 0 {
+		data["numberOfItems"] = total
+	}
+	return MinifyJSONLD(data)
 }
 
 // NewsBreadcrumbGraph مسیر اخبار را بدون Article می‌سازد.
@@ -341,4 +520,116 @@ func NewsBreadcrumbGraph(homeURL, listURL, title, detailURL string) string {
 		items = append(items, BreadcrumbItemDTO{Name: title, URL: detailURL})
 	}
 	return BuildGraph(BuildBreadcrumbSchema(items))
+}
+
+// OrganizationClinicRef شناسه و URL مرکز را روی دامنهٔ سازمان می‌سازد.
+// ورودی: مبدأ و اسلاگ ذخیره‌شده. خروجی: @id بدون page و URL لندینگ، یا خالی اگر اسلاگ عمومی نباشد.
+func OrganizationClinicRef(baseURL, slug string) (id, pageURL string) {
+	path := ClinicPath(slug)
+	if path == "" {
+		return "", ""
+	}
+	pageURL = AbsoluteURL(baseURL, path)
+	if pageURL == "" {
+		return "", ""
+	}
+	return PageFragmentID(pageURL, "clinic"), pageURL
+}
+
+// AttachOrganizationSurface هویت سازمان و وب‌سایت را به گراف صفحه اضافه می‌کند.
+// ورودی: JSON-LD موجود، مبدأ، نام، توضیح و لوگوی خود سازمان. خروجی: همان گراف به‌همراه گره‌های ثابت.
+// دادهٔ مرکز، تلفن، آدرس و legalName ساخته نمی‌شود. شناسه‌ها روی ریشهٔ هاست می‌مانند.
+func AttachOrganizationSurface(existing, origin, name, description, logo string) string {
+	origin = strings.TrimRight(strings.TrimSpace(origin), "/")
+	name = strings.TrimSpace(name)
+	if origin == "" || name == "" {
+		return existing
+	}
+	orgID := OriginID(origin, "organization")
+	siteID := OriginID(origin, "website")
+	org := map[string]interface{}{
+		"@type": "Organization",
+		"@id":   orgID,
+		"name":  name,
+		"url":   origin + "/",
+	}
+	if text := strings.TrimSpace(description); text != "" {
+		org["description"] = text
+	}
+	if strings.TrimSpace(logo) != "" {
+		org["logo"] = strings.TrimSpace(logo)
+	}
+	site := map[string]interface{}{
+		"@type":     "WebSite",
+		"@id":       siteID,
+		"url":       origin + "/",
+		"name":      name,
+		"publisher": map[string]interface{}{"@id": orgID},
+	}
+	nodes, ok := organizationGraphNodes(existing)
+	if !ok {
+		return existing
+	}
+	if !graphHasID(nodes, orgID) {
+		nodes = append(nodes, org)
+	}
+	if !graphHasID(nodes, siteID) {
+		nodes = append(nodes, site)
+	}
+	for i := range nodes {
+		if graphType(nodes[i]) != "WebPage" {
+			continue
+		}
+		if _, exists := nodes[i]["publisher"]; !exists {
+			nodes[i]["publisher"] = map[string]interface{}{"@id": orgID}
+		}
+	}
+	return MinifyJSONLD(map[string]interface{}{
+		"@context": "https://schema.org",
+		"@graph":   nodes,
+	})
+}
+
+// organizationGraphNodes گره‌های @graph موجود را برمی‌گرداند.
+// ورودی: JSON-LD یا رشتهٔ خالی. خروجی: گره‌ها و true. JSON نامعتبر false است تا گراف صفحه دور ریخته نشود.
+func organizationGraphNodes(existing string) ([]map[string]interface{}, bool) {
+	existing = strings.TrimSpace(existing)
+	if existing == "" {
+		return nil, true
+	}
+	var doc map[string]interface{}
+	if err := json.Unmarshal([]byte(existing), &doc); err != nil {
+		return nil, false
+	}
+	raw, ok := doc["@graph"].([]interface{})
+	if !ok {
+		return nil, false
+	}
+	nodes := make([]map[string]interface{}, 0, len(raw))
+	for _, item := range raw {
+		node, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, true
+}
+
+// graphHasID می‌گوید گرهٔ با این @id از قبل در گراف هست یا نه.
+// ورودی: گره‌ها و شناسه. خروجی: true در صورت وجود.
+func graphHasID(nodes []map[string]interface{}, id string) bool {
+	for _, node := range nodes {
+		if value, ok := node["@id"].(string); ok && value == id {
+			return true
+		}
+	}
+	return false
+}
+
+// graphType نوع Schema.org گره را برمی‌گرداند.
+// ورودی: گره. خروجی: @type رشته‌ای یا خالی.
+func graphType(node map[string]interface{}) string {
+	value, _ := node["@type"].(string)
+	return value
 }

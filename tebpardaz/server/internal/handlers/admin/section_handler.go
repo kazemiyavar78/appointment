@@ -14,6 +14,7 @@ import (
 	"tebpardaz/server/internal/auth"
 	"tebpardaz/server/internal/models"
 	"tebpardaz/server/internal/repository"
+	"tebpardaz/server/internal/seo"
 	adminviews "tebpardaz/server/views/admin"
 	"tebpardaz/shared/constants"
 
@@ -1004,8 +1005,8 @@ func (h *SectionAdminHandler) resolveClinicID(c *gin.Context, user *models.Appoi
 func (h *SectionAdminHandler) toSectionRows(sections []models.AppointmentClinicSection, clinicID uint) []adminviews.SectionRow {
 	clinic, _ := h.Clinics.GetByID(clinicID)
 	prefix := ""
-	if clinic != nil && clinic.Slug != nil && *clinic.Slug != "" {
-		prefix = "/" + *clinic.Slug
+	if clinic != nil && clinic.Slug != nil {
+		prefix = seo.ClinicPath(*clinic.Slug)
 	}
 
 	out := make([]adminviews.SectionRow, 0, len(sections))

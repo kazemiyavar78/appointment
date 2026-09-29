@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"tebpardaz/server/internal/models"
 
@@ -698,6 +699,182 @@ func filterPublicSectionDoctors(links []models.SectionDoctor) []models.Doctor {
 		out = append(out, link.Doctor)
 	}
 	return out
+}
+
+// SectionPublicFacts سیگنال محتوای عمومی یک بخش برای تصمیم ایندکس صفحهٔ اصلی است.
+type SectionPublicFacts struct {
+	Banner          *models.SectionBanner
+	EquipmentTitles []string
+	MessageBodies   []string
+	PublicDoctors   int
+	CatalogServices int
+}
+
+// LoadSectionPublicFacts سیگنال ایندکس را برای چند بخش در چند query ثابت می‌خواند.
+// ورودی: شناسه بخش‌ها. خروجی: نقشهٔ sectionID. شناسهٔ خالی query نمی‌زند و به ازای هر بخش تکرار نمی‌شود.
+// پزشک عمومی همان filterPublicSectionDoctors است و خدمت کاتالوگ همان قاعدهٔ بستهٔ غیرخالی است.
+func (r *SectionRepo) LoadSectionPublicFacts(ids []uint) (map[uint]SectionPublicFacts, error) {
+	out := map[uint]SectionPublicFacts{}
+	if r == nil || r.db == nil || len(ids) == 0 {
+		return out, nil
+	}
+	for _, id := range ids {
+		out[id] = SectionPublicFacts{}
+	}
+
+	var banners []models.SectionBanner
+	if err := r.db.Where("section_id IN ?", ids).Find(&banners).Error; err != nil {
+		return nil, err
+	}
+	for i := range banners {
+		fact := out[banners[i].SectionID]
+		banner := banners[i]
+		fact.Banner = &banner
+		out[banners[i].SectionID] = fact
+	}
+
+	var equipment []models.SectionEquipment
+	if err := r.db.Where("section_id IN ? AND is_active = ?", ids, true).Find(&equipment).Error; err != nil {
+		return nil, err
+	}
+	for _, item := range equipment {
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			continue
+		}
+		fact := out[item.SectionID]
+		fact.EquipmentTitles = append(fact.EquipmentTitles, title)
+		out[item.SectionID] = fact
+	}
+
+	var messages []models.SectionMessage
+	if err := r.db.Where("section_id IN ? AND is_active = ?", ids, true).Find(&messages).Error; err != nil {
+		return nil, err
+	}
+	for _, msg := range messages {
+		body := strings.TrimSpace(msg.Content)
+		if body == "" {
+			continue
+		}
+		fact := out[msg.SectionID]
+		fact.MessageBodies = append(fact.MessageBodies, body)
+		out[msg.SectionID] = fact
+	}
+
+	var links []models.SectionDoctor
+	if err := r.db.Where("section_id IN ?", ids).Preload("Doctor").Preload("Doctor.Specialty").Find(&links).Error; err != nil {
+		return nil, err
+	}
+	grouped := map[uint][]models.SectionDoctor{}
+	for _, link := range links {
+		grouped[link.SectionID] = append(grouped[link.SectionID], link)
+	}
+	for id, group := range grouped {
+		fact := out[id]
+		fact.PublicDoctors = len(filterPublicSectionDoctors(group))
+		out[id] = fact
+	}
+
+	counts, err := r.countCatalogServices(ids)
+	if err != nil {
+		return nil, err
+	}
+	for id, n := range counts {
+		fact := out[id]
+		fact.CatalogServices = n
+		out[id] = fact
+	}
+	return out, nil
+}
+
+// countCatalogServices تعداد خدمت یکتای بسته‌های غیرخالی هر بخش را یکجا می‌شمارد.
+// ورودی: شناسه بخش‌ها. خروجی: تعداد به ازای بخش. بسته‌های بی‌نام یا خدمت حذف‌شده شمرده نمی‌شوند.
+func (r *SectionRepo) countCatalogServices(sectionIDs []uint) (map[uint]int, error) {
+	counts := map[uint]int{}
+	if r == nil || r.db == nil || len(sectionIDs) == 0 {
+		return counts, nil
+	}
+	var assigns []models.SectionServicePackage
+	if err := r.db.Where("section_id IN ?", sectionIDs).Find(&assigns).Error; err != nil {
+		return nil, err
+	}
+	if len(assigns) == 0 {
+		return counts, nil
+	}
+	packageIDs := make([]uint, 0, len(assigns))
+	seenPackage := map[uint]struct{}{}
+	for _, row := range assigns {
+		if _, ok := seenPackage[row.PackageID]; ok {
+			continue
+		}
+		seenPackage[row.PackageID] = struct{}{}
+		packageIDs = append(packageIDs, row.PackageID)
+	}
+	var packages []models.ServicePackage
+	if err := r.db.Where("id IN ?", packageIDs).Find(&packages).Error; err != nil {
+		return nil, err
+	}
+	live := map[uint]struct{}{}
+	for _, pkg := range packages {
+		if strings.TrimSpace(pkg.Name) == "" {
+			continue
+		}
+		live[pkg.ID] = struct{}{}
+	}
+	if len(live) == 0 {
+		return counts, nil
+	}
+	liveIDs := make([]uint, 0, len(live))
+	for id := range live {
+		liveIDs = append(liveIDs, id)
+	}
+	var items []models.ServicePackageItem
+	if err := r.db.Where("package_id IN ?", liveIDs).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return counts, nil
+	}
+	serviceIDs := make([]uint, 0, len(items))
+	seenService := map[uint]struct{}{}
+	for _, item := range items {
+		if _, ok := seenService[item.ServiceID]; ok {
+			continue
+		}
+		seenService[item.ServiceID] = struct{}{}
+		serviceIDs = append(serviceIDs, item.ServiceID)
+	}
+	var services []models.Service
+	if err := r.db.Where("id IN ?", serviceIDs).Find(&services).Error; err != nil {
+		return nil, err
+	}
+	exists := map[uint]struct{}{}
+	for _, svc := range services {
+		exists[svc.ID] = struct{}{}
+	}
+	bySection := map[uint]map[uint]struct{}{}
+	sectionsByPackage := map[uint][]uint{}
+	for _, row := range assigns {
+		if _, ok := live[row.PackageID]; !ok {
+			continue
+		}
+		sectionsByPackage[row.PackageID] = append(sectionsByPackage[row.PackageID], row.SectionID)
+	}
+	for _, item := range items {
+		if _, ok := exists[item.ServiceID]; !ok {
+			continue
+		}
+		for _, sectionID := range sectionsByPackage[item.PackageID] {
+			if bySection[sectionID] == nil {
+				bySection[sectionID] = map[uint]struct{}{}
+			}
+			bySection[sectionID][item.ServiceID] = struct{}{}
+		}
+	}
+	for id, set := range bySection {
+		counts[id] = len(set)
+	}
+	return counts, nil
 }
 
 // listClinicIDsWithSection متد داخلی برای فیلتر مراکز بر اساس وجود بخش با الگوی نام مشخص است.

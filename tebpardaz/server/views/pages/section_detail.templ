@@ -17,6 +17,8 @@ type SectionBannerDisplay struct {
 	ImageURL              string
 	UseOverlayGradient    bool
 	OverlayStyle          string
+	// Heading عنوان بخش است و فقط در صفحهٔ اصلی بخش به‌عنوان تنها H1 رندر می‌شود.
+	Heading               string
 }
 
 // SectionScheduleDisplay holds data for a single day in the public working hours section.
@@ -109,14 +111,24 @@ templ sectionBannerComponent(banner SectionBannerDisplay, sectionTitle string) {
 	>
 		<!-- متن و اطلاعات بنر -->
 		<div class="flex flex-col justify-center px-6 py-12 sm:px-10 md:px-14 lg:px-20 relative z-10">
-			<div class="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-teal-200 backdrop-blur-sm border border-white/10">
-				<span class="h-2 w-2 rounded-full bg-teal-400"></span>
-				<span>{ sectionTitle }</span>
-			</div>
-
-			<h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight text-white mb-5">
-				{ banner.Slogan }
-			</h1>
+			if banner.Heading == "" {
+				<div class="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-white/10 px-3.5 py-1 text-xs font-semibold text-teal-200 backdrop-blur-sm border border-white/10">
+					<span class="h-2 w-2 rounded-full bg-teal-400"></span>
+					<span>{ sectionTitle }</span>
+				</div>
+				<h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight text-white mb-5">
+					{ banner.Slogan }
+				</h1>
+			} else {
+				<h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight text-white mb-5">
+					{ banner.Heading }
+				</h1>
+				if banner.Slogan != "" && banner.Slogan != banner.Heading {
+					<p class="text-base sm:text-lg leading-relaxed mb-5 max-w-lg text-white/90">
+						{ banner.Slogan }
+					</p>
+				}
+			}
 
 			if banner.Description != "" {
 				<p class="text-base sm:text-lg leading-relaxed mb-8 max-w-lg text-white/80">

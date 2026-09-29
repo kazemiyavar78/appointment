@@ -3,6 +3,8 @@ package seo
 import (
 	"crypto/tls"
 	"net/http"
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -116,5 +118,35 @@ func TestProxyTrust(t *testing.T) {
 	}
 	if (*ProxyTrust)(nil).Trusts("127.0.0.1:1") {
 		t.Fatal("nil trust must not trust")
+	}
+}
+
+func TestSpecialtyPathPersianOnce(t *testing.T) {
+	slug := "داخلی"
+	path := SpecialtyPath(slug)
+	once := "/specialties/" + url.PathEscape(slug)
+	if path != once || strings.Contains(path, "%25") {
+		t.Fatalf("path = %q", path)
+	}
+	abs := AbsoluteURL("https://tebpardaz.ir", path)
+	if abs != "https://tebpardaz.ir"+once || strings.Contains(abs, "%25") {
+		t.Fatalf("absolute = %q", abs)
+	}
+	page := SpecialtyPagePath(slug, 2)
+	if page != once+"?page=2" || strings.Contains(page, "%25") {
+		t.Fatalf("page path = %q", page)
+	}
+	if SpecialtyIndexable(slug, 0) || SpecialtyIndexable("  ", 3) || !SpecialtyIndexable(slug, 1) {
+		t.Fatal("indexable gate drifted")
+	}
+	clinicSlug := "چمران-مشهد"
+	clinicPath := ClinicPath(clinicSlug)
+	if clinicPath != "/clinics/"+url.PathEscape(clinicSlug) || strings.Contains(clinicPath, "%25") || ClinicPath("  ") != "" {
+		t.Fatalf("clinic path = %q", clinicPath)
+	}
+	active := true
+	stored := clinicSlug
+	if !ClinicIndexable(active, &stored) || ClinicIndexable(false, &stored) || ClinicIndexable(true, nil) {
+		t.Fatal("clinic indexable gate drifted")
 	}
 }

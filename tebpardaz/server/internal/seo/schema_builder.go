@@ -31,6 +31,8 @@ type MedicalClinicDTO struct {
 	Specialties        []string          `json:"medicalSpecialty,omitempty"`
 	Address            *PostalAddressDTO `json:"address,omitempty"`
 	ParentOrganization *SubOrgDTO        `json:"parentOrganization,omitempty"`
+	// ParentID ارجاع @id سازمان سطح فعلی است و نوع جداگانه‌ای نمی‌سازد.
+	ParentID string `json:"-"`
 }
 
 // PhysicianDTO مدل ورودی برای تولید اسکیمای Physician است.
@@ -48,10 +50,13 @@ type PhysicianDTO struct {
 
 // ItemListElementDTO یک آیتم منفرد در فهرست ساختاریافته است.
 type ItemListElementDTO struct {
-	Position int    `json:"position"`
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	Type     string `json:"type,omitempty"`
+	Position             int    `json:"position"`
+	Name                 string `json:"name"`
+	URL                  string `json:"url"`
+	Type                 string `json:"type,omitempty"`
+	WorksForID           string `json:"-"`
+	WorksForName         string `json:"-"`
+	ParentOrganizationID string `json:"-"`
 }
 
 // ArticleDTO مدل ورودی برای تولید اسکیمای Article پیام یا خبر است.
@@ -139,7 +144,9 @@ func BuildMedicalClinicSchema(dto MedicalClinicDTO) string {
 		data["address"] = addr
 	}
 	// ساعات بخش روی درمانگاه نوشته نمی‌شود؛ درمانگاه ساعت سراسری ندارد.
-	if dto.ParentOrganization != nil && dto.ParentOrganization.Name != "" {
+	if parentID := strings.TrimSpace(dto.ParentID); parentID != "" {
+		data["parentOrganization"] = map[string]interface{}{"@id": parentID}
+	} else if dto.ParentOrganization != nil && dto.ParentOrganization.Name != "" {
 		data["parentOrganization"] = map[string]interface{}{
 			"@type": "MedicalOrganization",
 			"name":  dto.ParentOrganization.Name,
@@ -231,14 +238,25 @@ func BuildItemListSchema(listName string, items []ItemListElementDTO, total int)
 		if itemType == "" {
 			itemType = "Thing"
 		}
+		item := map[string]interface{}{
+			"@type": itemType,
+			"name":  it.Name,
+			"url":   it.URL,
+		}
+		if (it.Type == "" || it.Type == "Physician") && (it.WorksForID != "" || it.WorksForName != "") {
+			worksFor := map[string]interface{}{"@type": "MedicalClinic"}
+			if it.WorksForID != "" {
+				worksFor["@id"] = it.WorksForID
+			}
+			if it.WorksForName != "" {
+				worksFor["name"] = it.WorksForName
+			}
+			item["worksFor"] = worksFor
+		}
 		elements = append(elements, map[string]interface{}{
 			"@type":    "ListItem",
 			"position": pos,
-			"item": map[string]interface{}{
-				"@type": itemType,
-				"name":  it.Name,
-				"url":   it.URL,
-			},
+			"item":     item,
 		})
 	}
 	data := map[string]interface{}{

@@ -20,13 +20,15 @@ type HomeNewsItem struct {
 
 // HomeView محتوای صفحه اصلی tenant را راهبری می‌کند.
 type HomeView struct {
-	LatestNews           []HomeNewsItem
-	Specialties          []components.SpecialtyCardView
-	SpecialtiesListURL   string
-	ShowSpecialtiesLink  bool
-	Insurances           []components.InsuranceItemView
-	Clinics              []components.ClinicCardView
-	Doctors              []components.DoctorCardView
+	LatestNews          []HomeNewsItem
+	Specialties         []components.SpecialtyCardView
+	SpecialtiesListURL  string
+	ShowSpecialtiesLink bool
+	Insurances          []components.InsuranceItemView
+	Clinics             []components.ClinicCardView
+	ClinicsListURL      string
+	ShowClinicsLink     bool
+	Doctors             []components.DoctorCardView
 	ShowClinicCards     bool
 	ShowClinicBadge     bool
 	NewsListURL         string

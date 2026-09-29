@@ -86,14 +86,34 @@ func (h *HomeHandler) Get(c *gin.Context) {
 	}
 
 	allSpecialties := loadApprovedSpecialties(h.Specialties)
+	showSpecialtyIndex := false
+	specialtyIndexURL := ""
+	if tc.Layout == constants.LayoutPlatform && len(allSpecialties) > 0 {
+		applyPlatformSpecialtyHrefs(allSpecialties, platformPublicSpecialtyCounts(h))
+		showSpecialtyIndex = true
+		specialtyIndexURL = "/specialties"
+	}
+
+	homeClinics := toHomeClinicCards(clinicRows)
+	showClinicsLink := false
+	clinicsListURL := ""
+	if homeClinicLandingsEnabled(tc) && len(homeClinics) > 0 {
+		applyPlatformClinicHrefs(homeClinics, clinicRows)
+	}
+	if tc.Layout == constants.LayoutPlatform && len(homeClinics) > 0 {
+		showClinicsLink = true
+		clinicsListURL = "/clinics"
+	}
 
 	homeView := pages.HomeView{
 		LatestNews:          latest,
 		Specialties:         allSpecialties,
-		SpecialtiesListURL:  "",
-		ShowSpecialtiesLink: false,
+		SpecialtiesListURL:  specialtyIndexURL,
+		ShowSpecialtiesLink: showSpecialtyIndex,
 		Insurances:          loadHomeInsurances(tc, h.Clinics, h.Insurances),
-		Clinics:             toHomeClinicCards(clinicRows),
+		Clinics:             homeClinics,
+		ClinicsListURL:      clinicsListURL,
+		ShowClinicsLink:     showClinicsLink,
 		ShowClinicCards:     showClinic,
 		ShowClinicBadge:     showClinic,
 		NewsListURL:         "/news",
@@ -158,9 +178,14 @@ func loadHomeDoctors(
 	}
 	out := make([]components.DoctorCardView, 0, len(cards))
 	for _, item := range cards {
+		clinicURL := ""
+		if tc.Layout == constants.LayoutPlatform {
+			clinicURL = seo.ClinicPath(item.ClinicLandingSlug)
+		}
 		out = append(out, components.DoctorCardView{
 			Name:            item.Name,
 			SpecialtyName:   item.SpecialtyName,
+			ClinicURL:       clinicURL,
 			DoctorSystemID:  item.DoctorSystemID,
 			PhotoURL:        item.PhotoURL,
 			Photo300:        item.Photo300,
@@ -226,6 +251,12 @@ func loadHomeClinics(tc *tenant.Context, clinics *repository.ClinicRepo) []model
 	default:
 		return nil
 	}
+}
+
+// homeClinicLandingsEnabled می‌گوید کارت مرکز خانه به landing همین هاست وصل شود یا نه.
+// ورودی: مستأجر. خروجی: true برای پلتفرم و دامنهٔ سازمان. دامنهٔ اختصاصی false است.
+func homeClinicLandingsEnabled(tc *tenant.Context) bool {
+	return tc != nil && (tc.Layout == constants.LayoutPlatform || organizationDomainSurface(tc))
 }
 
 // toHomeClinicCards مدل مرکز را به کارت خانه نگاشت می‌کند.

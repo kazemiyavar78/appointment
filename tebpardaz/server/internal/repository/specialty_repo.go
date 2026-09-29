@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"tebpardaz/server/internal/models"
 
@@ -34,6 +35,33 @@ func (r *SpecialtyRepo) ListApproved() ([]models.Specialty, error) {
 	err := r.DB.Where("is_approved = ? AND show_in_booking = ?", true, true).
 		Order("sort_order asc, id asc").
 		Find(&rows).Error
+	return rows, err
+}
+
+// SpecialtyPublicCount تخصص عمومی به‌همراه تعداد پزشک قابل‌نمایش است.
+type SpecialtyPublicCount struct {
+	ID          uint
+	Name        string
+	Slug        string
+	UpdatedAt   time.Time
+	DoctorCount int
+}
+
+// ListWithPublicDoctors تخصص‌های قابل‌نوبت را که حداقل یک پزشک عمومی دارند برمی‌گرداند.
+// ورودی: شناسه مراکز مجاز. خروجی: نام، slug و تعداد. نام پزشک با متن مقایسه نمی‌شود.
+func (r *SpecialtyRepo) ListWithPublicDoctors(clinicIDs []uint) ([]SpecialtyPublicCount, error) {
+	if r == nil || r.DB == nil || len(clinicIDs) == 0 {
+		return nil, nil
+	}
+	var rows []SpecialtyPublicCount
+	err := r.DB.Model(&models.Specialty{}).
+		Select("specialties.id AS id, specialties.name AS name, specialties.slug AS slug, specialties.updated_at AS updated_at, COUNT(doctors.id) AS doctor_count").
+		Joins("INNER JOIN doctors ON doctors.specialty_id = specialties.id AND doctors.deleted_at IS NULL AND doctors.is_approved = ? AND doctors.is_active = ? AND doctors.external_id <> '' AND doctors.clinic_id IN ?", true, true, clinicIDs).
+		Where("specialties.is_approved = ? AND specialties.show_in_booking = ?", true, true).
+		Group("specialties.id, specialties.name, specialties.slug, specialties.updated_at, specialties.sort_order").
+		Having("COUNT(doctors.id) > 0").
+		Order("specialties.sort_order asc, specialties.id asc").
+		Scan(&rows).Error
 	return rows, err
 }
 

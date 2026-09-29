@@ -2,6 +2,7 @@ package seo
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -157,15 +158,16 @@ func TestBookingPhysicianGraph(t *testing.T) {
 
 func TestPhysicianOmitsClinicLogoAndKeepsPlatformCanonical(t *testing.T) {
 	logo := BookingPageGraph(BookingPageInput{
-		BaseURL:       "https://tebpardaz.ir",
-		Canonical:     "https://tebpardaz.ir/booking/chamran/reza",
-		Title:         "نوبت دکتر رضا",
-		DoctorName:    "رضا احمدی",
-		DoctorSlug:    "reza",
-		PhotoURL:      "/static/clinics/1-logo.jpg",
-		UseClinicLogo: true,
-		ClinicName:    "درمانگاه چمران",
-		ClinicOrigin:  "https://chamranclinic.ir",
+		BaseURL:         "https://tebpardaz.ir",
+		Canonical:       "https://tebpardaz.ir/booking/chamran/reza",
+		Title:           "نوبت دکتر رضا",
+		DoctorName:      "رضا احمدی",
+		DoctorSlug:      "reza",
+		PhotoURL:        "/static/clinics/1-logo.jpg",
+		UseClinicLogo:   true,
+		ClinicName:      "درمانگاه چمران",
+		ClinicEntityID:  "https://tebpardaz.ir/clinics/chamran#clinic",
+		ClinicEntityURL: "https://tebpardaz.ir/clinics/chamran",
 	})
 	nodes := graphNodes(t, logo)
 	doc := nodeByType(nodes, "Physician")
@@ -180,11 +182,11 @@ func TestPhysicianOmitsClinicLogoAndKeepsPlatformCanonical(t *testing.T) {
 		t.Fatalf("id/url = %#v", doc)
 	}
 	works := doc["worksFor"].(map[string]interface{})
-	if works["@id"] != "https://chamranclinic.ir/#clinic" || works["name"] != "درمانگاه چمران" {
+	if works["@id"] != "https://tebpardaz.ir/clinics/chamran#clinic" || works["name"] != "درمانگاه چمران" {
 		t.Fatalf("worksFor = %#v", works)
 	}
-	if strings.Contains(logo, "sameAs") {
-		t.Fatal("sameAs")
+	if strings.Contains(logo, "chamranclinic.ir") || strings.Contains(logo, "sameAs") {
+		t.Fatalf("platform graph leaked domain or sameAs:\n%s", logo)
 	}
 
 	local := BookingPageGraph(BookingPageInput{
@@ -299,5 +301,57 @@ func TestAbsoluteSchemaURLRejectsPlainHTTP(t *testing.T) {
 	}
 	if OfficialClinicOrigin(&domain, true) != "https://chamranclinic.ir" {
 		t.Fatal(OfficialClinicOrigin(&domain, true))
+	}
+}
+
+func TestClinicDetailGraphIdentityIgnoresPageQuery(t *testing.T) {
+	entity := "https://tebpardaz.ir/clinics/" + url.PathEscape("چمران-مشهد")
+	page2 := entity + "?page=2"
+	raw := ClinicDetailGraph(
+		"https://tebpardaz.ir/",
+		"https://tebpardaz.ir/clinics",
+		entity,
+		page2,
+		"درمانگاه چمران | پزشکان و نوبت‌دهی آنلاین - صفحه 2",
+		"توضیح",
+		MedicalClinicDTO{Name: "درمانگاه چمران", URL: page2},
+		[]PhysicianDTO{{
+			Name:       "رضا",
+			URL:        "https://tebpardaz.ir/booking/x/reza",
+			ClinicID:   page2 + "#clinic",
+			ClinicName: "درمانگاه چمران",
+		}},
+		[]int{13},
+		true,
+		13,
+	)
+	if strings.Contains(raw, "%25") || strings.Contains(raw, "?page=2#clinic") {
+		t.Fatal(raw)
+	}
+	nodes := graphNodes(t, raw)
+	page := nodeByType(nodes, "WebPage")
+	clinic := nodeByType(nodes, "MedicalClinic")
+	if page["@id"] != page2+"#webpage" || page["url"] != page2 {
+		t.Fatalf("webpage = %#v", page)
+	}
+	main := page["mainEntity"].(map[string]interface{})
+	if main["@id"] != entity+"#clinic" || clinic["@id"] != entity+"#clinic" || clinic["url"] != entity {
+		t.Fatalf("clinic identity page=%#v clinic=%#v", page, clinic)
+	}
+	if strings.Contains(clinic["@id"].(string), "?page=") || strings.Contains(clinic["url"].(string), "?page=") {
+		t.Fatalf("paged clinic %#v", clinic)
+	}
+	list := nodeByType(nodes, "ItemList")
+	elements := list["itemListElement"].([]interface{})
+	item := elements[0].(map[string]interface{})["item"].(map[string]interface{})
+	works := item["worksFor"].(map[string]interface{})
+	if works["@id"] != entity+"#clinic" || strings.Contains(works["@id"].(string), "?page=") {
+		t.Fatalf("worksFor = %#v", works)
+	}
+	crumb := nodeByType(nodes, "BreadcrumbList")
+	crumbs := crumb["itemListElement"].([]interface{})
+	last := crumbs[len(crumbs)-1].(map[string]interface{})
+	if last["item"] != entity {
+		t.Fatalf("breadcrumb = %#v", last)
 	}
 }

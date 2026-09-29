@@ -36,7 +36,7 @@ func (r *ClinicRepo) GetByDomain(domain string) (*models.Clinic, error) {
 }
 
 // GetBySlug finds a clinic by its unique Slug.
-// Inputs: slug (subdomain or path segment on the platform base domain).
+// Inputs: slug (path segment on the platform base domain).
 // Output: clinic pointer or DB error.
 func (r *ClinicRepo) GetBySlug(slug string) (*models.Clinic, error) {
 	if r.DB == nil {
@@ -86,6 +86,17 @@ func (r *ClinicRepo) GetByID(id uint) (*models.Clinic, error) {
 		return nil, err
 	}
 	return &clinic, nil
+}
+
+// ListByIDs مراکز فعال روی وب را با یک query برمی‌گرداند.
+// ورودی: شناسه‌ها. خروجی: ردیف‌های پیدا‌شده. فهرست خالی query نمی‌زند.
+func (r *ClinicRepo) ListByIDs(ids []uint) ([]models.Clinic, error) {
+	if r == nil || r.DB == nil || len(ids) == 0 {
+		return nil, nil
+	}
+	var clinics []models.Clinic
+	err := r.DB.Where("id IN ? AND is_active_on_website = ?", ids, true).Find(&clinics).Error
+	return clinics, err
 }
 
 // ListAll returns every clinic (superadmin scope).

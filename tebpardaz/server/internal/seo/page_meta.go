@@ -112,6 +112,84 @@ func HomeMeta(kind SiteKind, placeName, canonical string) Meta {
 	})
 }
 
+// SpecialtyIndexMeta متادیتای فهرست تخصص‌های پلتفرم را می‌سازد.
+// ورودی: مبدأ scheme://host. خروجی: Meta با canonical بدون query.
+func SpecialtyIndexMeta(baseURL string) Meta {
+	return finish(Meta{
+		Title:       "تخصص‌های پزشکی و نوبت‌دهی آنلاین | " + PlatformBrand,
+		Description: "مشاهده تخصص‌های پزشکی، پزشکان فعال هر تخصص و دریافت نوبت آنلاین از مراکز درمانی در طب‌پرداز.",
+		Canonical:   AbsoluteURL(baseURL, "/specialties"),
+		Robots:      RobotsIndexFollow,
+	})
+}
+
+// SpecialtyDetailMeta متادیتای landing یک تخصص را می‌سازد.
+// ورودی: نام، slug ذخیره‌شده، مبدأ، صفحهٔ معتبر، تعداد پزشک عمومی، و مجاز بودن ایندکس.
+// خروجی: Meta. page=1 بدون query است. تخصص بدون پزشک noindex,follow می‌ماند.
+func SpecialtyDetailMeta(name, slug, baseURL string, page, doctorCount int, indexable bool) Meta {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "تخصص"
+	}
+	title := "پزشکان " + name + " و نوبت‌دهی آنلاین | " + PlatformBrand
+	if page > 1 {
+		title = "پزشکان " + name + " و نوبت‌دهی آنلاین - صفحه " + strconv.Itoa(page) + " | " + PlatformBrand
+	}
+	desc := "مشاهده پزشکان " + name + " در مراکز درمانی و دریافت نوبت آنلاین از طریق طب‌پرداز."
+	if doctorCount > 0 {
+		desc = "مشاهده " + strconv.Itoa(doctorCount) + " پزشک " + name + " در مراکز درمانی و دریافت نوبت آنلاین از طریق طب‌پرداز."
+	}
+	robots := RobotsIndexFollow
+	if !indexable {
+		robots = RobotsNoindexFollow
+		desc = "در حال حاضر پزشک فعالی برای " + name + " در طب‌پرداز ثبت نشده است."
+	}
+	return finish(Meta{
+		Title:       title,
+		Description: desc,
+		Canonical:   AbsoluteURL(baseURL, SpecialtyPagePath(slug, page)),
+		Robots:      robots,
+	})
+}
+
+// ClinicIndexMeta متادیتای فهرست مراکز پلتفرم را می‌سازد.
+// ورودی: مبدأ scheme://host. خروجی: Meta با canonical بدون query.
+func ClinicIndexMeta(baseURL string) Meta {
+	return finish(Meta{
+		Title:       "مراکز درمانی و نوبت‌دهی آنلاین | " + PlatformBrand,
+		Description: "مشاهده مراکز درمانی، پزشکان هر مرکز و دریافت نوبت آنلاین از طریق طب‌پرداز.",
+		Canonical:   AbsoluteURL(baseURL, "/clinics"),
+		Robots:      RobotsIndexFollow,
+	})
+}
+
+// ClinicDetailMeta متادیتای landing یک مرکز را می‌سازد.
+// ورودی: نام، شهر، توضیح واقعی، slug ذخیره‌شده، مبدأ و صفحهٔ معتبر.
+// خروجی: Meta. صفحه ۱ بدون query است. مرکز بدون پزشک هم index,follow می‌ماند.
+func ClinicDetailMeta(name, city, description, slug, baseURL string, page int) Meta {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "مرکز درمانی"
+	}
+	title := name + " | پزشکان و نوبت‌دهی آنلاین"
+	if page > 1 {
+		title = name + " | پزشکان و نوبت‌دهی آنلاین - صفحه " + strconv.Itoa(page)
+	}
+	desc := "پزشکان " + name + " را ببینید و نوبت آنلاین بگیرید."
+	if city = strings.TrimSpace(city); city != "" {
+		desc = "پزشکان " + name + " در " + city + " را ببینید و نوبت آنلاین بگیرید."
+	}
+	if real := PlainText(description); real != "" {
+		desc = real
+	}
+	return finish(Meta{
+		Title:       title,
+		Description: truncateRunes(desc, 160),
+		Canonical:   AbsoluteURL(baseURL, ClinicPagePath(slug, page)),
+		Robots:      RobotsIndexFollow,
+	})
+}
+
 // DoctorsMeta متادیتای لیست پزشکان را با سیاست فیلتر و صفحه‌بندی می‌سازد.
 // ورودی: نوع سایت، نام مرکز یا سازمان، مبدأ scheme://host، query خام. خروجی: Meta.
 func DoctorsMeta(kind SiteKind, placeName, baseURL string, q DoctorListQuery) Meta {
@@ -154,7 +232,7 @@ func DoctorListCanonical(baseURL string, q DoctorListQuery) string {
 
 // BookingMeta متادیتای صفحه نوبت پزشک را از داده واقعی می‌سازد.
 // ورودی: نام نمایشی پزشک، نام تخصص، نام مرکز، canonical مطلق همان مسیر booking.
-// خروجی: Meta. تخصص یا مرکز خالی جداکننده اضافه نمی‌گذارد. شماره نظام پزشکی اینجا استفاده نمی‌شود.
+// خروجی: Meta. عنوان پیشوند دکتر اضافه نمی‌کند. تخصص خالی جداکننده اضافه نمی‌گذارد.
 func BookingMeta(doctorName, specialty, clinicName, canonical string) Meta {
 	name := strings.TrimSpace(doctorName)
 	specialty = strings.TrimSpace(specialty)
@@ -162,7 +240,7 @@ func BookingMeta(doctorName, specialty, clinicName, canonical string) Meta {
 	if name == "" {
 		name = "پزشک"
 	}
-	title := joinParts(" | ", "نوبت "+bookingTitleName(name), specialty, clinicName)
+	title := joinParts(" | ", name, specialty, "نوبت‌دهی آنلاین")
 	return finish(Meta{
 		Title:       title,
 		Description: bookingDescription(name, specialty, clinicName),
@@ -399,27 +477,18 @@ func (q WeeklyQuery) filtered() bool {
 	return id != "" && id != "0"
 }
 
-// bookingTitleName پیشوند دکتر را فقط وقتی نام خودش آن را ندارد اضافه می‌کند.
-func bookingTitleName(name string) string {
-	if strings.Contains(name, "دکتر") || strings.Contains(name, "دكتر") {
-		return name
-	}
-	if name == "پزشک" {
-		return name
-	}
-	return "دکتر " + name
-}
-
+// bookingDescription توضیح متا را از نام، تخصص و مرکز واقعی می‌سازد.
+// ورودی: سه متن trimشده. خروجی: یک جمله. فیلد خالی حذف می‌شود و پیشوند دکتر اضافه نمی‌شود.
 func bookingDescription(name, specialty, clinic string) string {
 	switch {
 	case specialty != "" && clinic != "":
-		return "مشاهده نوبت‌های " + name + "، " + specialty + " در " + clinic + " و رزرو نوبت آنلاین."
+		return "مشاهده اطلاعات و نوبت‌های " + name + "، " + specialty + " در " + clinic + " و رزرو نوبت آنلاین."
 	case specialty != "":
-		return "مشاهده نوبت‌های " + name + "، " + specialty + " و رزرو نوبت آنلاین."
+		return "مشاهده اطلاعات و نوبت‌های " + name + "، " + specialty + " و رزرو نوبت آنلاین."
 	case clinic != "":
-		return "مشاهده نوبت‌های " + name + " در " + clinic + " و رزرو نوبت آنلاین."
+		return "مشاهده اطلاعات و نوبت‌های " + name + " در " + clinic + " و رزرو نوبت آنلاین."
 	default:
-		return "مشاهده نوبت‌های " + name + " و رزرو نوبت آنلاین."
+		return "مشاهده اطلاعات و نوبت‌های " + name + " و رزرو نوبت آنلاین."
 	}
 }
 

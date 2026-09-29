@@ -1,0 +1,54 @@
+package pages
+
+// Clinics فهرست مراکز فعال پلتفرم را رندر می‌کند.
+templ Clinics(view ClinicsView) {
+	<div class="ui-fade-in mx-auto max-w-6xl">
+		<nav class="mb-4 text-sm text-ink-muted" aria-label="مسیر">
+			<a class="ui-link" href="/">خانه</a>
+			<span aria-hidden="true"> / </span>
+			<span>مراکز درمانی</span>
+		</nav>
+		<section class="ui-section mb-5">
+			<h1 class="ui-page-title">مراکز درمانی</h1>
+			<p class="ui-page-desc">مرکز را انتخاب کنید، پزشکان همان مرکز را ببینید و نوبت بگیرید.</p>
+		</section>
+		if len(view.Items) == 0 {
+			<p class="py-10 text-center text-sm text-ink-muted">مرکز فعالی برای نمایش وجود ندارد.</p>
+		} else {
+			<ul class="divide-y divide-surface-border overflow-hidden rounded-2xl border border-surface-border bg-white">
+				for _, item := range view.Items {
+					<li>
+						<a class="flex items-start gap-3 px-4 py-3.5 transition hover:bg-surface-soft" href={ templ.SafeURL(item.URL) }>
+							if item.LogoURL != "" {
+								<img class="mt-0.5 h-12 w-12 shrink-0 rounded-xl object-cover" src={ item.LogoURL } alt="" width="48" height="48" loading="lazy"/>
+							}
+							<span class="min-w-0 flex-1 text-right">
+								<span class="block text-sm font-bold text-ink">{ item.Name }</span>
+								if item.City != "" || item.Province != "" {
+									<span class="mt-1 block text-sm text-ink-muted">
+										if item.Province != "" && item.City != "" {
+											{ item.Province } — { item.City }
+										} else if item.City != "" {
+											{ item.City }
+										} else {
+											{ item.Province }
+										}
+									</span>
+								}
+								if item.Address != "" {
+									<span class="mt-1 block text-sm text-ink-muted">{ item.Address }</span>
+								}
+								if item.Phone != "" {
+									<span class="mt-1 block text-sm text-ink" dir="ltr">{ item.Phone }</span>
+								}
+								if item.Description != "" {
+									<span class="mt-1 block text-sm text-ink-muted">{ item.Description }</span>
+								}
+							</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

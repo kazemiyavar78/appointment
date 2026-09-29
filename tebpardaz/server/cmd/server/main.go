@@ -529,7 +529,7 @@ func main() {
 	tenantResolver := tenant.NewResolver(cfg.BaseDomain, clinicRepo, organizationRepo)
 	// جستجوی دامنه و اسلاگ مستأجر از کش حافظه خوانده می‌شود.
 	tenantResolver.UseCache(cache.NewTenantCache(memCache))
-	tenantMW := tenant.Middleware(tenantResolver, visitTracker)
+	tenantMW := tenant.Middleware(tenantResolver, visitTracker, urlTrust)
 	// لیست عمومی پزشکان نزدیک‌ترین نوبت را از کش می‌خواند (نه از جدول DoctorSlot)
 	bookingListing := booking.NewListingService(doctorRepo, specialtyRepo, clinicRepo, slotCache)
 	sectionPublicHandler := public.NewSectionPublicHandler(sectionRepo, clinicRepo, bookingListing, serviceRepo)
@@ -585,7 +585,7 @@ func main() {
 	pushHandler := public.NewWaitingQueuePushHandler(waitingQueueHandler, pushSubs)
 	pwaHandler := public.NewPWAHandler()
 	wsHandlers.OnWaitingQueueUpdated = waitingqueue.NewPushNotifier(pushSubs, waitingQueueCache, webpush.NewSender(vapidKeys)).OnQueueUpdated
-	sitemapHandler := public.NewSitemapHandler(clinicRepo, doctorRepo, sectionRepo, newsRepo)
+	sitemapHandler := public.NewSitemapHandler(clinicRepo, doctorRepo, sectionRepo, newsRepo, specialtyRepo)
 	robotsHandler := public.NewRobotsHandler()
 
 	admin.GET("/reviews",
@@ -611,6 +611,12 @@ func main() {
 	{
 		public.GETAndHEAD(pub, "/", publicHandler.Get)
 		public.GETAndHEAD(pub, "/doctors", doctorListHandler.Get)
+		specialtyPublicHandler := public.NewSpecialtyHandler(specialtyRepo, doctorRepo, clinicRepo, slotCache)
+		public.GETAndHEAD(pub, "/specialties", specialtyPublicHandler.Index)
+		public.GETAndHEAD(pub, "/specialties/:slug", specialtyPublicHandler.Detail)
+		clinicPublicHandler := public.NewClinicHandler(clinicRepo, doctorRepo, slotCache)
+		public.GETAndHEAD(pub, "/clinics", clinicPublicHandler.Index)
+		public.GETAndHEAD(pub, "/clinics/:clinic_slug", clinicPublicHandler.Detail)
 		public.GETAndHEAD(pub, "/weekly-schedule", weeklyScheduleHandler.Get)
 		pub.POST("/otp/send", bookingHandler.SendOTP)
 		pub.POST("/otp/verify", bookingHandler.VerifyOTP)
@@ -686,7 +692,7 @@ func main() {
 		pub.POST("/:admission_no/:national_id/push-subscribe", pushHandler.Subscribe)
 	}
 
-	r.NoRoute(tenantMW, public.NotFound)
+	r.NoRoute(tenantMW, public.LegacyPlatformClinicRedirect(cfg.BaseDomain), public.NotFound)
 
 	r.GET("/ws/clinic", wsHandlers.ServeWS)
 

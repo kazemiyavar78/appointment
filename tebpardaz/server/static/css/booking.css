@@ -116,6 +116,20 @@
   border-radius: 6px;
 }
 
+a.bk-doctor-card__clinic {
+  text-decoration: none;
+}
+
+a.bk-doctor-card__clinic:hover,
+a.bk-doctor-card__clinic:focus-visible {
+  text-decoration: underline;
+}
+
+a.bk-doctor-card__clinic:focus-visible {
+  outline: 2px solid #3b5bdb;
+  outline-offset: 2px;
+}
+
 .bk-doctor-card__name {
   margin: 0;
   font-size: 20px;
@@ -126,6 +140,22 @@
   margin: 4px 0 0;
   font-size: 14px;
   color: #4A5568;
+}
+
+a.bk-doctor-card__spec {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.bk-doctor-card__spec:hover,
+a.bk-doctor-card__spec:focus-visible {
+  text-decoration: underline;
+}
+
+a.bk-doctor-card__spec:focus-visible {
+  outline: 2px solid #3b5bdb;
+  outline-offset: 2px;
 }
 
 .bk-alert {

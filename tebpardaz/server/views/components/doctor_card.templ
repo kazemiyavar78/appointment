@@ -14,6 +14,7 @@ const doctorCardPhotoSizes = "(max-width: 639px) calc(100vw - 2.5rem), (max-widt
 type DoctorCardView struct {
 	Name            string
 	SpecialtyName   string
+	SpecialtyURL    string
 	DoctorSystemID  int
 	PhotoURL        string
 	Photo300        string
@@ -22,6 +23,7 @@ type DoctorCardView struct {
 	Photo1200       string
 	ShortDesc       string
 	ClinicName      string
+	ClinicURL       string
 	ShowClinicBadge bool
 	HasSlot         bool
 	NearestStartsAt time.Time
@@ -173,56 +175,67 @@ func doctorCardSrcSet(view DoctorCardView) string {
 
 // DoctorCard خلاصه پزشک قابل کلیک به صفحه رزرو را رندر می‌کند.
 templ DoctorCard(view DoctorCardView) {
-	<a
-		class="doctor-card group"
-		href={ templ.SafeURL(view.BookingURL) }
-		aria-label={ doctorCardAriaLabel(view) }
-	>
+	<div class="doctor-card group">
 		<div class="doctor-card-photo">
-			if doctorCardHasPhoto(view) {
-				<picture>
-					<img
-						src={ doctorCardMainPhoto(view) }
-						if srcset := doctorCardSrcSet(view); srcset != "" {
-							srcset={ srcset }
-							sizes={ doctorCardPhotoSizes }
-						}
-						alt={ doctorCardImgAlt(view) }
-						class="doctor-image doctor-card-photo-img"
-						loading="lazy"
-						decoding="async"
-						width="120"
-						height="120"
-					/>
-				</picture>
-			} else {
-				<svg class="doctor-card-photo-placeholder" viewBox="0 0 190 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-					<ellipse cx="95" cy="205" rx="95" ry="30" fill="#5b8bd9"></ellipse>
-					<path d="M40 210 C40 150 55 120 95 120 C135 120 150 150 150 210 Z" fill="#5b8bd9"></path>
-					<circle cx="95" cy="80" r="52" fill="#e7b18a"></circle>
-					<path d="M45 75 C45 35 145 35 145 75 C145 55 130 40 95 40 C60 40 45 55 45 75 Z" fill="#7a4a2b"></path>
-					<circle cx="95" cy="120" r="14" fill="#f1f1f1" stroke="#9ab" stroke-width="2"></circle>
-				</svg>
-			}
+			<a class="doctor-card-photo-link" href={ templ.SafeURL(view.BookingURL) } aria-label={ doctorCardAriaLabel(view) }>
+				if doctorCardHasPhoto(view) {
+					<picture>
+						<img
+							src={ doctorCardMainPhoto(view) }
+							if srcset := doctorCardSrcSet(view); srcset != "" {
+								srcset={ srcset }
+								sizes={ doctorCardPhotoSizes }
+							}
+							alt={ doctorCardImgAlt(view) }
+							class="doctor-image doctor-card-photo-img"
+							loading="lazy"
+							decoding="async"
+							width="120"
+							height="120"
+						/>
+					</picture>
+				} else {
+					<svg class="doctor-card-photo-placeholder" viewBox="0 0 190 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+						<ellipse cx="95" cy="205" rx="95" ry="30" fill="#5b8bd9"></ellipse>
+						<path d="M40 210 C40 150 55 120 95 120 C135 120 150 150 150 210 Z" fill="#5b8bd9"></path>
+						<circle cx="95" cy="80" r="52" fill="#e7b18a"></circle>
+						<path d="M45 75 C45 35 145 35 145 75 C145 55 130 40 95 40 C60 40 45 55 45 75 Z" fill="#7a4a2b"></path>
+						<circle cx="95" cy="120" r="14" fill="#f1f1f1" stroke="#9ab" stroke-width="2"></circle>
+					</svg>
+				}
+			</a>
 			if specialty := doctorCardSpecialtyLabel(view); specialty != "" || doctorCardClinicLabel(view) != "" {
 				<div class="doctor-card-badges">
 					if specialty != "" {
-						<span class="doctor-card-badge">
-							<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
-							{ specialty }
-						</span>
+						if view.SpecialtyURL != "" {
+							<a class="doctor-card-badge" href={ templ.SafeURL(view.SpecialtyURL) }>
+								<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
+								{ specialty }
+							</a>
+						} else {
+							<span class="doctor-card-badge">
+								<span class="doctor-card-badge-icon" aria-hidden="true">🩺</span>
+								{ specialty }
+							</span>
+						}
 					}
 					if clinic := doctorCardClinicLabel(view); clinic != "" {
-						<span class="doctor-card-badge doctor-card-badge-clinic">
-							<span class="doctor-card-badge-icon" aria-hidden="true">🏥</span>
-							{ clinic }
-						</span>
+						if view.ClinicURL != "" {
+							<a class="doctor-card-badge doctor-card-badge-clinic" href={ templ.SafeURL(view.ClinicURL) }>
+								<span class="doctor-card-badge-icon" aria-hidden="true">🏥</span>
+								{ clinic }
+							</a>
+						} else {
+							<span class="doctor-card-badge doctor-card-badge-clinic">
+								<span class="doctor-card-badge-icon" aria-hidden="true">🏥</span>
+								{ clinic }
+							</span>
+						}
 					}
 				</div>
 			}
 		</div>
-
-		<div class="doctor-card-info">
+		<a class="doctor-card-info" href={ templ.SafeURL(view.BookingURL) }>
 			<h2 class="doctor-card-name">{ view.Name }</h2>
 			if primary := doctorCardMetaPrimary(view); primary != "" || doctorCardMetaSecondary(view) != "" {
 				<div class="doctor-card-meta">
@@ -248,6 +261,6 @@ templ DoctorCard(view DoctorCardView) {
 					</svg>
 				</span>
 			</div>
-		</div>
-	</a>
+		</a>
+	</div>
 }

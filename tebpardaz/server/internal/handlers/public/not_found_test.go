@@ -85,7 +85,7 @@ func TestNoRouteUnknownPathRendersNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	resolver := tenant.NewResolver("tebpardaz.ir", nil, nil)
-	r.NoRoute(tenant.Middleware(resolver, nil), NotFound)
+	r.NoRoute(tenant.Middleware(resolver, nil, nil), NotFound)
 
 	req := httptest.NewRequest(http.MethodGet, "/this-page-does-not-exist", nil)
 	req.Host = "tebpardaz.ir"

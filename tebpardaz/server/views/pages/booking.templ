@@ -21,16 +21,22 @@ templ Booking(view BookingView) {
 		<section class="bk-profile" aria-label="معرفی پزشک">
 			<section class="bk-doctor-card">
 				if view.PhotoURL != "" {
-					<img class="bk-doctor-card__photo" src={ view.PhotoURL } alt="" width="80" height="80" loading="lazy"/>
+					<img class="bk-doctor-card__photo" src={ view.PhotoURL } alt={ bookingPhotoAlt(view.DoctorName) } width="80" height="80" loading="lazy"/>
 				} else {
 					<div class="bk-doctor-card__placeholder" aria-hidden="true">دکتر</div>
 				}
 				<div class="bk-doctor-card__info">
 					if view.ShowClinic && view.ClinicName != "" {
-						<span class="bk-doctor-card__clinic">{ view.ClinicName }</span>
+						if view.ClinicURL != "" {
+							<a class="bk-doctor-card__clinic" href={ templ.SafeURL(view.ClinicURL) }>{ view.ClinicName }</a>
+						} else {
+							<span class="bk-doctor-card__clinic">{ view.ClinicName }</span>
+						}
 					}
 					<h1 class="bk-doctor-card__name">{ view.DoctorName }</h1>
-					if view.SpecialtyName != "" {
+					if view.SpecialtyURL != "" && view.SpecialtyName != "" {
+						<a class="bk-doctor-card__spec" href={ templ.SafeURL(view.SpecialtyURL) }>{ view.SpecialtyName }</a>
+					} else if view.SpecialtyName != "" {
 						<p class="bk-doctor-card__spec">{ view.SpecialtyName }</p>
 					}
 				</div>

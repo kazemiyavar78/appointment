@@ -110,7 +110,7 @@ func TestSSRBookingJSONLD(t *testing.T) {
 func TestSSRDoctorsListJSONLD(t *testing.T) {
 	c := schemaGin("tebpardaz.ir", "/doctors")
 	cards := []booking.DoctorCard{{Name: "رضا احمدی", BookingURL: "/booking/chamran/reza"}}
-	page1 := doctorsJSONLD(c, cards, 1, true, 0)
+	page1 := doctorsJSONLD(c, nil, cards, 1, true, 0)
 	body := renderJSONLD(t, &tenant.Context{Layout: constants.LayoutPlatform}, page1)
 	doc := mustJSONLD(t, body)
 	list := nodeType(doc, "ItemList")
@@ -128,7 +128,7 @@ func TestSSRDoctorsListJSONLD(t *testing.T) {
 		t.Fatal("doctors breadcrumb length")
 	}
 
-	page2 := doctorsJSONLD(c, cards, 2, true, 20)
+	page2 := doctorsJSONLD(c, nil, cards, 2, true, 20)
 	body2 := renderJSONLD(t, &tenant.Context{Layout: constants.LayoutPlatform}, page2)
 	doc2 := mustJSONLD(t, body2)
 	item2 := nodeType(doc2, "ItemList")["itemListElement"].([]interface{})[0].(map[string]interface{})
@@ -140,7 +140,7 @@ func TestSSRDoctorsListJSONLD(t *testing.T) {
 	}
 
 	filteredMeta := seo.DoctorsMeta(seo.SitePlatform, "", "https://tebpardaz.ir", seo.DoctorListQuery{Q: "قلب"})
-	filtered := doctorsJSONLD(c, cards, 1, filteredMeta.Robots == seo.RobotsIndexFollow, len(cards))
+	filtered := doctorsJSONLD(c, nil, cards, 1, filteredMeta.Robots == seo.RobotsIndexFollow, len(cards))
 	body3 := renderJSONLD(t, &tenant.Context{Layout: constants.LayoutPlatform}, filtered)
 	if strings.Contains(body3, "ItemList") {
 		t.Fatalf("filtered doctors emitted ItemList:\n%s", body3)
